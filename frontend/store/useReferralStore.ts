@@ -1,6 +1,12 @@
-import { useState } from "react";
+import { create } from "zustand";
 import type { RiskDecision } from "../types/referral";
-export function useReferralStore() {
-  const [decision, setDecision] = useState<RiskDecision | null>(null);
-  return { decision, setDecision };
-}
+
+type ReferralState = {
+  decision: RiskDecision | null;
+  setDecision: (decision: RiskDecision | null) => void;
+};
+
+export const useReferralStore = create<ReferralState>((set) => ({
+  decision: null,
+  setDecision: (decision) => set({ decision }),
+}));

@@ -1,8 +1,5 @@
+import SirujukPage from "../../components/pages/SirujukPage";
+
 export default function DashboardPage() {
-  return (
-    <main>
-      <h2>Risk Dashboard</h2>
-      <p>Ringkasan keputusan dari backend.</p>
-    </main>
-  );
+  return <SirujukPage initialView="dashboard" />;
 }

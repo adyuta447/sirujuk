@@ -1,1 +1,5 @@
-export default function ReferralPage() { return <main><h2>Referral</h2><p>Detail rujukan dan sinyal risiko.</p></main>; }
+import SirujukPage from "../../components/pages/SirujukPage";
+
+export default function ReferralPage() {
+  return <SirujukPage initialView="masuk" />;
+}

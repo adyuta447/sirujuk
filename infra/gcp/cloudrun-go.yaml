@@ -1,0 +1,9 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata: {name: sirujuk-backend}
+spec:
+  template:
+    spec:
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT/sirujuk/backend-go:TAG
+          ports: [{containerPort: 8080}]

@@ -1,0 +1,9 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata: {name: sirujuk-ml}
+spec:
+  template:
+    spec:
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT/sirujuk/ml-service:TAG
+          ports: [{containerPort: 8000}]

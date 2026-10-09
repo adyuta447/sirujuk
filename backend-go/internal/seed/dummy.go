@@ -1,6 +1,8 @@
 package seed
 
 import (
+	"embed"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"time"
@@ -9,6 +11,83 @@ import (
 	"github.com/sirujuk/backend-go/internal/repository"
 	"github.com/sirujuk/backend-go/internal/service"
 )
+
+//go:embed testdata/FKTP.json testdata/FKTL.json testdata/pasien.json
+var testdataFS embed.FS
+
+type facilityEntry struct {
+	Nama    string `json:"nama"`
+	Wilayah string `json:"wilayah"`
+}
+
+type patientEntry struct {
+	Nama string `json:"nama"`
+}
+
+type pasienFile struct {
+	Pasien []patientEntry `json:"pasien"`
+}
+
+type fktpFile struct {
+	FKTP []facilityEntry `json:"fktp"`
+}
+
+type fktlFile struct {
+	FKTL []facilityEntry `json:"fktl"`
+}
+
+func loadFacilities() (origins []string, originWilayah map[string]string, dests []string, patients []string) {
+	origins = []string{"fktp-cilincing", "fktp-tambora", "fktp-penjaringan", "klinik-mitra-sehat"}
+	dests = []string{"rsud-pasar-rebo", "rsup-cm"}
+	originWilayah = map[string]string{}
+
+	if data, err := testdataFS.ReadFile("testdata/FKTP.json"); err == nil {
+		var parsed fktpFile
+		if json.Unmarshal(data, &parsed) == nil {
+			var names []string
+			for _, f := range parsed.FKTP {
+				if f.Nama == "" {
+					continue
+				}
+				names = append(names, f.Nama)
+				originWilayah[f.Nama] = f.Wilayah
+			}
+			if len(names) > 0 {
+				origins = names
+			}
+		}
+	}
+
+	if data, err := testdataFS.ReadFile("testdata/FKTL.json"); err == nil {
+		var parsed fktlFile
+		if json.Unmarshal(data, &parsed) == nil {
+			var names []string
+			for _, f := range parsed.FKTL {
+				if f.Nama == "" {
+					continue
+				}
+				names = append(names, f.Nama)
+			}
+			if len(names) > 0 {
+				dests = names
+			}
+		}
+	}
+
+	if data, err := testdataFS.ReadFile("testdata/pasien.json"); err == nil {
+		var parsed pasienFile
+		if json.Unmarshal(data, &parsed) == nil {
+			for _, p := range parsed.Pasien {
+				if p.Nama == "" {
+					continue
+				}
+				patients = append(patients, p.Nama)
+			}
+		}
+	}
+
+	return origins, originWilayah, dests, patients
+}
 
 // Run fills the store with n deterministic dummy referrals.
 // Tiering: first 60% green, next 26% yellow, rest red.
@@ -21,8 +100,7 @@ func Run(store *repository.MemoryStore, scorer service.ScoringService, engine se
 	}
 	rng := rand.New(rand.NewSource(42))
 	doctors := []string{"d-001", "d-002", "d-003", "d-004", "d-005", "d-006"}
-	origins := []string{"fktp-cilincing", "fktp-tambora", "fktp-penjaringan", "klinik-mitra-sehat"}
-	dests := []string{"rsud-pasar-rebo", "rsup-cm"}
+	origins, originWilayah, dests, patients := loadFacilities()
 	greenDx := []string{"I50", "E11.6", "J18", "N18.3"}
 	yellowDx := []string{"J06.9", "K30", "D50", "M54.5"}
 	redDx := []string{"I10", "K30", "J06.9"}
@@ -44,11 +122,17 @@ func Run(store *repository.MemoryStore, scorer service.ScoringService, engine se
 			reason = "Alat rusak dan SDM tidak ada di faskes asal"
 			narrative = "Pasien dirujuk ke rumah sakit."
 		}
+		origin := origins[i%len(origins)]
+		patient := string(rune('A' + i%26))
+		if len(patients) > 0 {
+			patient = patients[i%len(patients)]
+		}
 		req := domain.ReferralRequest{
 			ReferralID:            id,
-			PatientName:           string(rune('A' + i%26)),
+			PatientName:           patient,
 			DoctorID:              doctors[i%len(doctors)],
-			OriginFacilityID:      origins[i%len(origins)],
+			OriginFacilityID:      origin,
+			OriginWilayah:         originWilayah[origin],
 			DestinationFacilityID:   dests[i%len(dests)],
 			DiagnosisCode:         dx,
 			Reason:                reason,

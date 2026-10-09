@@ -1,0 +1,484 @@
+{
+    "pasien": [
+        {
+            "nama": "Wijaya Iskandar",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Nur Setyawan",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "kristen"
+        },
+        {
+            "nama": "Nur Nasution",
+            "gender": "male",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Dewi Hartono",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "katolik"
+        },
+        {
+            "nama": "Agus Susanto",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "hindu"
+        },
+        {
+            "nama": "Tri Nasution",
+            "gender": "female",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Agus Mukti",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "budha"
+        },
+        {
+            "nama": "Indah Wiranto",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "konghucu"
+        },
+        {
+            "nama": "Surya Nasution",
+            "gender": "male",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Sri Marwoto",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "kristen"
+        },
+        {
+            "nama": "Wijaya Prabowo",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "katolik"
+        },
+        {
+            "nama": "Ratna Nasution",
+            "gender": "female",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Nur Krisna",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "hindu"
+        },
+        {
+            "nama": "Okta Sugiyarto",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "budha"
+        },
+        {
+            "nama": "Gita Sugiyarto",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "konghucu"
+        },
+        {
+            "nama": "Achmad Haryono",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Mega Nasution",
+            "gender": "female",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Purwadi Suharmono",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "katolik"
+        },
+        {
+            "nama": "Yanti Saputra",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "hindu"
+        },
+        {
+            "nama": "Mochammad Nasution",
+            "gender": "male",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Sri Iskandar",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "budha"
+        },
+        {
+            "nama": "Surya Haryono",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "konghucu"
+        },
+        {
+            "nama": "Sri Nasution",
+            "gender": "female",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Wijaya Suharto",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Wulan Marwoto",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "kristen"
+        },
+        {
+            "nama": "Zul Nasution",
+            "gender": "male",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Tri Prabowo",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "hindu"
+        },
+        {
+            "nama": "Karto Haryono",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "budha"
+        },
+        {
+            "nama": "Indah Nasution",
+            "gender": "female",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Surya Setyawan",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "konghucu"
+        },
+        {
+            "nama": "Ratna Suharto",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Abdullah Nasution",
+            "gender": "male",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Lina Mukti",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "kristen"
+        },
+        {
+            "nama": "Joko Darmadi",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "katolik"
+        },
+        {
+            "nama": "Yanti Nasution",
+            "gender": "female",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Hadi Krisna",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "budha"
+        },
+        {
+            "nama": "Ratna Sukarno",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "konghucu"
+        },
+        {
+            "nama": "Lia Budi",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Budi Basuki",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "kristen"
+        },
+        {
+            "nama": "Lia Nasution",
+            "gender": "female",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Gita Sugeng",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "hindu"
+        },
+        {
+            "nama": "Ali Nasution",
+            "gender": "male",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Mega Waluyo",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "konghucu"
+        },
+        {
+            "nama": "Abdul Saputra",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Dewi Nasution",
+            "gender": "female",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Wijaya Yudha",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "kristen"
+        },
+        {
+            "nama": "Kartini Susanto",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "katolik"
+        },
+        {
+            "nama": "Purwadi Nasution",
+            "gender": "male",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Lina Prabowo",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "hindu"
+        },
+        {
+            "nama": "Dedi Wiranto",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "budha"
+        },
+        {
+            "nama": "Rini Nasution",
+            "gender": "female",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Mochammad Iskandar",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Dewi Krisna",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "kristen"
+        },
+        {
+            "nama": "Yudha Nasution",
+            "gender": "male",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Yanti Darmadi",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "katolik"
+        },
+        {
+            "nama": "Surya Sukarno",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "hindu"
+        },
+        {
+            "nama": "Joko Arifin",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "budha"
+        },
+        {
+            "nama": "Ayu Yudha",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "konghucu"
+        },
+        {
+            "nama": "Ayu Siswanto",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "kristen"
+        },
+        {
+            "nama": "Wijaya Krisna",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "katolik"
+        },
+        {
+            "nama": "Joko Wiranto",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "hindu"
+        },
+        {
+            "nama": "Fitri Wiranto",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "budha"
+        },
+        {
+            "nama": "Achmad Nasution",
+            "gender": "male",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Santi Marwoto",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "konghucu"
+        },
+        {
+            "nama": "Abdul Suharto",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Fitri Nasution",
+            "gender": "female",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Mardi Wijaya",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "katolik"
+        },
+        {
+            "nama": "Nur Iskandar",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "hindu"
+        },
+        {
+            "nama": "Dedi Nasution",
+            "gender": "male",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Indah Budi",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "budha"
+        },
+        {
+            "nama": "Hadi Haryono",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "konghucu"
+        },
+        {
+            "nama": "Anisa Nasution",
+            "gender": "female",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Akhmad Yudha",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Dewi Joko",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "kristen"
+        },
+        {
+            "nama": "Sri Krisna",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "hindu"
+        },
+        {
+            "nama": "Joko Wiyono",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "budha"
+        },
+        {
+            "nama": "Firman Yudha",
+            "gender": "male",
+            "suku": "Javanese",
+            "agama": "konghucu"
+        },
+        {
+            "nama": "Gita Sudirman",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Eko Nasution",
+            "gender": "male",
+            "suku": "Batak",
+            "agama": "muslim"
+        },
+        {
+            "nama": "Ratna Wiyono",
+            "gender": "female",
+            "suku": "Javanese",
+            "agama": "kristen"
+        }
+    ]
+}

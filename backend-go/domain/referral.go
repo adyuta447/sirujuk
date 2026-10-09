@@ -7,6 +7,7 @@ type ReferralRequest struct {
 	PatientName           string    `json:"patient_name"`
 	DoctorID              string    `json:"doctor_id"`
 	OriginFacilityID      string    `json:"origin_facility_id"`
+	OriginWilayah         string    `json:"origin_wilayah"`
 	DestinationFacilityID string    `json:"destination_facility_id"`
 	DiagnosisCode         string    `json:"diagnosis_code"`
 	Reason                string    `json:"reason"`

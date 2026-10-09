@@ -46,6 +46,7 @@ func Run(store *repository.MemoryStore, scorer service.ScoringService, engine se
 		}
 		req := domain.ReferralRequest{
 			ReferralID:            id,
+			PatientName:           string(rune('A' + i%26)),
 			DoctorID:              doctors[i%len(doctors)],
 			OriginFacilityID:      origins[i%len(origins)],
 			DestinationFacilityID:   dests[i%len(dests)],

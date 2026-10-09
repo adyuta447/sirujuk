@@ -38,7 +38,7 @@ export function mapStored(item: StoredReferral): RujukanCase {
   return {
     id,
     noRujukan: id.toUpperCase(),
-    pasien: `Pasien ${id}`,
+    pasien: request.patient_name || `Pasien ${id}`,
     usia: 25 + (h % 45),
     jenisPeserta: PESERTA[h % PESERTA.length],
     fasalOrigin: request.origin_facility_id,

@@ -13,6 +13,7 @@ export type RiskDecision = {
 export type StoredReferral = {
   request: {
     referral_id: string;
+    patient_name: string;
     doctor_id: string;
     origin_facility_id: string;
     destination_facility_id: string;

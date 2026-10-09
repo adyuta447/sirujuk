@@ -4,6 +4,7 @@ import "time"
 
 type ReferralRequest struct {
 	ReferralID            string    `json:"referral_id"`
+	PatientName           string    `json:"patient_name"`
 	DoctorID              string    `json:"doctor_id"`
 	OriginFacilityID      string    `json:"origin_facility_id"`
 	DestinationFacilityID string    `json:"destination_facility_id"`

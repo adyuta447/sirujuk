@@ -7,6 +7,7 @@ Request:
 ```json
 {
   "referral_id": "r-001",
+  "patient_name": "A",
   "doctor_id": "d-001",
   "origin_facility_id": "fktp-001",
   "destination_facility_id": "fkrtl-001",

@@ -25,4 +25,20 @@ type RiskDecision struct {
 	Decision            string   `json:"decision"`
 	Signals             MLScores `json:"signals"`
 	RequiresHumanReview bool     `json:"requires_human_review"`
+	ModelVersion        string   `json:"model_version"`
+	SignalsSource       string   `json:"signals_source"`
+	Reasons             []string `json:"reasons"`
+}
+
+type AuditReview struct {
+	Reviewer   string `json:"reviewer"`
+	Outcome    string `json:"outcome"`
+	Note       string `json:"note"`
+	ReviewedAt string `json:"reviewed_at"`
+}
+
+type StoredReferral struct {
+	Request  ReferralRequest `json:"request"`
+	Decision RiskDecision    `json:"decision"`
+	Audits   []AuditReview   `json:"audits"`
 }

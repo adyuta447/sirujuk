@@ -13,6 +13,10 @@ const config: Config = {
         risk: { green: "#319568", yellow: "#c58a23", red: "#c85555" },
       },
       borderRadius: { panel: "18px", control: "12px", "4xl": "2rem" },
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', "system-ui", "sans-serif"],
+        mono: ['"Plus Jakarta Sans"', "system-ui", "sans-serif"],
+      },
     },
   },
   plugins: [],

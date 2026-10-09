@@ -70,7 +70,3 @@ export function submitAudit(referralId: string, outcome: string, note: string) {
     body: JSON.stringify({ referral_id: referralId, reviewer: "verifikator", outcome, note }),
   });
 }
-
-export function getRiskDecision(referralId: string) {
-  return api(`/referrals/${encodeURIComponent(referralId)}`);
-}

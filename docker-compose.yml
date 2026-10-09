@@ -5,26 +5,16 @@ services:
       dockerfile: Dockerfile
     environment:
       GO_PORT: 8080
-      ML_SERVICE_URL: http://ml-service:8000
-      REDIS_URL: redis://redis:6379/0
+      ML_ENABLED: "false"
+      SEED_COUNT: "50"
     ports:
       - "8080:8080"
-    depends_on:
-      - ml-service
-      - redis
   ml-service:
     build:
       context: ./ml-service
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-  redis:
-    image: redis:7-alpine
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
-    volumes:
-      - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    ports:
-      - "6379:6379"
   frontend:
     build:
       context: .

@@ -73,7 +73,7 @@ export const ReferralDetail = ({ kasus, onBack, onAudit }: { kasus: RujukanCase;
               <span className="font-mono text-3xl font-bold">{kasus.riskScore}</span>
               <span className="text-[10px] uppercase tracking-wider opacity-90">skor</span>
             </div>
-            <div className="mt-2 text-xs font-semibold text-white/80">{r.label}</div>
+            <div className="mt-2 text-xs font-semibold text-white/80">{r.label} · skor dummy</div>
           </div>
         </div>
       </div>

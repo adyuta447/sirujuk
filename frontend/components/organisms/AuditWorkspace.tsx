@@ -7,6 +7,8 @@ import { IllustrationAudit, IllustrationDone } from "../atoms/Illustrations";
 import type { Keputusan, RiskLevel, RujukanCase } from "../../lib/sirujuk-data";
 import { AUDIT_CHECKLIST, NAVY, RISK } from "../../lib/sirujuk-data";
 import { useReferrals } from "../../hooks/useReferral";
+import { submitAudit } from "../../services/referral.service";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatVerifierDate } from "../../lib/formatters";
 
 export const AuditView = ({
@@ -24,6 +26,8 @@ export const AuditView = ({
     AUDIT_CHECKLIST.map(() => false),
   );
   const [submitted, setSubmitted] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const queryClient = useQueryClient();
   const { data: referrals = [], isError } = useReferrals();
 
   useEffect(() => {
@@ -281,11 +285,20 @@ export const AuditView = ({
           </div>
         </div>
 
+        {saveError && (
+          <p role="alert" className="text-sm text-[#9B1C1C]">
+            Gagal menyimpan ke backend, keputusan tetap tercatat lokal untuk demo.
+          </p>
+        )}
         <div className="flex gap-3 pb-2">
           <button
             type="button"
             onClick={() => {
-              if (canSubmit) setSubmitted(true);
+              if (!canSubmit || !kasus) return;
+              submitAudit(kasus.id, keputusan as string, catatan.trim())
+                .then(() => queryClient.invalidateQueries({ queryKey: ["referrals"] }))
+                .catch(() => setSaveError(true))
+                .finally(() => setSubmitted(true));
             }}
             disabled={!canSubmit}
             className="flex-1 py-3.5 text-white font-bold rounded-4xl transition-colors flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"

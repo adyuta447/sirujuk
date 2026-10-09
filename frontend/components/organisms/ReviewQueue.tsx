@@ -25,7 +25,7 @@ export const QueueView = ({ onSelect, wilayah }: { onSelect: (c: RujukanCase) =>
 
   return (
     <div className="scroll-area flex-1 overflow-y-auto p-6 space-y-5">
-      <PageHead eyebrow="Antrean kamu" title="Review Queue" sub="Yang paling butuh perhatian kami taruh di atas. Gas dari sini, ya." />
+      <PageHead eyebrow="Antrean kamu" title="Review Queue" sub="Data dummy 50 rujukan dari backend. Skor heuristik, bukan evaluasi fraud." />
       {isError && <p role="alert" className="text-sm text-[#9B1C1C]">Antrean belum bisa dimuat. Coba lagi sebentar.</p>}
 
       <div className="rounded-4xl border border-[#DCE3EC] bg-white p-6 flex items-center gap-6">

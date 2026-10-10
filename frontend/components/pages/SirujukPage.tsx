@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useReferrals } from "../../hooks/useReferral";
 import { useSession } from "../../hooks/useSession";
 import { AnalyticsView } from "../organisms/Analytics";
 import { BottomNav, Sidebar, TopBar } from "../organisms/AppShell";

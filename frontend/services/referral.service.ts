@@ -23,19 +23,8 @@ const DOKTER_SEED: Record<string, string> = {
   "d-006": "dr. Agus Wijaya",
 };
 
-const PESERTA = ["PBI", "Pekerja", "Mandiri"];
-
-function riskOf(decision: string, score: number): RiskLevel {
-  if (decision === "red" || score >= 80) return "tinggi";
-  if (decision === "yellow" || score >= 50) return "sedang";
-  return "rendah";
-}
-
-function hashSum(s: string): number {
-  let total = 0;
-  for (let i = 0; i < s.length; i++) total += s.charCodeAt(i);
-  return total;
-}
+// Kategori sepenuhnya dari keputusan backend; frontend tidak punya ambang skor sendiri.
+const RISK_DARI_KEPUTUSAN: Record<string, RiskLevel> = { red: "tinggi", yellow: "sedang", green: "rendah" };
 
 export function mapStored(item: StoredReferral): RujukanCase {
   const { request, decision } = item;

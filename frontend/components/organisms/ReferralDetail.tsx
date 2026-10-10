@@ -19,7 +19,7 @@ import { ReferralActions } from "./ReferralActions";
 import { ClaimBadge } from "../atoms/ClaimBadge";
 import { useSession } from "../../hooks/useSession";
 import type { RujukanCase } from "../../lib/sirujuk-data";
-import { INDIKATOR_DEMO, NAVY, RISK } from "../../lib/sirujuk-data";
+import { NAVY, RISK } from "../../lib/sirujuk-data";
 
 export const ReferralDetail = ({
   kasus,

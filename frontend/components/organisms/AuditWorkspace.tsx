@@ -1,9 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronRight, TriangleAlert } from "lucide-react";
 import { PageHead } from "../atoms/PageHead";
 import { RiskBadge } from "../atoms/RiskBadge";
 import { Illustration } from "../atoms/Illustration";
+import { Pagination } from "../molecules/Pagination";
+import { PAGE_SIZE } from "../../lib/constants";
 import type { Keputusan, RiskLevel, RujukanCase } from "../../lib/sirujuk-data";
 import { AUDIT_CHECKLIST, NAVY, RISK } from "../../lib/sirujuk-data";
 import { useReferrals } from "../../hooks/useReferral";
@@ -35,6 +37,8 @@ export const AuditView = ({
   const { data: sesi } = useSession();
   const queryClient = useQueryClient();
   const { data: referrals = [], isError } = useReferrals();
+  const [page, setPage] = useState(1);
+  const wadahRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!submitted || keputusan === "perlu-klarifikasi") return;
@@ -44,8 +48,15 @@ export const AuditView = ({
 
   if (!kasus) {
     const pending = referrals.filter((c) => c.status !== "selesai");
+    const totalPages = Math.max(1, Math.ceil(pending.length / PAGE_SIZE));
+    const halaman = Math.min(page, totalPages);
+    const tampak = pending.slice((halaman - 1) * PAGE_SIZE, halaman * PAGE_SIZE);
+    const gantiHalaman = (p: number) => {
+      setPage(p);
+      wadahRef.current?.scrollTo({ top: 0 });
+    };
     return (
-      <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+      <div ref={wadahRef} className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
         <PageHead
           title="Audit"
           sub="Pilih rujukan yang akan diperiksa."
@@ -57,7 +68,7 @@ export const AuditView = ({
           </p>
         )}
         <div className="bg-white rounded-4xl border border-[#DCE3EC] divide-y divide-[#EEF1F5] overflow-hidden">
-          {pending.map((c) => (
+          {tampak.map((c) => (
             <button
               type="button"
               key={c.id}
@@ -77,6 +88,7 @@ export const AuditView = ({
             </button>
           ))}
         </div>
+        <Pagination page={halaman} totalPages={totalPages} onChange={gantiHalaman} totalItems={pending.length} pageSize={PAGE_SIZE} />
       </div>
     );
   }

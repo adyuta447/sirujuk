@@ -1,8 +1,11 @@
 "use client";
+import { useEffect, useRef, useState } from "react";
 import { Illustration } from "../atoms/Illustration";
 import { PageHead } from "../atoms/PageHead";
 import { RiskBadge } from "../atoms/RiskBadge";
+import { Pagination } from "../molecules/Pagination";
 import type { RujukanCase } from "../../lib/sirujuk-data";
+import { PAGE_SIZE } from "../../lib/constants";
 import { cocokCari, tampilPasien } from "../../lib/formatters";
 import { useReferrals } from "../../hooks/useReferral";
 
@@ -16,12 +19,24 @@ export const RujukanMasuk = ({
   query: string;
 }) => {
   const { data: referrals = [], isError, isLoading } = useReferrals();
+  const [page, setPage] = useState(1);
+  const wadahRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setPage(1);
+  }, [wilayah, query]);
   const list = referrals.filter(
     (c) =>
       (wilayah === "Semua Wilayah" || c.wilayah === wilayah) && cocokCari(c, query),
   );
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const halaman = Math.min(page, totalPages);
+  const tampak = list.slice((halaman - 1) * PAGE_SIZE, halaman * PAGE_SIZE);
+  const gantiHalaman = (p: number) => {
+    setPage(p);
+    wadahRef.current?.scrollTo({ top: 0 });
+  };
   return (
-    <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+    <div ref={wadahRef} className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
       <PageHead
         title="Rujukan masuk"
         art="dashboard"
@@ -47,7 +62,7 @@ export const RujukanMasuk = ({
           <span>Risiko</span>
         </div>
         <div className="divide-y divide-[#EEF1F5]">
-          {list.map((c) => (
+          {tampak.map((c) => (
             <button
               type="button"
               key={c.id}
@@ -91,6 +106,7 @@ export const RujukanMasuk = ({
           ))}
         </div>
       </div>
+      <Pagination page={halaman} totalPages={totalPages} onChange={gantiHalaman} totalItems={list.length} pageSize={PAGE_SIZE} />
     </div>
   );
 };

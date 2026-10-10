@@ -6,7 +6,7 @@ set -euo pipefail
 REGION=${REGION:-us-east4} # Tier-1 pricing, ~1 ms from Vercel iad1
 REPO=${REPO:-adyuta447/sirujuk}
 P=$PROJECT_ID
-gcloud config set project "$P" >/dev/null
+export CLOUDSDK_CORE_PROJECT="$P" # this shell only: do not change the caller's default gcloud project
 SA() { echo "sirujuk-$1@$P.iam.gserviceaccount.com"; }
 PN=$(gcloud projects describe "$P" --format='value(projectNumber)')
 

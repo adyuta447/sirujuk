@@ -1,0 +1,52 @@
+{
+    "fktp": [
+        {
+            "nama": "Puskesmas Kecamatan Gambir",
+            "jenis": "Puskesmas",
+            "wilayah": "Jakarta Pusat",
+            "alamat": "Jl. Tanah Abang II No. 273"
+        },
+        {
+            "nama": "Puskesmas Kecamatan Kebayoran Baru",
+            "jenis": "Puskesmas",
+            "wilayah": "Jakarta Selatan",
+            "alamat": "Jl. Kerinci VII No. 2"
+        },
+        {
+            "nama": "Puskesmas Kecamatan Jatinegara",
+            "jenis": "Puskesmas",
+            "wilayah": "Jakarta Timur",
+            "alamat": "Jl. Anwar No. 16, Otista"
+        },
+        {
+            "nama": "Puskesmas Kecamatan Grogol Petamburan",
+            "jenis": "Puskesmas",
+            "wilayah": "Jakarta Barat",
+            "alamat": "Jl. Wijaya I No. 4"
+        },
+        {
+            "nama": "Puskesmas Kecamatan Penjaringan",
+            "jenis": "Puskesmas",
+            "wilayah": "Jakarta Utara",
+            "alamat": "Jl. Teluk Gong Raya No. 1"
+        },
+        {
+            "nama": "Klinik Pratama Cempaka Putih",
+            "jenis": "Klinik Pratama",
+            "wilayah": "Jakarta Pusat",
+            "alamat": "Cempaka Putih"
+        },
+        {
+            "nama": "Klinik Pratama Afia",
+            "jenis": "Klinik Pratama",
+            "wilayah": "Jakarta Pusat",
+            "alamat": "Jl. Kramat Raya"
+        },
+        {
+            "nama": "Klinik Sumber Sehat",
+            "jenis": "Klinik Pratama",
+            "wilayah": "Jakarta Pusat",
+            "alamat": "Serdang / Kemayoran"
+        }
+    ]
+}

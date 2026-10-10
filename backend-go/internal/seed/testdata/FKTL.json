@@ -1,0 +1,67 @@
+{
+    "fktl": [
+        {
+            "nama": "RSUPN Dr. Cipto Mangunkusumo (RSCM)",
+            "jenis": "RS Umum",
+            "tipe": "Rujukan Nasional",
+            "wilayah": "Jakarta Pusat",
+            "alamat": "Jl. Diponegoro No. 71"
+        },
+        {
+            "nama": "RSUP Fatmawati",
+            "jenis": "RS Umum",
+            "tipe": "A",
+            "wilayah": "Jakarta Selatan",
+            "alamat": "Jl. RS Fatmawati, Cilandak"
+        },
+        {
+            "nama": "RSUD Pasar Minggu",
+            "jenis": "RS Umum Daerah",
+            "tipe": "B",
+            "wilayah": "Jakarta Selatan",
+            "alamat": "Jl. TB Simatupang No. 1"
+        },
+        {
+            "nama": "RS Pelni",
+            "jenis": "RS Umum",
+            "tipe": "B",
+            "wilayah": "Jakarta Barat",
+            "alamat": "Jl. K.S. Tubun No. 92-94"
+        },
+        {
+            "nama": "RS Harapan Kita",
+            "jenis": "RS Khusus Jantung",
+            "tipe": "A",
+            "wilayah": "Jakarta Barat",
+            "alamat": "Jl. Letjen S. Parman"
+        },
+        {
+            "nama": "RS Kanker Dharmais",
+            "jenis": "RS Khusus Kanker",
+            "tipe": "A",
+            "wilayah": "Jakarta Barat",
+            "alamat": "Jl. Letjen S. Parman"
+        },
+        {
+            "nama": "RS Pusat Otak Nasional (RS PON)",
+            "jenis": "RS Khusus Otak/Saraf",
+            "tipe": "A",
+            "wilayah": "Jakarta Timur",
+            "alamat": "Jl. M.T. Haryono, Cawang"
+        },
+        {
+            "nama": "Klinik Utama SMEC Tebet",
+            "jenis": "Klinik Utama",
+            "tipe": "Spesialis Mata",
+            "wilayah": "Jakarta Selatan",
+            "alamat": "Tebet"
+        },
+        {
+            "nama": "Klinik Utama Bakti Husada",
+            "jenis": "Klinik Utama",
+            "tipe": null,
+            "wilayah": "Jakarta Selatan",
+            "alamat": "Jakarta Selatan"
+        }
+    ]
+}

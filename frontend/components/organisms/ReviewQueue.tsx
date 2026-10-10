@@ -27,7 +27,7 @@ export const QueueView = ({ onSelect, wilayah, query }: { onSelect: (c: RujukanC
 
   return (
     <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-      <PageHead title="Antrean Cek" sub="Diurutkan dari skor tertinggi." art="antrean-kosong" />
+      <PageHead title="Antrean Cek" sub="Data dummy dari backend, diurutkan dari skor tertinggi. Skor heuristik, bukan evaluasi kecurangan." art="antrean-kosong" />
       {isError && <p role="alert" className="text-sm text-[#9B1C1C]">Antrean gagal dimuat. Coba muat ulang halaman.</p>}
 
       <div className="flex items-center gap-1.5 flex-wrap">

@@ -14,9 +14,15 @@ type DecisionService struct {
 	Engine     DecisionEngine
 	Cache      Cache                         // doctor features from the nightly batch; nil = cold start
 	Facilities repository.FacilityRepository // SISRUTE availability of the origin faskes
+	Dummy      bool                          // DUMMY_SCORING: heuristic scores, no ML call; demo only (main.go refuses it in production)
 }
 
 func (s DecisionService) Evaluate(ctx context.Context, request domain.ReferralRequest) (domain.RiskDecision, error) {
+	if s.Dummy {
+		d := DummyEngine.Decide(request.ReferralID, ScoreDummy(request))
+		d.SignalsSource = "backend-dummy"
+		return d, nil
+	}
 	c := request.Context // fallback when batch features / SISRUTE snapshot are unavailable
 	in := domain.ScoringInput{
 		Referral: request, SisruteAvailable: c.SisruteAvailable, SisruteAgeDays: c.SisruteAgeDays,

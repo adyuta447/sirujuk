@@ -18,6 +18,7 @@ var (
 )
 
 const (
+	maxName      = 100
 	maxReason    = 200
 	maxNarrative = 4000
 )
@@ -49,6 +50,9 @@ func validate(r domain.ReferralRequest, allowContext bool) error {
 	if !diagnosisRe.MatchString(r.DiagnosisCode) {
 		return errors.New("invalid diagnosis_code")
 	}
+	if text(r.PatientName, maxName, false, false) != nil || text(r.OriginWilayah, 64, false, false) != nil {
+		return errors.New("invalid patient_name or origin_wilayah")
+	}
 	if err := text(r.Reason, maxReason, true, false); err != nil {
 		return errors.New("invalid reason")
 	}
@@ -66,6 +70,17 @@ func validate(r domain.ReferralRequest, allowContext bool) error {
 		if bad {
 			return errors.New("invalid context")
 		}
+	}
+	return nil
+}
+
+// auditOutcomes mirrors the UI's Keputusan type.
+var auditOutcomes = map[string]bool{"valid": true, "tidak-valid": true, "perlu-klarifikasi": true}
+
+func validateAudit(referralID, reviewer, outcome, note string) error {
+	if !idRe.MatchString(referralID) || !auditOutcomes[outcome] ||
+		text(reviewer, maxName, true, false) != nil || text(note, 2000, false, true) != nil {
+		return errors.New("invalid audit")
 	}
 	return nil
 }

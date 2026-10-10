@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sirujuk/backend-go/domain"
+	"github.com/sirujuk/backend-go/internal/repository"
 	"github.com/sirujuk/backend-go/internal/service"
 )
 
@@ -23,7 +24,8 @@ const (
 
 type ReferralHandler struct {
 	Decisions service.DecisionService
-	Queue     service.Queue // nil in tests
+	Queue     service.Queue           // nil in tests
+	Store     *repository.MemoryStore // demo list/detail/audit store; nil = those endpoints return empty/404
 	// AllowClientContext trusts request.Context (doctor history). Demo only: a real client could lower its own risk.
 	AllowClientContext bool
 }
@@ -89,6 +91,9 @@ func (h ReferralHandler) Score(w http.ResponseWriter, r *http.Request) {
 		h.accepted(w, r, request, cid, "scoring_unavailable")
 		return
 	}
+	if h.Store != nil {
+		h.Store.Upsert(request, result)
+	}
 	writeJSON(w, http.StatusOK, result)
 }
 
@@ -108,4 +113,64 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func (h ReferralHandler) List(w http.ResponseWriter, _ *http.Request) {
+	items := []domain.StoredReferral{}
+	if h.Store != nil {
+		items = h.Store.List()
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+func (h ReferralHandler) Get(w http.ResponseWriter, r *http.Request) {
+	if id := r.PathValue("id"); h.Store != nil && idRe.MatchString(id) {
+		if item, ok := h.Store.Get(id); ok {
+			writeJSON(w, http.StatusOK, item)
+			return
+		}
+	}
+	writeJSON(w, http.StatusNotFound, apiError{"NOT_FOUND", "Referral not found", ""})
+}
+
+const maxAuditBody = 8 << 10 // same as the Next proxy
+
+// Audit records a verifier/TKMKB outcome. shortcut: reviewer is whatever the trusted Next proxy sends (it fills it
+// from the session); per-user identity must come from the credential itself once backend auth stops being one shared token.
+func (h ReferralHandler) Audit(w http.ResponseWriter, r *http.Request) {
+	if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt != "application/json" {
+		writeJSON(w, http.StatusUnsupportedMediaType, apiError{"UNSUPPORTED_MEDIA_TYPE", "Content-Type must be application/json", ""})
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxAuditBody)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	var body struct {
+		ReferralID string `json:"referral_id"`
+		Reviewer   string `json:"reviewer"`
+		Outcome    string `json:"outcome"`
+		Note       string `json:"note"`
+	}
+	err := dec.Decode(&body)
+	if err == nil && dec.More() {
+		err = errors.New("trailing data")
+	}
+	if err == nil {
+		err = validateAudit(body.ReferralID, body.Reviewer, body.Outcome, body.Note)
+	}
+	var tooBig *http.MaxBytesError
+	if errors.As(err, &tooBig) {
+		writeJSON(w, http.StatusRequestEntityTooLarge, apiError{"PAYLOAD_TOO_LARGE", "Request body too large", ""})
+		return
+	}
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, apiError{"INVALID_REQUEST", "Request failed validation", ""})
+		return
+	}
+	audit := domain.AuditReview{Reviewer: body.Reviewer, Outcome: body.Outcome, Note: body.Note, ReviewedAt: time.Now().UTC().Format(time.RFC3339)}
+	if h.Store == nil || !h.Store.AddAudit(body.ReferralID, audit) {
+		writeJSON(w, http.StatusNotFound, apiError{"NOT_FOUND", "Referral not found", ""})
+		return
+	}
+	writeJSON(w, http.StatusCreated, audit)
 }

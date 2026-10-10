@@ -115,7 +115,7 @@ export const ReferralDetail = ({
               </span>
             </div>
             <div className="mt-2 text-xs font-semibold text-[#D5DFEC]">
-              {r.label}
+              {r.label} · skor dummy
             </div>
           </div>
         </div>

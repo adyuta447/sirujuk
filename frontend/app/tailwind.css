@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 @layer base {
   :root {
     color-scheme: light;

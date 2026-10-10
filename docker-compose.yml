@@ -20,6 +20,7 @@ services:
       ALLOW_CLIENT_CONTEXT: ${ALLOW_CLIENT_CONTEXT:-false}
       YELLOW_FROM: ${YELLOW_FROM:-7.8}
       RED_FROM: ${RED_FROM:-45}
+      SEED_COUNT: ${SEED_COUNT:-0} # e.g. 50 for a local demo; fills the in-memory list with fake referrals
     expose: ["8080"]
     depends_on: [ml-service, redis]
   ml-service:

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { PrimaryButton } from "../atoms/PrimaryButton";
+import { BrandMark } from "../atoms/BrandMark";
 
 type Mode = "masuk" | "daftar";
 
@@ -88,14 +89,7 @@ export const AuthForm = ({ mode, demo = false }: { mode: Mode; demo?: boolean })
         />
         <div aria-hidden="true" className="absolute inset-0 bg-[#0E1B2A]/60" />
         <Link href="/" className="relative self-start">
-          <Image
-            src="/sirujuk_logoweb.png"
-            alt="SIRUJUK Anti Fraud"
-            width={1047}
-            height={306}
-            priority
-            className="h-10 w-auto rounded-3xl bg-white px-2 py-1"
-          />
+          <BrandMark variant="dark" shield={52} />
         </Link>
         <div className="relative">
           <h2 className="text-5xl xl:text-6xl font-extrabold tracking-tighter leading-[1.05]">

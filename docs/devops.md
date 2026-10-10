@@ -143,4 +143,4 @@ These are the things a reviewer should know before trusting this with real data.
 6. A release replaces the ML model and the backend a few minutes apart. Scores in that window use mismatched thresholds.
 7. The existing dokter account has no doctor id, so it sees no referrals until one is assigned.
 8. The data sits in us-east4, in the United States. If Indonesian residency rules apply to real patient data, plan a move to asia-southeast2. Firestore cannot change location, so that means a new database.
-9. Dependabot has been turned off because it kept opening branches. Until the pull request that removes its config is merged, the file still exists on `main`. Nothing scans dependencies between pushes now. A weekly audit workflow that only reports would close that gap.
+9. Dependabot is off because it kept opening branches. Its config file is gone from `main` and its security update pull requests are disabled in the repository settings, while vulnerability alerts still notify you. That means nothing scans dependencies between pushes now. A weekly audit workflow that only reports, and never opens branches or deploys, would close that gap.

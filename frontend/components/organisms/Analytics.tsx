@@ -1,50 +1,25 @@
 import { Stethoscope } from "lucide-react";
 import { PageHead } from "../atoms/PageHead";
-import {
-  IllustrationDone,
-  IllustrationTransparent,
-} from "../atoms/Illustrations";
 import { DOKTER_RISIKO, NAVY, RISK } from "../../lib/sirujuk-data";
 
-export const AnalyticsView = () => (
-  <div className="scroll-area flex-1 overflow-y-auto p-6 space-y-5">
+export const AnalyticsView = ({ onDokter }: { onDokter: (nama: string) => void }) => (
+  <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
     <PageHead
-      eyebrow="Biar makin paham"
-      title="Analytics"
-      sub="Ringkasan pola rujukan dan hal-hal yang mungkin perlu kamu cek."
+      title="Analitik"
+      art="analitik"
+      sub="Pola rujukan dan dokter yang perlu diperhatikan."
     />
-
-    <div
-      className="rounded-4xl p-6 flex items-center gap-6 text-white"
-      style={{ backgroundColor: NAVY }}
-    >
-      <div className="w-28 h-24 shrink-0 hidden sm:block">
-        <IllustrationTransparent />
-      </div>
-      <div>
-        <div className="text-xs font-bold tracking-widest uppercase text-white/50">
-          Coba lihat ini
-        </div>
-        <div className="text-xl font-extrabold mt-1">
-          Rujukan tidak wajar naik 18% di Jakarta Utara
-        </div>
-        <p className="text-sm text-white/70 mt-1">
-          Dua puskesmas jadi pemicunya. Yuk, cek polanya dan tentukan langkah
-          berikutnya.
-        </p>
-      </div>
-    </div>
 
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {[
         { label: "Total rujukan", val: "1.284", sub: "bulan ini" },
-        { label: "Perlu kamu cek", val: "186", sub: "14,5% dari total" },
+        { label: "Perlu dicek", val: "186", sub: "14,5% dari total" },
         {
-          label: "Sudah ditinjau",
+          label: "Sudah dicek",
           val: "142",
           sub: "76,3% dari yang ditandai",
         },
-        { label: "Berhasil dicegah", val: "38", sub: "rujukan tidak sesuai" },
+        { label: "Terbukti tidak sesuai", val: "38", sub: "rujukan tidak sesuai" },
       ].map((k) => (
         <div
           key={k.label}
@@ -53,10 +28,10 @@ export const AnalyticsView = () => (
           <div className="text-xs font-semibold text-[#56657A] mb-1">
             {k.label}
           </div>
-          <div className="font-mono text-2xl font-bold text-[#0E1B2A]">
+          <div className="font-mono text-3xl sm:text-4xl font-extrabold tracking-tight text-[#0E1B2A]">
             {k.val}
           </div>
-          <div className="text-xs text-[#8A98AC] mt-1">{k.sub}</div>
+          <div className="text-xs text-[#64748B] mt-1">{k.sub}</div>
         </div>
       ))}
     </div>
@@ -66,10 +41,10 @@ export const AnalyticsView = () => (
         <Stethoscope size={16} style={{ color: NAVY }} />
         <div>
           <div className="font-bold text-[#0E1B2A]">
-            Pola yang perlu dilihat lagi
+            Dokter dengan pola yang perlu diperiksa
           </div>
           <div className="text-xs text-[#56657A] mt-0.5">
-            Urut dari yang paling butuh tindak lanjut atau klarifikasi.
+            Diurutkan dari yang paling perlu tindak lanjut.
           </div>
         </div>
       </div>
@@ -78,10 +53,15 @@ export const AnalyticsView = () => (
           const high = d.persentase > 25;
           const col = high ? RISK.tinggi : RISK.sedang;
           return (
-            <div key={d.nama} className="flex items-start gap-4 px-5 py-4">
+            <button
+              type="button"
+              key={d.nama}
+              onClick={() => onDokter(d.nama)}
+              className="w-full text-left flex items-start gap-4 px-5 py-4 hover:bg-[#F8FAFC] transition-colors"
+            >
               <div
                 className="w-7 h-7 rounded-4xl flex items-center justify-center text-xs font-bold shrink-0"
-                style={{ backgroundColor: "#E7ECF3", color: NAVY }}
+                style={{ backgroundColor: NAVY, color: "#FFFFFF" }}
               >
                 {i + 1}
               </div>
@@ -90,7 +70,7 @@ export const AnalyticsView = () => (
                   <span className="font-bold text-sm text-[#0E1B2A]">
                     {d.nama}
                   </span>
-                  <span className="text-xs text-[#8A98AC]">{d.fktp}</span>
+                  <span className="text-xs text-[#64748B]">{d.fktp}</span>
                 </div>
                 <p className="text-xs text-[#56657A] mt-1 leading-relaxed">
                   {d.narasi}
@@ -112,11 +92,11 @@ export const AnalyticsView = () => (
                 >
                   {d.persentase}%
                 </div>
-                <div className="text-xs text-[#8A98AC]">
+                <div className="text-xs text-[#64748B]">
                   {d.risikoTinggi} dari {d.totalRujukan}
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -126,10 +106,10 @@ export const AnalyticsView = () => (
       <div className="bg-white rounded-4xl border border-[#DCE3EC] overflow-hidden">
         <div className="px-5 py-4 border-b border-[#DCE3EC]">
           <div className="font-bold text-[#0E1B2A]">
-            Rumah sakit yang paling sering dituju
+            Rumah sakit tujuan terbanyak
           </div>
           <div className="text-xs text-[#56657A] mt-0.5">
-            Kalau rujukan menumpuk di satu tempat, coba cek polanya.
+            Rujukan yang menumpuk di satu rumah sakit perlu diperiksa.
           </div>
         </div>
         <div className="p-5 space-y-3.5">
@@ -160,11 +140,10 @@ export const AnalyticsView = () => (
       </div>
 
       <div
-        className="rounded-4xl p-5 flex flex-col text-white"
-        style={{ backgroundColor: NAVY }}
+        className="bg-white rounded-4xl border border-[#DCE3EC] p-5 flex flex-col"
       >
-        <div className="font-extrabold text-lg">        Sebaran risiko</div>
-        <div className="text-sm text-white/60">
+        <div className="font-bold text-[#0E1B2A]">Sebaran risiko</div>
+        <div className="text-xs text-[#56657A] mt-0.5">
           Agustus 2024, total 1.284 rujukan
         </div>
         <div className="flex-1 flex items-end gap-3 mt-6">
@@ -177,39 +156,14 @@ export const AnalyticsView = () => (
               key={s.label}
               className="flex-1 flex flex-col items-center gap-2"
             >
-              <div className="font-mono text-sm font-bold">{s.pct}%</div>
+              <div className="font-mono text-sm font-bold text-[#0E1B2A]">{s.pct}%</div>
               <div
                 className="w-full rounded-4xl"
                 style={{ height: `${s.h}px`, backgroundColor: s.color }}
               />
-              <div className="text-xs text-white/70">{s.label}</div>
+              <div className="text-xs text-[#56657A]">{s.label}</div>
             </div>
           ))}
-        </div>
-      </div>
-    </div>
-
-    <div className="bg-white rounded-4xl border border-[#DCE3EC] p-6 flex items-center gap-6">
-      <div className="w-40 h-28 shrink-0 hidden sm:block">
-        <IllustrationDone />
-      </div>
-      <div className="flex-1">
-        <div className="font-bold text-[#0E1B2A] mb-1">
-          Mantap! 142 dari 186 rujukan sudah kamu cek
-        </div>
-        <p className="text-sm text-[#56657A] max-w-lg leading-relaxed">
-          Tinggal 44 rujukan lagi di antrean. Yuk, bereskan pelan-pelan.
-        </p>
-        <div className="mt-3 max-w-md">
-          <div className="h-2 rounded-4xl overflow-hidden bg-[#EEF1F5]">
-            <div
-              className="h-full rounded-4xl"
-              style={{ width: "76.3%", backgroundColor: NAVY }}
-            />
-          </div>
-          <div className="text-xs text-[#8A98AC] mt-1">
-            76,3% rujukan sudah beres
-          </div>
         </div>
       </div>
     </div>

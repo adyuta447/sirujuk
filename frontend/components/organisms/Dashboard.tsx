@@ -1,71 +1,186 @@
-'use client'
-import { Inbox, TriangleAlert, ListChecks, Check, ChevronRight, ArrowRight } from 'lucide-react'
-import { PageHead } from '../atoms/PageHead'
-import { PrimaryButton } from '../atoms/PrimaryButton'
-import { RiskBadge } from '../atoms/RiskBadge'
-import { IllustrationDecision } from '../atoms/Illustrations'
-import type { RujukanCase, View } from '../../lib/sirujuk-data'
-import { NAVY } from '../../lib/sirujuk-data'
-import { useReferrals } from '../../hooks/useReferral'
+"use client";
+import {
+  Inbox,
+  TriangleAlert,
+  ListChecks,
+  Check,
+  ChevronRight,
+  ArrowRight,
+} from "lucide-react";
+import { PageHead } from "../atoms/PageHead";
+import { Illustration } from "../atoms/Illustration";
+import { PrimaryButton } from "../atoms/PrimaryButton";
+import { RiskBadge } from "../atoms/RiskBadge";
+import type { RujukanCase, View } from "../../lib/sirujuk-data";
+import { NAVY } from "../../lib/sirujuk-data";
+import { cocokCari, maskPasien } from "../../lib/formatters";
+import { useReferrals } from "../../hooks/useReferral";
 
-export const Dashboard = ({ go, onSelect }: { go: (v: View) => void; onSelect: (c: RujukanCase) => void }) => {
-  const { data: referrals = [], isError } = useReferrals()
-  const tinggi = referrals.filter(c => c.risk === 'tinggi' && c.status !== 'selesai')
+export const Dashboard = ({
+  go,
+  onSelect,
+}: {
+  go: (v: View) => void;
+  onSelect: (c: RujukanCase) => void;
+}) => {
+  const { data: referrals = [], isError } = useReferrals();
+  const tinggi = referrals.filter(
+    (c) => c.risk === "tinggi" && c.status !== "selesai",
+  );
   return (
-    <div className="scroll-area flex-1 overflow-y-auto p-6 space-y-6">
-      <PageHead eyebrow="Ringkasan hari ini" title="Hai, Adit!" sub="Ini yang perlu kamu cek dulu buat periode Agustus 2024." />
-      {isError && <p role="alert" className="text-sm text-[#9B1C1C]">Ringkasan belum bisa dimuat. Coba lagi sebentar.</p>}
+    <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+      <PageHead title="Halo, Adit" sub="Periode Agustus 2024" art="sapaan" />
+      {isError && (
+        <p role="alert" className="text-sm text-[#9B1C1C]">
+          Ringkasan gagal dimuat. Coba muat ulang halaman.
+        </p>
+      )}
 
-      <div className="rounded-4xl p-6 flex items-center gap-6 text-white" style={{ backgroundColor: NAVY }}>
-        <div className="w-28 h-24 shrink-0 hidden sm:block"><IllustrationDecision /></div>
+      <div
+        className="rounded-4xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 text-white"
+        style={{ backgroundColor: NAVY }}
+      >
+        <Illustration name="dashboard" className="hidden sm:block w-36 h-28 shrink-0" />
         <div className="flex-1">
-          <div className="text-xs font-bold tracking-widest uppercase text-white/50">Yang perlu dicek dulu</div>
-          <div className="text-xl font-extrabold mt-1">{tinggi.length} rujukan berisiko tinggi masih menunggu kamu</div>
-          <p className="text-sm text-white/70 mt-1">Cek yang ini dulu, baru lanjut ke rujukan lainnya.</p>
+          <div className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
+            {tinggi.length} rujukan berisiko tinggi belum dicek
+          </div>
         </div>
-        <button type="button" onClick={() => go('queue')} className="shrink-0 inline-flex items-center gap-2 bg-white font-semibold px-5 py-3 rounded-4xl transition-transform hover:scale-[1.02]" style={{ color: NAVY }}>
+        <button
+          type="button"
+          onClick={() => go("queue")}
+          className="shrink-0 inline-flex items-center justify-center gap-2 min-h-11 bg-white font-semibold px-5 py-3 rounded-4xl transition-transform hover:scale-[1.02]"
+          style={{ color: NAVY }}
+        >
           Lihat antrean <ArrowRight size={18} />
         </button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Rujukan masuk', val: '1.284', sub: 'bulan ini', Icon: Inbox },
-          { label: 'Perlu dicek', val: '186', sub: '14,5% dari total', Icon: TriangleAlert },
-          { label: 'Masih mengantre', val: '44', sub: 'tinggal ditindaklanjuti', Icon: ListChecks },
-          { label: 'Sudah beres', val: '142', sub: '76,3% dari yang ditandai', Icon: Check },
-        ].map(({ label, val, sub, Icon }) => (
-          <div key={label} className="bg-white rounded-4xl border border-[#DCE3EC] p-5">
-            <div className="flex items-center gap-2 text-[#8A98AC]">
+          {
+            to: "masuk" as View,
+            art: "stat-masuk" as const,
+            label: "Rujukan masuk",
+            val: "1.284",
+            sub: "bulan ini",
+            Icon: Inbox,
+          },
+          {
+            to: "queue" as View,
+            art: "stat-cek" as const,
+            label: "Perlu dicek",
+            val: "186",
+            sub: "14,5% dari total",
+            Icon: TriangleAlert,
+          },
+          {
+            to: "queue" as View,
+            art: "stat-antre" as const,
+            label: "Masih mengantre",
+            val: "44",
+            sub: "belum ditindaklanjuti",
+            Icon: ListChecks,
+          },
+          {
+            to: "analytics" as View,
+            art: "stat-selesai" as const,
+            label: "Selesai dicek",
+            val: "142",
+            sub: "76,3% dari yang ditandai",
+            Icon: Check,
+          },
+        ].map(({ label, val, sub, Icon, to, art }) => (
+          <button
+            type="button"
+            key={label}
+            onClick={() => go(to)}
+            className="text-left bg-white rounded-4xl border border-[#DCE3EC] p-4 sm:p-5 hover:border-[#1E3A5F] transition-colors"
+          >
+            <div className="flex items-center gap-2 text-[#64748B]">
               <Icon size={15} />
-              <span className="text-xs font-semibold text-[#56657A]">{label}</span>
+              <span className="text-xs font-semibold text-[#56657A]">
+                {label}
+              </span>
             </div>
-            <div className="font-mono text-3xl font-bold mt-3 text-[#0E1B2A]">{val}</div>
-            <div className="text-xs text-[#8A98AC] mt-1">{sub}</div>
-          </div>
+            <div className="flex items-end justify-between gap-2 mt-3">
+              <div>
+                <div className="font-mono text-3xl sm:text-5xl font-extrabold tracking-tight text-[#0E1B2A]">
+                  {val}
+                </div>
+                <div className="text-xs text-[#64748B] mt-1">{sub}</div>
+              </div>
+              <Illustration name={art} className="hidden sm:block w-20 h-16 shrink-0" />
+            </div>
+          </button>
         ))}
       </div>
 
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_21.25rem] gap-6 items-start">
       <div className="bg-white rounded-4xl border border-[#DCE3EC] overflow-hidden">
         <div className="px-5 py-4 border-b border-[#DCE3EC] flex items-center justify-between">
-          <div className="font-bold text-[#0E1B2A]">Mulai dari sini</div>
-          <button type="button" onClick={() => go('queue')} className="text-xs font-semibold flex items-center gap-1" style={{ color: NAVY }}>Lihat semua <ChevronRight aria-hidden="true" size={14} /></button>
+          <div className="text-xl font-extrabold tracking-tight text-[#0E1B2A]">Risiko tinggi</div>
+          <button
+            type="button"
+            onClick={() => go("queue")}
+            className="text-xs font-semibold flex items-center gap-1 min-h-11"
+            style={{ color: NAVY }}
+          >
+            Lihat semua <ChevronRight aria-hidden="true" size={14} />
+          </button>
         </div>
         <div className="divide-y divide-[#EEF1F5]">
-          {tinggi.map(c => (
-            <button type="button" key={c.id} onClick={() => onSelect(c)} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[#F8FAFC] transition-colors text-left">
+          {tinggi.length === 0 && (
+            <div className="px-5 py-8 flex flex-col items-center text-center">
+              <Illustration name="selesai" className="w-40 h-28" />
+              <p className="text-sm text-[#56657A] mt-2">Tidak ada rujukan berisiko tinggi yang menunggu.</p>
+            </div>
+          )}
+          {tinggi.map((c) => (
+            <button
+              type="button"
+              key={c.id}
+              onClick={() => onSelect(c)}
+              className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[#F8FAFC] transition-colors text-left"
+            >
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-[#0E1B2A]">{c.pasien}</div>
-                <div className="text-xs text-[#56657A] truncate">{c.diagnosa}</div>
+                <div className="font-semibold text-sm text-[#0E1B2A]">
+                  {maskPasien(c.noRujukan)}
+                </div>
+                <div className="text-xs text-[#56657A] truncate">
+                  {c.diagnosa}
+                </div>
               </div>
               <RiskBadge level={c.risk} score={c.riskScore} />
-              <ChevronRight size={16} className="text-[#8A98AC]" />
+              <ChevronRight size={16} className="text-[#64748B]" />
             </button>
           ))}
         </div>
       </div>
+
+      <div className="space-y-4">
+        {[
+          { to: "klarifikasi" as View, art: "pintasan-klarifikasi" as const, judul: "Klarifikasi dokter", isi: "Minta penjelasan dari dokter perujuk." },
+          { to: "dinkes" as View, art: "pintasan-wilayah" as const, judul: "Pantauan wilayah", isi: "Lihat ringkasan tiap wilayah." },
+          { to: "analytics" as View, art: "pintasan-analitik" as const, judul: "Analitik", isi: "Pola rujukan dan dokter yang perlu diperhatikan." },
+        ].map((k) => (
+          <button
+            type="button"
+            key={k.judul}
+            onClick={() => go(k.to)}
+            className="w-full text-left bg-white rounded-4xl border border-[#DCE3EC] p-5 flex items-center gap-4 hover:border-[#1E3A5F] transition-colors"
+          >
+            <Illustration name={k.art} className="w-24 h-20 shrink-0" />
+            <div className="min-w-0">
+              <div className="text-lg font-extrabold tracking-tight text-[#0E1B2A]">{k.judul}</div>
+              <p className="text-sm text-[#56657A] mt-0.5">{k.isi}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+      </div>
     </div>
-  )
-}
+  );
+};
 
 // Rujukan Masuk

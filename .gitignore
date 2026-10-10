@@ -5,3 +5,7 @@ node_modules/
 .next/
 *.pkl
 coverage/
+.env
+.env.*
+!.env.example
+.vercel

@@ -1,12 +1,18 @@
 package router
 
 import (
-	"github.com/sirujuk/backend-go/internal/handler"
 	"net/http"
+
+	"github.com/sirujuk/backend-go/internal/handler"
+	"github.com/sirujuk/backend-go/internal/middleware"
 )
 
-func New(h handler.ReferralHandler) http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/v1/referrals/score", h.Score)
-	return mux
+func New(h handler.ReferralHandler, token, corsOrigin string) http.Handler {
+	api := http.NewServeMux()
+	api.HandleFunc("POST /api/v1/referrals/score", h.Score)
+
+	root := http.NewServeMux()
+	root.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	root.Handle("/", middleware.Auth(token)(api))
+	return middleware.SecureHeaders(middleware.CORS(corsOrigin)(middleware.Logger(root)))
 }

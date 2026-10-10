@@ -4,6 +4,10 @@ const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-jakarta)", "system-ui", "sans-serif"],
+        mono: ["var(--font-jakarta)", "system-ui", "sans-serif"],
+      },
       colors: {
         navy: { DEFAULT: "#24446d", dark: "#1d3b61" },
         canvas: "#f4f7fb",

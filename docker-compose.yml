@@ -1,37 +1,58 @@
+# Only the frontend is published. backend, ML and Redis live on the internal network.
+x-hardened: &hardened
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+
 services:
   backend-go:
+    <<: *hardened
     build:
       context: ./backend-go
       dockerfile: Dockerfile
+    read_only: true
     environment:
       GO_PORT: 8080
+      APP_ENV: ${APP_ENV:-production}
+      API_TOKEN: ${API_TOKEN:?set API_TOKEN in .env}
       ML_SERVICE_URL: http://ml-service:8000
-      REDIS_URL: redis://redis:6379/0
-    ports:
-      - "8080:8080"
-    depends_on:
-      - ml-service
-      - redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379/0
+      ALLOW_CLIENT_CONTEXT: ${ALLOW_CLIENT_CONTEXT:-false}
+      YELLOW_FROM: ${YELLOW_FROM:-7.8}
+      RED_FROM: ${RED_FROM:-45}
+    expose: ["8080"]
+    depends_on: [ml-service, redis]
   ml-service:
+    <<: *hardened
     build:
       context: ./ml-service
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+    read_only: true
+    tmpfs: [/tmp]
+    expose: ["8000"]
   redis:
+    <<: *hardened
     image: redis:7-alpine
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    command: ["sh", "-c", "exec redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
     volumes:
       - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    ports:
-      - "6379:6379"
+      - redis-data:/data
+    expose: ["6379"]
   frontend:
+    <<: *hardened
     build:
       context: .
       dockerfile: infra/docker/frontend.Dockerfile
+    read_only: true
+    tmpfs: [/tmp, /app/.next/cache]
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api/v1
+      BACKEND_URL: http://backend-go:8080
+      API_TOKEN: ${API_TOKEN:?set API_TOKEN in .env}
     ports:
       - "3000:3000"
-    depends_on:
-      - backend-go
+    depends_on: [backend-go]
+
+volumes:
+  redis-data:

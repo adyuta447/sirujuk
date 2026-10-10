@@ -1,5 +1,6 @@
 import { api } from "./api";
 import type { RujukanCase, RiskLevel } from "../lib/sirujuk-data";
+import { namaDokter } from "../lib/sirujuk-data";
 import type { ReferralEdit, RiskDecision, StoredReferral } from "../types/referral";
 import { bangunIndikator } from "../lib/indikator";
 import { validateReferral, type ReferralInput } from "../lib/validate";
@@ -33,7 +34,7 @@ export function mapStored(item: StoredReferral): RujukanCase {
     fasalTujuan: request.destination_facility_id,
     wilayah: request.origin_wilayah || WILAYAH_OF[request.origin_facility_id] || "Belum tercatat",
     diagnosa: request.diagnosis_code,
-    dokter: request.doctor_id,
+    dokter: namaDokter(request.doctor_id),
     tanggal: new Date(request.issued_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
     risk,
     riskScore: score,

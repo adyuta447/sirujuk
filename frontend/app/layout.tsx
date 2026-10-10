@@ -12,7 +12,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "SIRUJUK, pemeriksa rujukan JKN",
+  title: "Sirujuk",
   description: "Membantu verifikator menentukan rujukan JKN mana yang perlu dicek lebih dulu, lengkap dengan alasannya.",
 };
 

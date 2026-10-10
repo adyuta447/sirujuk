@@ -61,7 +61,17 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Menu layar penuh: kunci scroll halaman dan tutup dengan Escape.
+  // Latar halaman gelap selama di landing, supaya area di bawah footer (overscroll) tidak terlihat putih.
+  useEffect(() => {
+    const el = document.documentElement;
+    const lama = el.style.backgroundColor;
+    el.style.backgroundColor = "#0E1B2A";
+    return () => {
+      el.style.backgroundColor = lama;
+    };
+  }, []);
+
+  // Menu layar penuh (HP): kunci scroll halaman dan tutup dengan Escape.
   useEffect(() => {
     if (!menu) return;
     const tutup = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
@@ -293,28 +303,38 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
       </section>
     </main>
 
-    <footer className="bg-[#0E1B2A] text-[#C9D6E6]">
-      <div className="max-w-[75rem] mx-auto px-5 md:px-10 py-12 grid md:grid-cols-[2fr_1fr_1fr] gap-8 text-sm">
+    <footer className="bg-[#0E1B2A] text-[#C9D6E6] rounded-t-4xl">
+      <div className="max-w-[75rem] mx-auto px-5 md:px-10 py-14 grid gap-10 md:grid-cols-[1.6fr_1fr_1fr_1fr] text-sm">
         <div>
-          <div className="text-2xl font-extrabold tracking-tight text-white">SIRUJUK</div>
-          <p className="mt-2 max-w-sm">
-            Sistem verifikasi rujukan berbasis data untuk Program JKN. Skor risiko hanya alat bantu prioritas, bukan bukti kecurangan.
+          <div className="text-3xl font-extrabold tracking-tighter text-white">
+            Sirujuk<span className="text-[#7DB4F5]">.</span>
+          </div>
+          <p className="mt-3 max-w-xs leading-relaxed">
+            Sistem verifikasi rujukan berbasis data untuk Program JKN. Skor risiko hanya penunjuk prioritas, bukan bukti kecurangan.
           </p>
         </div>
-        <div className="space-y-2">
-          <div className="font-bold text-white">Halaman</div>
+        <nav aria-label="Jelajahi" className="space-y-2.5">
+          <div className="font-bold text-white mb-3">Jelajahi</div>
+          <a href="#fitur" className="block hover:text-white">Kenapa Sirujuk</a>
+          <a href="#cara-kerja" className="block hover:text-white">Cara kerja</a>
+          <a href="#pengguna" className="block hover:text-white">Untuk siapa</a>
+          <a href="#tanya-jawab" className="block hover:text-white">Tanya jawab</a>
+        </nav>
+        <nav aria-label="Halaman petugas" className="space-y-2.5">
+          <div className="font-bold text-white mb-3">Halaman</div>
           <Link href="/dashboard" className="block hover:text-white">Beranda</Link>
           <Link href="/queue" className="block hover:text-white">Antrean Cek</Link>
-          <Link href="/audit" className="block hover:text-white">Audit</Link>
-        </div>
-        <div className="space-y-2">
-          <div className="font-bold text-white">Lainnya</div>
-          <Link href="/dokter" className="block hover:text-white">Profil Dokter</Link>
           <Link href="/klarifikasi" className="block hover:text-white">Klarifikasi</Link>
           <Link href="/dinkes" className="block hover:text-white">Pantauan Wilayah</Link>
+        </nav>
+        <div className="space-y-2.5">
+          <div className="font-bold text-white mb-3">Akun</div>
+          <button type="button" onClick={onEnter} className="block min-h-8 text-left hover:text-white">Masuk</button>
+          <button type="button" onClick={onDaftar} className="block min-h-8 text-left hover:text-white">Minta akses</button>
         </div>
       </div>
-      <div className="border-t border-[#2C4E78] py-5 text-center text-xs">Healthkathon 2026, kategori Efisiensi Risiko pada Fasilitas Kesehatan. Foto: Vitaly Gariev di Unsplash.</div>
+
+      <p className="pb-8 text-center text-xs">© 2026 Sirujuk. Hak cipta dilindungi.</p>
     </footer>
   </div>
   );

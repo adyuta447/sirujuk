@@ -14,6 +14,8 @@ import (
 func audit(h ReferralHandler, body string) int {
 	req := httptest.NewRequest("POST", "/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Actor", "siti@demo.id")
+	req.Header.Set("X-Actor-Role", "tkmkb") // the seed decides which rows are red; TKMKB may decide any of them
 	rec := httptest.NewRecorder()
 	h.Audit(rec, req)
 	return rec.Code
@@ -21,7 +23,7 @@ func audit(h ReferralHandler, body string) int {
 
 func TestAuditValidationAndStore(t *testing.T) {
 	store := repository.NewMemoryStore()
-	seed.Run(store, 3)
+	seed.Run(store, 3, nil)
 	h := ReferralHandler{Store: store}
 	good := `{"referral_id":"r-001","reviewer":"Siti","outcome":"valid","note":"ok"}`
 	cases := []struct {

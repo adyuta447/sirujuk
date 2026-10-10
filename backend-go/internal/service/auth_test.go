@@ -68,3 +68,11 @@ func TestHashIsSaltedAndShaped(t *testing.T) {
 		t.Fatal("hashes must be salted, well-formed, and malformed ones refused")
 	}
 }
+
+func TestVerifyRejectsDisabledAccount(t *testing.T) {
+	hash, _ := HashPassword("sandi-baru-67890")
+	a := newAuth(t, domain.User{Email: "off@uji.id", Nama: "Off", Role: "tkmkb", Hash: hash, Disabled: true})
+	if _, ok, err := a.Verify(context.Background(), "off@uji.id", "sandi-baru-67890"); ok || err != nil {
+		t.Fatalf("a disabled account must not log in even with the right password: ok=%v err=%v", ok, err)
+	}
+}

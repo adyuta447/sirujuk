@@ -14,3 +14,10 @@ type MLServiceClient interface {
 type Queue interface {
 	Enqueue(ctx context.Context, request domain.ReferralRequest, reason string) error
 }
+
+// Store keeps scoring results so a retried POST is idempotent and GET can serve async results.
+// shortcut: Redis with TTL; replace with the immutable risk_scores table in Postgres.
+type Store interface {
+	Save(ctx context.Context, d domain.RiskDecision) error
+	Load(ctx context.Context, referralID string) (*domain.RiskDecision, error) // nil, nil when absent
+}

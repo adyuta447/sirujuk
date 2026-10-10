@@ -78,7 +78,7 @@ func (a Authenticator) Verify(ctx context.Context, email, password string) (doma
 		hash = u.Hash
 	}
 	ok := matches(password, hash)
-	if !found || !ok || !Roles[u.Role] {
+	if !found || !ok || !Roles[u.Role] || u.Disabled {
 		return domain.User{}, false, nil
 	}
 	u.Hash = ""

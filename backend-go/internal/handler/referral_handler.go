@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sirujuk/backend-go/domain"
+	"github.com/sirujuk/backend-go/internal/middleware"
 	"github.com/sirujuk/backend-go/internal/repository"
 	"github.com/sirujuk/backend-go/internal/service"
 )
@@ -24,8 +25,11 @@ const (
 
 type ReferralHandler struct {
 	Decisions service.DecisionService
-	Queue     service.Queue           // nil in tests
-	Store     *repository.MemoryStore // demo list/detail/audit store; nil = those endpoints return empty/404
+	Queue     service.Queue                           // nil in tests
+	Ready     func(context.Context) map[string]string // dependency labels for /ready; nil = not wired
+	Users     repository.UserRepository               // resolves actor -> doctor_id; nil = doctors see nothing
+	Results   service.Store                           // idempotent replay + async results (Redis); nil in tests
+	Store     *repository.MemoryStore                 // demo list/detail/audit store; nil = those endpoints return empty/404
 	// AllowClientContext trusts request.Context (doctor history). Demo only: a real client could lower its own risk.
 	AllowClientContext bool
 }
@@ -76,9 +80,15 @@ func (h ReferralHandler) Score(w http.ResponseWriter, r *http.Request) {
 	}
 	request.ReferralID = key // Idempotency-Key = referral_no
 	if !h.AllowClientContext {
-		request.Context = domain.ReferralContext{DestIsNearest: true}
+		request.Context = domain.ReferralContext{}
 	}
 
+	if h.Results != nil { // same Idempotency-Key => same stored result, never re-scored
+		if d, err := h.Results.Load(r.Context(), key); err == nil && d != nil {
+			writeJSON(w, http.StatusOK, d)
+			return
+		}
+	}
 	// Emergency referrals are never held; scored retrospectively only.
 	if request.IsEmergency {
 		h.accepted(w, r, request, cid, "emergency_retrospective")
@@ -93,6 +103,11 @@ func (h ReferralHandler) Score(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.Store != nil {
 		h.Store.Upsert(request, result)
+	}
+	if h.Results != nil {
+		if err := h.Results.Save(context.WithoutCancel(r.Context()), result); err != nil {
+			log.Printf(`{"event":"result_save_failed","referral_id":%q,"correlation_id":%q}`, request.ReferralID, cid)
+		}
 	}
 	writeJSON(w, http.StatusOK, result)
 }
@@ -115,18 +130,25 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func (h ReferralHandler) List(w http.ResponseWriter, _ *http.Request) {
+func (h ReferralHandler) List(w http.ResponseWriter, r *http.Request) {
 	items := []domain.StoredReferral{}
 	if h.Store != nil {
-		items = h.Store.List()
+		view := h.visibilityOf(r)
+		_, role := middleware.Actor(r)
+		for _, it := range h.Store.List() {
+			if view.allows(it) {
+				items = append(items, redact(it, role))
+			}
+		}
 	}
 	writeJSON(w, http.StatusOK, items)
 }
 
 func (h ReferralHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if id := r.PathValue("id"); h.Store != nil && idRe.MatchString(id) {
-		if item, ok := h.Store.Get(id); ok {
-			writeJSON(w, http.StatusOK, item)
+		if item, ok := h.Store.Get(id); ok && h.visibilityOf(r).allows(item) {
+			_, role := middleware.Actor(r)
+			writeJSON(w, http.StatusOK, redact(item, role))
 			return
 		}
 	}
@@ -167,10 +189,36 @@ func (h ReferralHandler) Audit(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, apiError{"INVALID_REQUEST", "Request failed validation", ""})
 		return
 	}
-	audit := domain.AuditReview{Reviewer: body.Reviewer, Outcome: body.Outcome, Note: body.Note, ReviewedAt: time.Now().UTC().Format(time.RFC3339)}
-	if h.Store == nil || !h.Store.AddAudit(body.ReferralID, audit) {
-		writeJSON(w, http.StatusNotFound, apiError{"NOT_FOUND", "Referral not found", ""})
+	// Identity comes from the proxy-set X-Actor headers (the signed session), never from the body. No known user = no write.
+	actor, role, ok := actorIn(w, r, roleVerifikator, roleTKMKB)
+	if !ok {
 		return
 	}
+	if h.Store != nil && !roleMayDecide(h.Store, body.ReferralID, role, body.Outcome) {
+		writeJSON(w, http.StatusForbidden, apiError{"FORBIDDEN_ROLE", "Only TKMKB may make the final decision on a red referral", ""})
+		return
+	}
+	audit := domain.AuditReview{Reviewer: body.Reviewer, Actor: actor, Role: role, Outcome: body.Outcome, Note: body.Note, ReviewedAt: time.Now().UTC().Format(time.RFC3339)}
+	if h.Store == nil {
+		notFound(w)
+		return
+	}
+	if err := h.Store.AddAudit(body.ReferralID, audit); err != nil {
+		storeError(w, err)
+		return
+	}
+	auditLog(r, "audit_recorded", body.ReferralID, []string{body.Outcome})
 	writeJSON(w, http.StatusCreated, audit)
+}
+
+// ReadyCheck answers GET /ready with ok/down labels per dependency (no secrets, no data), so a deploy can see that
+// Redis, Firestore and the KNS list are really connected instead of silently running degraded.
+func (h ReferralHandler) ReadyCheck(w http.ResponseWriter, r *http.Request) {
+	status := map[string]string{}
+	if h.Ready != nil {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		status = h.Ready(ctx)
+	}
+	writeJSON(w, http.StatusOK, status)
 }

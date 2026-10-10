@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getStats } from "../services/stats.service";
+import { namaDokter } from "../lib/sirujuk-data";
 import type { Stats } from "../types/referral";
 
 const useStatsQuery = <T,>(select: (s: Stats) => T) =>
@@ -27,7 +28,7 @@ export const useWilayahStats = () =>
 export const useDokterStats = () =>
   useStatsQuery((s) =>
     s.dokter.map((d) => ({
-      nama: d.doctor_id,
+      nama: namaDokter(d.doctor_id),
       fktp: d.faskes,
       totalRujukan: d.total_rujukan,
       risikoTinggi: d.risiko_tinggi,

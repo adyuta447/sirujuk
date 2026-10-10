@@ -1,9 +1,7 @@
 import Image from "next/image";
 
 // Merk SIRUJUK: perisai logo-only + teks HTML (tajam di semua ukuran).
-// Perisai berwarna navy di atas transparan, jadi di latar gelap ia tenggelam:
-// varian "dark" menaruh perisai dalam lencana putih kecil (gaya ikon aplikasi),
-// varian "light" menampilkan perisai mentah tanpa latar.
+// Perisai tampil mentah tanpa lencana latar, di permukaan gelap maupun terang.
 export const BrandMark = ({
   variant = "dark",
   shield = 40,
@@ -14,19 +12,16 @@ export const BrandMark = ({
   const gelap = variant === "dark";
   return (
     <span className="flex items-center gap-2.5" role="img" aria-label="SIRUJUK Anti Fraud">
-      <span
+      <Image
+        src="/sirujuk-logo-only.png"
+        alt=""
         aria-hidden="true"
-        className={`flex items-center justify-center shrink-0 rounded-2xl ${gelap ? "bg-white p-1.5" : ""}`}
-      >
-        <Image
-          src="/sirujuk-logo-only.png"
-          alt=""
-          width={251}
-          height={274}
-          priority={false}
-          style={{ height: shield, width: "auto" }}
-        />
-      </span>
+        width={251}
+        height={274}
+        priority={false}
+        className="shrink-0"
+        style={{ height: shield, width: "auto" }}
+      />
       <span aria-hidden="true" className="flex flex-col leading-none">
         <span
           className="font-extrabold tracking-tight"

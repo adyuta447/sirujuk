@@ -89,7 +89,7 @@ export const AuthForm = ({ mode, demo = false }: { mode: Mode; demo?: boolean })
         />
         <div aria-hidden="true" className="absolute inset-0 bg-[#0E1B2A]/60" />
         <Link href="/" className="relative self-start">
-          <BrandMark variant="dark" shield={52} />
+          <BrandMark variant="dark" shield={76} />
         </Link>
         <div className="relative">
           <h2 className="text-5xl xl:text-6xl font-extrabold tracking-tighter leading-[1.05]">

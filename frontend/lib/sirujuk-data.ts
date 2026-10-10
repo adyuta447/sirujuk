@@ -87,6 +87,19 @@ export const DOKTER_RISIKO = [
 
 export const slugDokter = (nama: string) => nama.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
+// Direktori ID dokter seed (d-001..d-006) ke nama tampilan. Backend belum
+// punya direktori dokter, jadi pemetaan tinggal di sini sampai ada.
+export const NAMA_DOKTER: Record<string, string> = {
+  "d-001": "dr. Andi Pratama",
+  "d-002": "dr. Rini Kusuma",
+  "d-003": "dr. Siti Aminah",
+  "d-004": "dr. Budi Santoso",
+  "d-005": "dr. Maya Putri",
+  "d-006": "dr. Agus Wijaya",
+};
+
+export const namaDokter = (id: string) => NAMA_DOKTER[id] ?? id;
+
 export const AUDIT_CHECKLIST = [
   'Diagnosa sesuai dengan kemampuan fasilitas asal',
   'Pemeriksaan awal sudah dilakukan sebelum rujukan',

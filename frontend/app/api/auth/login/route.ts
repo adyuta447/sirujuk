@@ -48,8 +48,9 @@ export async function POST(request: Request) {
   }
   if (!email || !sandi) return galat(400, "INVALID_REQUEST", "Email dan kata sandi wajib diisi.");
 
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "lokal";
-  const kunci = `${ip}|${email.toLowerCase()}`;
+  // Kunci hanya email: header IP (x-forwarded-for) bisa dipalsukan klien di luar proxy tepercaya, sehingga kunci
+  // berbasis IP bisa dilewati dengan mengganti nilainya. Batas yang berlaku lintas instance ada di backend (Redis).
+  const kunci = email.toLowerCase();
   if (tertahan(kunci)) return galat(429, "TOO_MANY_ATTEMPTS", "Terlalu banyak percobaan. Coba lagi 15 menit lagi.", { "Retry-After": String(sisaDetik(kunci)) });
 
   let user;

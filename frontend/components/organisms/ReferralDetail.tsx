@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { PrimaryButton } from "../atoms/PrimaryButton";
 import type { RujukanCase } from "../../lib/sirujuk-data";
-import { maskPasien } from "../../lib/formatters";
 import { INDIKATOR_DEMO, NAVY, RISK } from "../../lib/sirujuk-data";
 
 export const ReferralDetail = ({
@@ -98,7 +97,7 @@ export const ReferralDetail = ({
             <div className="font-mono text-xs text-[#C9D6E6] mt-1">
               {kasus.noRujukan}
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{maskPasien(kasus.noRujukan)}</div>
+            <div className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{kasus.pasien}</div>
           </div>
           <div className="text-center">
             <div

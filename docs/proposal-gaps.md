@@ -37,10 +37,32 @@ Acuan: `system-rules/backend-go-rules.md`. Status: ✅ sudah di kode, 📄 perlu
 | `scoring_service.go`: `FraudScore` dihitung dua kali | ✅ dihapus; skor 0–100 dimiliki ML service, Go hanya menerapkan ambang |
 | Skor final dihitung di Go | ✅ skor di ML service; kategori diterapkan Go. 🔧 penulisan `risk_scores` belum ada |
 | Tidak ada Postgres/repository nyata, tabel `risk_scores`/`case_decisions`/`audit_log` | 🔧 migrasi dari sketsa DB rules |
-| Antrean async | ✅ enqueue ke Redis Stream `scoring:retry`; 🔧 worker + DLQ belum ada |
+| Antrean async | ✅ enqueue + worker (3x backoff) + DLQ `scoring:dlq`; 🔧 reclaim pesan pending (XAUTOCLAIM) dan alert DLQ belum ada |
 | `middleware.Auth`/`Logger` no-op, belum ada RBAC/mTLS/audit | 🔧 |
 | Endpoint `/v1/cases`, `/v1/cases/{id}/decision`, clarifications belum ada; route masih `/api/v1/...` vs kontrak `/v1/...` | 🔧 |
 | Adapter eksternal belum ada | 🔧 mock sintetis dulu |
 
 ## C. Urutan kerja hackathon (sesuai rules)
 1. Generator data sintetis + mock adapter → 2. schema + ingest + score fail-open end to end → 3. case queue & decision API → 4. audit log & RBAC → 5. dashboard Grafana → 6. halaman "path to production" (apa yang di-mock, apa yang butuh akses resmi, apa yang berubah di skala nasional).
+
+## Status setelah review P0/P1 (backend)
+
+| Temuan | Status |
+|--------|--------|
+| Lapis 2-3 mati (tidak ada yang menulis `doctor:*`) | job batch menghitung NS/HHI; NS memakai tabel 144 diagnosis milik ML (`kns144.tsv`, sumber sekunder, **perlu ditinjau klinisi / dicocokkan dengan Permenkes 5/2014**) |
+| Lapis 1 (SISRUTE) kosong | mock sintetis dari daftar FKTP di luar produksi; di produksi kosong sampai ada akses resmi |
+| Ambang tidak sinkron | ambang hanya di ML; backend memakai `category` dari ML |
+| Kode ICD di-hash ke 30 diagnosis sintetis (sisi ML) | **terbuka**: butuh tabel 144 diagnosis + template PPK; milik sesi ML |
+| Klarifikasi hilang | API + penyimpanan Firestore, dibatasi ke dokter pemilik |
+| Audit di memori | ditulis ke Firestore sebelum dikonfirmasi |
+| Verifikator = TKMKB; "ditahan" tidak ada | merah final hanya TKMKB; `claim_status` ditahan/dilepas/temuan-terkonfirmasi |
+| Reviewer = nama | disimpan email (`actor`) + nama tampilan |
+| Akun dokter tanpa doctor_id; tidak bisa nonaktif | `doctor_id` dan `disabled` di akun; dicek ulang tiap request |
+| Alasan lewat substring | `reason_category` dari daftar tetap |
+| Pantau rasio darurat per dokter | `darurat` dan `persen_darurat` di `/stats` |
+| Skor sintetis bukan klaim kinerja | tetap: angka precision/recall hanya di data sintetis |
+| Beban review ~22% tetap (persentil) | **belum dibahas di proposal**; tambahkan analisis kapasitas |
+| Bobot di-fit pada label sintetis; `DestIsNearest` selalu true; stratum default | **terbuka**: butuh data jarak faskes dan stratum wilayah; revisi proposal atau kode |
+| Baris contoh tak bisa dibedakan dari data asli | `synthetic: true` pada tiap baris seed dan di `/stats`; seed ditolak di produksi atau dengan Firestore |
+| Komposisi seed 60/26/14 tak sesuai proposal | seed berbasis perilaku dokter; komposisi hasil model (±84/10/6), tidak diatur seed |
+| Merah bisa karena satu lapis saja | `MIN_RED_LAYERS=2` menahan merah bila kurang dari 2 lapis independen; kategori model tetap di `model_category`. Default 1 sampai tim memutuskan |

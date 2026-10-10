@@ -24,4 +24,8 @@ def load_models():
     digest = hashlib.sha256(Path(MODEL_PATH).read_bytes()).hexdigest()
     if not hmac.compare_digest(digest, _expected_sha256()):
         raise RuntimeError("model file hash mismatch; refusing to load")
-    return joblib.load(MODEL_PATH)  # fails loudly if not trained: run `python train.py`
+    m = joblib.load(MODEL_PATH)  # fails loudly if not trained: run `python train.py`
+    # Cuts are percentiles of the TRAINING score distribution, not of live traffic. Re-cut from real scores (shadow mode) and set these.
+    if os.getenv("ML_YELLOW_FROM") and os.getenv("ML_RED_FROM"):
+        m.cut = (float(os.environ["ML_YELLOW_FROM"]), float(os.environ["ML_RED_FROM"]))
+    return m

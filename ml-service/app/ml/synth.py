@@ -5,35 +5,56 @@ Evidence base: SYNTHETIC. Metrics prove the pipeline finds what was injected, no
 import numpy as np
 import pandas as pd
 
-N_DIAG, N_NS = 30, 12          # first 12 diagnoses stand in for the 144 non-specialist list
+from app.ml.diagnosis import ENTRIES, N_DIAG, N_NS, keywords
+
 N_HOSP, DAYS, ACTIVE_FROM = 40, 360, 60
-STEMS = ["demam", "batuk", "nyeri", "mual", "ruam", "sesak", "pusing", "lemas", "bengkak", "diare",
-         "gatal", "sendi", "luka", "mata", "telinga", "gigi", "dada", "perut", "kepala", "kulit"]
-GENERIC = "pasien datang dengan keluhan, mohon dirujuk untuk penanganan lebih lanjut"
+FILLER = ["pasien", "sejak", "hari", "disertai", "tidak", "membaik", "kontrol", "terapi", "riwayat", "belum", "obat"]
+GENERIC = ["pasien datang dengan keluhan, mohon dirujuk untuk penanganan lebih lanjut",
+           "keluhan sejak beberapa hari, dirujuk untuk pemeriksaan lanjutan",
+           "pasien minta dirujuk, perlu evaluasi spesialis",
+           "kondisi tidak membaik, rujuk ke rumah sakit",
+           "mohon penanganan lebih lanjut di fasilitas yang lebih lengkap"]
+PROSE = ("pasien datang dengan keluhan yang dirasakan sejak beberapa hari lalu dan sudah diberi terapi awal di faskes "
+         "namun belum ada perbaikan sehingga dilakukan pemeriksaan lanjutan hasil terlampir mohon evaluasi dan tata laksana "
+         "sesuai indikasi klinis kontrol ulang keluarga setuju").split()
+_KW = [keywords(i) for i in range(N_DIAG)]
+_rank = np.random.default_rng(7).permutation(N_DIAG)
 
 
-def ppk_terms(rng_seed=7):
-    r = np.random.default_rng(rng_seed)
-    return [[f"{STEMS[r.integers(len(STEMS))]}{d}{k}" for k in range(8)] for d in range(N_DIAG)]
-
-
-PPK = ppk_terms()
-
-
-def ppk_template(d):
-    return " ".join(PPK[d])
+def _zipf(r, lo, hi):
+    """Common diagnoses dominate: weight 1/(rank+1) within [lo, hi)."""
+    w = 1 / (_rank[lo:hi] + 1.0)
+    return lo + r.choice(hi - lo, p=w / w.sum())
 
 
 def specific_narrative(r, d, short=False):
-    k = 3 if short else 6
-    toks = list(r.choice(PPK[d], size=k, replace=False)) + list(r.choice(["pasien", "sejak", "hari", "disertai", "tidak", "membaik"], 3))
+    """Three writing styles so the cosine distribution is realistic: terse, keyword-dense, and long diluted prose."""
+    style = "terse" if short else r.choice(["terse", "dense", "prose"], p=[.2, .4, .4])
+    k = {"terse": 3, "dense": 6, "prose": int(r.integers(3, 7))}[style]
+    toks = list(r.choice(_KW[d], size=min(k, len(_KW[d])), replace=False))
+    toks += list(r.choice(FILLER, 3)) if style != "prose" else list(r.choice(PROSE, int(r.integers(15, 36))))
+    if r.random() < 0.15:  # comorbidity / noise from another diagnosis
+        toks += list(r.choice(_KW[r.integers(N_DIAG)], 2))
     r.shuffle(toks)
     if r.random() < 0.3:  # typos
         i = r.integers(len(toks)); toks[i] = toks[i][:-1]
     return " ".join(toks)
 
 
-def generate(seed=42):
+def generic_narrative(r, d):
+    if r.random() < 0.3:  # long administrative prose with no clinical content
+        return " ".join(r.choice(PROSE, int(r.integers(20, 40))))
+    t = str(r.choice(GENERIC))
+    return t + " " + " ".join(r.choice(_KW[d], 2)) if d >= 0 and r.random() < 0.4 else t  # 40% semi-generic
+
+
+def unmapped_narrative(r):
+    """Specialist diagnosis outside our table: still ordinary clinical prose, but no PPK template to compare against."""
+    return " ".join(r.choice(PROSE, int(r.integers(5, 30)))) + " " + " ".join(r.choice(_KW[r.integers(N_DIAG)], 3))
+
+
+def generate(seed=42, strength=1.0):
+    """strength scales every injection rate (1.0 = default; 0.5 = subtler fraud, used for robustness checks)."""
     r = np.random.default_rng(seed)
     fac = pd.DataFrame({
         "fac": range(120), "rural": r.random(120) < 0.5,
@@ -50,6 +71,7 @@ def generate(seed=42):
                 role = "N"
             sc = {"E": list(r.choice(list("ABCD"), size=r.integers(2, 4), replace=False))}.get(role, [role] if role != "N" else [])
             docs.append((f.fac, sc, r.random() < 0.1))  # 10%: terse-but-specific writers (benign)
+    S = strength
     rows = []
     for did, (fid, sc, terse) in enumerate(docs):
         f = fac.iloc[fid]
@@ -59,27 +81,36 @@ def generate(seed=42):
             for _ in range(r.poisson(lam)):
                 act = day >= ACTIVE_FROM
                 fraud, tag = 0, "N"
-                d = r.integers(N_NS) if r.random() < 0.10 else N_NS + r.integers(N_DIAG - N_NS)
-                if act and "A" in sc and r.random() < 0.4:
-                    d, fraud, tag = r.integers(N_NS), 1, "A"
+                if r.random() < 0.10:
+                    d = _zipf(r, 0, N_NS)
+                else:  # 25% of specialist referrals use a diagnosis outside our table
+                    d = -1 if r.random() < 0.25 else _zipf(r, N_NS, N_DIAG)
+                if act and "A" in sc and r.random() < 0.4 * S:
+                    d, fraud, tag = _zipf(r, 0, N_NS), 1, "A"
                 dest = f.hosp[0] if r.random() < 0.7 else f.hosp[r.integers(len(f.hosp))]
-                if act and "B" in sc and r.random() < 0.7:
+                if act and "B" in sc and r.random() < 0.7 * S:
                     dest, fraud, tag = steer, 1, "B"
-                reason = r.choice(["clinical", "equipment", "staff"], p=[.7, .2, .1]) if d >= N_NS else "clinical"
+                reason = r.choice(["clinical", "equipment", "staff"], p=[.7, .2, .1]) if not 0 <= d < N_NS else "clinical"
                 age = float(r.exponential(f.sis_lag))
                 avail = int(r.random() < 0.05)  # data noise: SISRUTE says available while truly missing
                 if f.lost_equip and reason != "clinical":
                     avail, age = 1, 60 + r.exponential(60)
-                if act and "C" in sc and r.random() < 0.35:
+                if act and "C" in sc and r.random() < 0.35 * S:
                     reason, avail, age, fraud, tag = "equipment", 1, float(r.uniform(0, 10)), 1, "C"
-                generic = r.random() < 0.06
-                if act and "D" in sc and r.random() < 0.6:
+                generic = r.random() < 0.06  # benign lazy writers exist too
+                if act and "D" in sc and r.random() < 0.6 * S:
                     generic, fraud, tag = True, 1, "D"
                 if r.random() < 0.004:  # undetectable collusion
                     fraud, tag = 1, "X"
-                narr = GENERIC if generic else specific_narrative(r, d, terse)
-                rows.append((did, fid, day, d, dest, int(dest == f.hosp[0]), reason, avail, age, narr, fraud, tag, "".join(sc) or "N"))
-    df = pd.DataFrame(rows, columns=["doc", "fac", "day", "diag", "dest", "near", "reason", "sis_avail", "sis_age", "narr", "fraud", "tag", "doc_role"])
+                if generic:
+                    narr = generic_narrative(r, d)
+                elif d < 0:
+                    narr = unmapped_narrative(r)
+                else:
+                    narr = specific_narrative(r, d, terse)
+                icd = ENTRIES[d]["icd"] if d >= 0 else "Z99"
+                rows.append((did, fid, day, d, icd, dest, int(dest == f.hosp[0]), reason, avail, age, narr, fraud, tag, "".join(sc) or "N"))
+    df = pd.DataFrame(rows, columns=["doc", "fac", "day", "diag", "icd", "dest", "near", "reason", "sis_avail", "sis_age", "narr", "fraud", "tag", "doc_role"])
     df = df.merge(fac[["fac", "rural", "ftype", "province"]], on="fac").sort_values(["day", "doc"], kind="stable").reset_index(drop=True)
     df["stratum"] = np.where(df.rural, "rural", "urban") + "|" + df.ftype
     return df

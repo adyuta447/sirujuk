@@ -1,47 +1,19 @@
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
 import { PERAN } from "../akses";
 import type { Peran } from "../akses";
+import { keBackend } from "./guard";
 
-// Hanya server. Pengguna datang dari AUTH_USERS (JSON), kata sandi disimpan sebagai hash scrypt.
-// shortcut: daftar pengguna dari env, tanpa database; ganti dengan layanan identitas backend sebelum pilot.
-const hitung = promisify(scrypt) as (sandi: string, garam: Buffer, panjang: number) => Promise<Buffer>;
+export type Pengguna = { email: string; nama: string; role: Peran };
 
-type Pengguna = { email: string; nama: string; role: Peran; hash: string };
-
-function muat(): Pengguna[] {
-  try {
-    const arr = JSON.parse(process.env.AUTH_USERS ?? "[]");
-    return Array.isArray(arr)
-      ? arr.filter(
-          (u): u is Pengguna =>
-            typeof u?.email === "string" && typeof u?.nama === "string" && typeof u?.hash === "string" && PERAN.includes(u?.role),
-        )
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-export async function buatHash(sandi: string): Promise<string> {
-  const garam = randomBytes(16);
-  const h = await hitung(sandi, garam, 64);
-  return `scrypt:${garam.toString("hex")}:${h.toString("hex")}`;
-}
-
-async function cocok(sandi: string, hash: string): Promise<boolean> {
-  const [alg, garam, nilai] = hash.split(":");
-  if (alg !== "scrypt" || !garam || !nilai) return false;
-  const harapan = Buffer.from(nilai, "hex");
-  const didapat = await hitung(sandi, Buffer.from(garam, "hex"), harapan.length);
-  return didapat.length === harapan.length && timingSafeEqual(didapat, harapan);
-}
-
-const HASH_PALSU = `scrypt:${"00".repeat(16)}:${"00".repeat(64)}`;
-
-/** Selalu menghitung hash, termasuk saat email tidak ada, supaya waktu respons tidak membocorkan akun. */
+/**
+ * Hanya server. Akun dan hash kata sandi ada di database (Firestore) milik backend; yang kembali ke sini hanya profil.
+ * null = email atau kata sandi salah. Melempar error bila backend/database tidak bisa dijangkau, supaya login
+ * menjawab "layanan tidak tersedia" dan bukan "kata sandi salah".
+ */
 export async function verifikasi(email: string, sandi: string): Promise<Pengguna | null> {
-  const user = muat().find((u) => u.email.toLowerCase() === email.toLowerCase());
-  const ok = await cocok(sandi, user?.hash ?? HASH_PALSU);
-  return user && ok ? user : null;
+  const res = await keBackend("/api/v1/auth/verify", { method: "POST", body: JSON.stringify({ email, password: sandi }) });
+  if (res.status === 401) return null;
+  if (!res.ok) throw new Error(`auth backend ${res.status}`);
+  const u = await res.json().catch(() => null);
+  if (typeof u?.email !== "string" || typeof u?.nama !== "string" || !PERAN.includes(u?.role)) throw new Error("auth backend: bad response");
+  return { email: u.email, nama: u.nama, role: u.role };
 }

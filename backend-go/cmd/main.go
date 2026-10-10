@@ -57,10 +57,17 @@ func main() {
 	seedCount, _ := strconv.Atoi(os.Getenv("SEED_COUNT"))
 	seed.Run(store, seedCount)
 	h := handler.ReferralHandler{Decisions: decisions, Queue: redis, Store: store, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
+	// Login accounts: Firestore in production (add them with cmd/useradd); without FIRESTORE_PROJECT only the
+	// accounts in AUTH_USERS exist, which is for local development.
+	var users repository.UserRepository = repository.NewMemoryUsers(os.Getenv("AUTH_USERS"))
+	if project := os.Getenv("FIRESTORE_PROJECT"); project != "" {
+		users = repository.NewFirestoreUsers(project, client.MetadataAccessToken)
+	}
+	auth := handler.AuthHandler{Auth: service.Authenticator{Users: users}}
 	port := env("GO_PORT", "8080")
 	log.Printf("sirujuk backend listening on :%s", port)
 	srv := &http.Server{
-		Addr: ":" + port, Handler: router.New(h, token, env("CORS_ORIGIN", "http://localhost:3000")),
+		Addr: ":" + port, Handler: router.New(h, auth, token, env("CORS_ORIGIN", "http://localhost:3000")),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second,
 		IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10,
 	}

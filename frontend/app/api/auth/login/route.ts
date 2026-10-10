@@ -47,7 +47,12 @@ export async function POST(request: Request) {
   const kunci = `${ip}|${email.toLowerCase()}`;
   if (tertahan(kunci)) return galat(429, "TOO_MANY_ATTEMPTS", "Terlalu banyak percobaan. Coba lagi 15 menit lagi.");
 
-  const user = await verifikasi(email, sandi);
+  let user;
+  try {
+    user = await verifikasi(email, sandi);
+  } catch {
+    return galat(503, "AUTH_UNAVAILABLE", "Layanan login sedang tidak tersedia. Coba lagi sebentar.");
+  }
   if (!user) {
     catatGagal(kunci);
     // Pesan sama untuk email tak dikenal dan sandi salah.

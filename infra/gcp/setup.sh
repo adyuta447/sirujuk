@@ -11,7 +11,7 @@ SA() { echo "sirujuk-$1@$P.iam.gserviceaccount.com"; }
 PN=$(gcloud projects describe "$P" --format='value(projectNumber)')
 
 gcloud services enable run.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com \
-  iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com cloudresourcemanager.googleapis.com billingbudgets.googleapis.com
+  iam.googleapis.com firestore.googleapis.com iamcredentials.googleapis.com sts.googleapis.com cloudresourcemanager.googleapis.com billingbudgets.googleapis.com
 
 # Registry: free up to 0.5 GB, so keep only the 2 newest images per repo path and drop anything older than 7 days.
 gcloud artifacts repositories describe sirujuk --location "$REGION" >/dev/null 2>&1 ||
@@ -27,6 +27,12 @@ gcloud artifacts repositories set-cleanup-policies sirujuk --location "$REGION" 
 for s in deployer backend ml; do
   gcloud iam service-accounts describe "$(SA $s)" >/dev/null 2>&1 || gcloud iam service-accounts create "sirujuk-$s"
 done
+
+# Login accounts live in Firestore (generous free tier). The database location cannot be changed once created.
+gcloud firestore databases describe --database='(default)' >/dev/null 2>&1 ||
+  gcloud firestore databases create --location "$REGION" --type firestore-native
+gcloud projects add-iam-policy-binding "$P" --member "serviceAccount:$(SA backend)" \
+  --role roles/datastore.user --condition=None >/dev/null
 
 # Secrets. API_TOKEN is generated here and never printed; REDIS_URL comes from the environment.
 gcloud secrets describe sirujuk-api-token >/dev/null 2>&1 ||

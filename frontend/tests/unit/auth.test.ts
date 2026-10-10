@@ -1,7 +1,7 @@
 /** @jest-environment node */
 import { bolehAkses, bolehSkor } from "../../lib/akses";
 import { bacaToken, buatToken } from "../../lib/auth/token";
-import { buatHash } from "../../lib/auth/users";
+import { verifikasi } from "../../lib/auth/users";
 
 const RAHASIA = "x".repeat(40);
 const sesi = (over = {}) => ({ sub: "a@b.id", nama: "A", role: "verifikator" as const, exp: Math.floor(Date.now() / 1000) + 60, ...over });
@@ -44,8 +44,29 @@ describe("akses per peran", () => {
   });
 });
 
-describe("hash kata sandi", () => {
-  it("uses a random salt per hash", async () => {
-    expect(await buatHash("rahasia-panjang-123")).not.toBe(await buatHash("rahasia-panjang-123"));
+describe("verifikasi login lewat backend", () => {
+  const jawab = (status: number, body: unknown = {}) =>
+    jest.spyOn(global, "fetch").mockResolvedValue(new Response(JSON.stringify(body), { status }));
+  afterEach(() => jest.restoreAllMocks());
+
+  it("returns the profile and sends the password only to the backend verify endpoint", async () => {
+    const f = jawab(200, { email: "a@b.id", nama: "A", role: "tkmkb", hash: "scrypt:bocor" });
+    expect(await verifikasi("a@b.id", "rahasia-panjang-123")).toEqual({ email: "a@b.id", nama: "A", role: "tkmkb" });
+    expect(String(f.mock.calls[0][0])).toMatch(/\/api\/v1\/auth\/verify$/);
+  });
+  it("treats 401 as wrong credentials", async () => {
+    jawab(401, { code: "INVALID_CREDENTIALS" });
+    expect(await verifikasi("a@b.id", "salah")).toBeNull();
+  });
+  it("throws, instead of saying 'wrong password', when the backend or database is down", async () => {
+    jawab(503);
+    await expect(verifikasi("a@b.id", "x")).rejects.toThrow();
+    jest.restoreAllMocks();
+    jest.spyOn(global, "fetch").mockRejectedValue(new Error("network"));
+    await expect(verifikasi("a@b.id", "x")).rejects.toThrow();
+  });
+  it("refuses a response with an unknown role", async () => {
+    jawab(200, { email: "a@b.id", nama: "A", role: "admin" });
+    await expect(verifikasi("a@b.id", "x")).rejects.toThrow();
   });
 });

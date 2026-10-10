@@ -1,8 +1,11 @@
 module github.com/sirujuk/backend-go
 
-go 1.23
+go 1.26.0
 
-require github.com/redis/go-redis/v9 v9.7.3
+require (
+	github.com/redis/go-redis/v9 v9.7.3
+	golang.org/x/crypto v0.58.0
+)
 
 require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect

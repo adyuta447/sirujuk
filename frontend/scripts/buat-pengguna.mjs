@@ -1,4 +1,4 @@
-// Membuat satu entri untuk AUTH_USERS. Pemakaian: node scripts/buat-pengguna.mjs email "Nama" peran
+// Membuat satu entri akun (email, nama, peran, hash) untuk `useradd -import` atau AUTH_USERS di backend lokal. Pemakaian: node scripts/buat-pengguna.mjs email "Nama" peran
 // Kata sandi dibaca dari variabel SANDI, atau ditanyakan di terminal (jangan taruh di argumen).
 import { randomBytes, scrypt } from "node:crypto";
 import { promisify } from "node:util";

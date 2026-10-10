@@ -78,6 +78,8 @@ export const DOKTER_RISIKO = [
   { nama: 'dr. Rini Kusuma', fktp: 'Klinik Mitra Sehat', totalRujukan: 98, risikoTinggi: 29, persentase: 29.6, narasi: 'Rujukan untuk keluhan lambung naik 40 persen dalam dua bulan tanpa pemeriksaan awal.' },
   { nama: 'dr. Siti Aminah', fktp: 'Puskesmas Penjaringan', totalRujukan: 76, risikoTinggi: 14, persentase: 18.4, narasi: 'Dokumen komplikasi penyakit kronis sering belum lengkap saat pasien dirujuk.' },
   { nama: 'dr. Budi Santoso', fktp: 'Puskesmas Tambora', totalRujukan: 54, risikoTinggi: 11, persentase: 20.4, narasi: 'Hasil lab pendukung masih sering belum ada di rujukan pasien anemia.' },
+  { nama: 'dr. Maya Putri', fktp: 'Puskesmas Penjaringan', totalRujukan: 48, risikoTinggi: 9, persentase: 18.8, narasi: 'Rujukan ISPA ringan naik dalam sebulan terakhir tanpa pemeriksaan penunjang.' },
+  { nama: 'dr. Agus Wijaya', fktp: 'Klinik Mitra Sehat', totalRujukan: 61, risikoTinggi: 12, persentase: 19.7, narasi: 'Konsentrasi tujuan ke satu RS di atas rata-rata wilayahnya.' },
 ]
 
 export const slugDokter = (nama: string) => nama.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')

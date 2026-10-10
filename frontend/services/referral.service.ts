@@ -11,6 +11,17 @@ const WILAYAH_OF: Record<string, string> = {
   "klinik-mitra-sehat": "Jakarta Barat",
 };
 
+// Direktori ID dokter dummy milik seeder backend (d-001..d-006) ke nama tampilan.
+// Empat pertama sama dengan DOKTER_RISIKO supaya tautan "profil dokter" tetap nyambung.
+const DOKTER_SEED: Record<string, string> = {
+  "d-001": "dr. Andi Pratama",
+  "d-002": "dr. Rini Kusuma",
+  "d-003": "dr. Siti Aminah",
+  "d-004": "dr. Budi Santoso",
+  "d-005": "dr. Maya Putri",
+  "d-006": "dr. Agus Wijaya",
+};
+
 const PESERTA = ["PBI", "Pekerja", "Mandiri"];
 
 function riskOf(decision: string, score: number): RiskLevel {
@@ -46,7 +57,7 @@ export function mapStored(item: StoredReferral): RujukanCase {
     fasalTujuan: request.destination_facility_id,
     wilayah: WILAYAH_OF[request.origin_facility_id] ?? "Jakarta Utara",
     diagnosa: request.diagnosis_code,
-    dokter: request.doctor_id,
+    dokter: DOKTER_SEED[request.doctor_id] ?? request.doctor_id,
     tanggal: new Date(request.issued_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
     risk,
     riskScore: score,

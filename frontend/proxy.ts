@@ -44,7 +44,9 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      source: "/((?!api|_next/static|_next/image|favicon.ico|images|illustrations).*)",
+      // Static image files (including root ones like the logo) must skip the login gate: logged-out visitors on the
+      // landing and login pages request them, and /_next/image fetches them without a session cookie.
+      source: "/((?!api|_next/static|_next/image|images|illustrations|.*\\.(?:png|jpe?g|gif|svg|webp|ico)$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

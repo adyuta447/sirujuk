@@ -40,9 +40,10 @@ export async function keBackend(path: string, init: RequestInit = {}): Promise<R
     const upstream = await fetch(`${BACKEND_URL}${path}`, {
       ...init,
       headers: {
-        "Content-Type": "application/json",
-        ...(process.env.API_TOKEN && { Authorization: `Bearer ${process.env.API_TOKEN}` }),
         ...init.headers,
+        "Content-Type": "application/json",
+        // Token layanan ditulis terakhir supaya tidak bisa ditimpa oleh header pemanggil.
+        ...(process.env.API_TOKEN && { Authorization: `Bearer ${process.env.API_TOKEN}` }),
       },
       signal: AbortSignal.timeout(5000),
       cache: "no-store",

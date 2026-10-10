@@ -60,6 +60,7 @@ func main() {
 	doctorID := flag.String("doctor-id", "", "doctor_id on referrals this dokter account may see and answer (role dokter)")
 	disable := flag.String("disable", "", "email of an existing account to disable (blocks login and any live session within ~30s)")
 	enable := flag.String("enable", "", "email of a disabled account to enable again")
+	demoPassword := flag.String("demo-password", "", "with -demo: use this password instead of a random one (for throwaway demo accounts only)")
 	demo := flag.Bool("demo", false, "create the 4 demo accounts (one per role) with a random password shown once")
 	imp := flag.Bool("import", false, "read already-hashed accounts as a JSON array from stdin")
 	flag.Parse()
@@ -75,16 +76,23 @@ func main() {
 	var users []domain.User
 	switch {
 	case *demo:
-		b := make([]byte, 12)
-		if _, err := rand.Read(b); err != nil {
-			log.Fatal(err)
+		pw := *demoPassword
+		if pw == "" {
+			b := make([]byte, 12)
+			if _, err := rand.Read(b); err != nil {
+				log.Fatal(err)
+			}
+			pw = hex.EncodeToString(b)
+		} else {
+			fmt.Fprintln(os.Stderr, "WARNING: demo accounts with a chosen password are guessable; delete them after the demo.")
 		}
-		pw := hex.EncodeToString(b)
 		var err error
 		if users, err = seed.DemoAccounts(pw); err != nil {
 			log.Fatal(err)
 		}
-		defer fmt.Printf("\nDemo password (shown once, not stored): %s\n", pw)
+		if *demoPassword == "" {
+			defer fmt.Printf("\nDemo password (shown once, not stored): %s\n", pw)
+		}
 	case *imp:
 		if err := json.NewDecoder(os.Stdin).Decode(&users); err != nil {
 			log.Fatalf("stdin is not a JSON array of accounts: %v", err)

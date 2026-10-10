@@ -4,6 +4,8 @@ Hanya untuk lokal/demo. Kata sandi di bawah ini publik, jadi akun ini ditolak ba
 
 ## Menjalankan
 
+Cara tercepat: `sh infra/local-env.sh && docker compose up --build` (membuat `.env` dengan nilai acak baru, lalu buka http://localhost:3000/login). Detail di bawah bila ingin mengisi sendiri.
+
 `.env` (salin dari `.env.example`, isi rahasia dengan `openssl rand -hex 32`):
 
 ```

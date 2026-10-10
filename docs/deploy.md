@@ -1,5 +1,7 @@
 # Deploy: Vercel (frontend) + GCP Cloud Run (backend, ML)
 
+English version with the full environment reference and test results: [install.md](install.md) and [devops.md](devops.md).
+
 Urutan pipeline (`.github/workflows/deploy.yml`, hanya di `main`): test + scan, lalu **ml-service**, lalu **backend**
 (cek `/health`; `/healthz` dicegat Cloud Run), lalu **frontend** (Vercel). Backend tidak sehat berarti frontend tidak ter-deploy.
 

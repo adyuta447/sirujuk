@@ -12,6 +12,7 @@ export type ReferralInput = {
   diagnosis_code: string;
   reason: string;
   clinical_narrative: string;
+  reason_category?: "clinical" | "equipment" | "staff";
 };
 
 function badText(s: string, max: number, required: boolean, multiline: boolean) {

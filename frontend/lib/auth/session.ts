@@ -17,6 +17,15 @@ export async function sesiDariCookie(nilai?: string): Promise<Sesi | null> {
   return kunci && nilai ? bacaToken(nilai, kunci) : null;
 }
 
+/**
+ * Login tanpa kata sandi hanya untuk demo. Dua syarat: DEMO_MODE=true DAN bukan deployment produksi (Vercel Production
+ * atau APP_ENV=production). Salah set di production tidak membuka pintu; backend menolak DEMO_ACCOUNTS dengan cara sama.
+ */
+export function demoAktif(): boolean {
+  if (process.env.DEMO_MODE !== "true") return false;
+  return process.env.VERCEL_ENV !== "production" && process.env.APP_ENV !== "production";
+}
+
 export const opsiCookie = {
   httpOnly: true,
   secure: prod,

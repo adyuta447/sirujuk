@@ -1,17 +1,26 @@
 "use client";
 import { ChevronRight } from "lucide-react";
 import { PageHead } from "../atoms/PageHead";
-import { DINKES_WILAYAH } from "../../lib/sirujuk-data";
+import { BannerSintetis } from "../atoms/BannerSintetis";
+import { useStatsSintetis, useWilayahStats } from "../../hooks/useStats";
 
-export const Dinkes = ({ onWilayah }: { onWilayah: (w: string) => void }) => (
+const persen = (v: number | null) => (v === null ? "-" : `${v}%`);
+
+export const Dinkes = ({ onWilayah }: { onWilayah: (w: string) => void }) => {
+  const { data: wilayah = [], isError, isLoading } = useWilayahStats();
+  const { data: sintetis } = useStatsSintetis();
+  return (
   <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
     <PageHead
       title="Pantauan Wilayah"
       art="dinkes"
       sub="Ringkasan per wilayah tanpa data pasien. Berguna untuk menentukan faskes yang perlu dibina."
     />
+    {sintetis && <BannerSintetis />}
+    {isError && <p role="alert" className="text-sm text-[#9B1C1C]">Data wilayah tidak bisa dimuat. Coba lagi sebentar.</p>}
+    {!isLoading && !isError && wilayah.length === 0 && <p className="text-sm text-[#56657A]">Belum ada rujukan yang dinilai.</p>}
     <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      {DINKES_WILAYAH.map((w) => (
+      {wilayah.map((w) => (
         <button
           type="button"
           key={w.wilayah}
@@ -33,8 +42,8 @@ export const Dinkes = ({ onWilayah }: { onWilayah: (w: string) => void }) => (
               ["Faskes", w.faskes],
               ["Rujukan", w.rujukan],
               ["Perlu dicek", `${w.persenTinggi}%`],
-              ["Median NS", `${w.medianNS}%`],
-              ["Rata-rata HHI", w.hhiRata.toLocaleString("id-ID")],
+              ["Median NS", persen(w.medianNS)],
+              ["Rata-rata HHI", w.hhiRata === null ? "-" : w.hhiRata.toLocaleString("id-ID")],
             ].map(([k, v]) => (
               <div key={k}>
                 <dt className="text-[#56657A]">{k}</dt>
@@ -51,4 +60,5 @@ export const Dinkes = ({ onWilayah }: { onWilayah: (w: string) => void }) => (
       ))}
     </div>
   </div>
-);
+  );
+};

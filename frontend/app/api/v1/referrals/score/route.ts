@@ -21,6 +21,9 @@ export async function POST(request: Request) {
   if (!SAFE_ID.test(key)) {
     return Response.json({ code: "INVALID_REQUEST", message: "Permintaan tidak valid" }, { status: 400 });
   }
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY) {
+    return Response.json({ code: "PAYLOAD_TOO_LARGE", message: "Permintaan terlalu besar" }, { status: 413 });
+  }
   const body = await request.text();
   if (body.length > MAX_BODY) {
     return Response.json({ code: "PAYLOAD_TOO_LARGE", message: "Permintaan terlalu besar" }, { status: 413 });
@@ -32,6 +35,8 @@ export async function POST(request: Request) {
       headers: {
         "Content-Type": "application/json",
         "Idempotency-Key": key,
+        "X-Actor": sesi.sub,
+        "X-Actor-Role": sesi.role,
         ...(SAFE_ID.test(cid) && { "X-Correlation-ID": cid }),
         ...(process.env.API_TOKEN && { Authorization: `Bearer ${process.env.API_TOKEN}` }),
       },

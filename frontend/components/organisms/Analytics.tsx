@@ -1,8 +1,24 @@
+"use client";
 import { Stethoscope } from "lucide-react";
 import { PageHead } from "../atoms/PageHead";
-import { DOKTER_RISIKO, NAVY, RISK } from "../../lib/sirujuk-data";
+import { BannerSintetis } from "../atoms/BannerSintetis";
+import { useDokterStats } from "../../hooks/useStats";
+import { useReferrals } from "../../hooks/useReferral";
+import { ringkas } from "../../lib/ringkasan";
+import { NAVY, RISK } from "../../lib/sirujuk-data";
+import type { RiskLevel } from "../../lib/sirujuk-data";
 
-export const AnalyticsView = ({ onDokter }: { onDokter: (nama: string) => void }) => (
+const SEBARAN: { level: RiskLevel; label: string }[] = [
+  { level: "rendah", label: "Rendah" },
+  { level: "sedang", label: "Sedang" },
+  { level: "tinggi", label: "Tinggi" },
+];
+
+export const AnalyticsView = ({ onDokter }: { onDokter: (nama: string) => void }) => {
+  const { data: referrals = [] } = useReferrals();
+  const { data: dokterList = [] } = useDokterStats();
+  const r = ringkas(referrals);
+  return (
   <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
     <PageHead
       title="Analitik"
@@ -10,16 +26,14 @@ export const AnalyticsView = ({ onDokter }: { onDokter: (nama: string) => void }
       sub="Pola rujukan dan dokter yang perlu diperhatikan."
     />
 
+    {referrals.some((c) => c.synthetic) && <BannerSintetis />}
+
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {[
-        { label: "Total rujukan", val: "1.284", sub: "bulan ini" },
-        { label: "Perlu dicek", val: "186", sub: "14,5% dari total" },
-        {
-          label: "Sudah dicek",
-          val: "142",
-          sub: "76,3% dari yang ditandai",
-        },
-        { label: "Terbukti tidak sesuai", val: "38", sub: "rujukan tidak sesuai" },
+        { label: "Total rujukan", val: r.total, sub: "yang sudah dinilai" },
+        { label: "Perlu dicek", val: r.perluDicek, sub: `${r.total ? Math.round((1000 * r.perluDicek) / r.total) / 10 : 0}% dari total` },
+        { label: "Sudah dicek", val: r.sudahDicek, sub: "sudah ada hasil audit" },
+        { label: "Menunggu", val: r.menunggu, sub: "belum ditinjau" },
       ].map((k) => (
         <div
           key={k.label}
@@ -49,7 +63,7 @@ export const AnalyticsView = ({ onDokter }: { onDokter: (nama: string) => void }
         </div>
       </div>
       <div className="divide-y divide-[#EEF1F5]">
-        {DOKTER_RISIKO.map((d, i) => {
+        {dokterList.map((d, i) => {
           const high = d.persentase > 25;
           const col = high ? RISK.tinggi : RISK.sedang;
           return (
@@ -74,6 +88,7 @@ export const AnalyticsView = ({ onDokter }: { onDokter: (nama: string) => void }
                 </div>
                 <p className="text-xs text-[#56657A] mt-1 leading-relaxed">
                   {d.narasi}
+                  {d.darurat > 0 && ` Rujukan darurat: ${d.darurat} (${d.persenDarurat.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%).`}
                 </p>
                 <div className="mt-2 h-1.5 rounded-4xl overflow-hidden bg-[#EEF1F5] max-w-xs">
                   <div
@@ -113,25 +128,20 @@ export const AnalyticsView = ({ onDokter }: { onDokter: (nama: string) => void }
           </div>
         </div>
         <div className="p-5 space-y-3.5">
-          {[
-            { nama: "RSUP Dr. Cipto Mangunkusumo", jml: 312, pct: 80 },
-            { nama: "RS Siloam Kebon Jeruk", jml: 198, pct: 51 },
-            { nama: "RS Persahabatan", jml: 155, pct: 40 },
-            { nama: "RSCM Kencana", jml: 132, pct: 34 },
-          ].map((f) => (
+          {r.tujuanTerbanyak.map((f) => (
             <div key={f.nama} className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-[#0E1B2A] font-medium truncate mr-2">
                   {f.nama}
                 </span>
                 <span className="font-mono text-[#1E3A5F] shrink-0">
-                  {f.jml}
+                  {f.jumlah}
                 </span>
               </div>
               <div className="h-2 rounded-4xl overflow-hidden bg-[#EEF1F5]">
                 <div
                   className="h-full rounded-4xl"
-                  style={{ width: `${f.pct}%`, backgroundColor: NAVY }}
+                  style={{ width: `${f.porsi}%`, backgroundColor: NAVY }}
                 />
               </div>
             </div>
@@ -144,30 +154,25 @@ export const AnalyticsView = ({ onDokter }: { onDokter: (nama: string) => void }
       >
         <div className="font-bold text-[#0E1B2A]">Sebaran risiko</div>
         <div className="text-xs text-[#56657A] mt-0.5">
-          Agustus 2024, total 1.284 rujukan
+          Total {r.total} rujukan yang sudah dinilai
         </div>
         <div className="flex-1 flex items-end gap-3 mt-6">
-          {[
-            { label: "Rendah", pct: 54.3, color: RISK.rendah.solid, h: 100 },
-            { label: "Sedang", pct: 31.2, color: RISK.sedang.solid, h: 62 },
-            { label: "Tinggi", pct: 14.5, color: RISK.tinggi.solid, h: 34 },
-          ].map((s) => (
+          {SEBARAN.map(({ level, label }) => (
             <div
-              key={s.label}
+              key={level}
               className="flex-1 flex flex-col items-center gap-2"
             >
-              <div className="font-mono text-sm font-bold text-[#0E1B2A]">{s.pct}%</div>
+              <div className="font-mono text-sm font-bold text-[#0E1B2A]">{r.sebaran[level]}%</div>
               <div
                 className="w-full rounded-4xl"
-                style={{ height: `${s.h}px`, backgroundColor: s.color }}
+                style={{ height: `${Math.max(8, r.sebaran[level])}px`, backgroundColor: RISK[level].solid }}
               />
-              <div className="text-xs text-[#56657A]">{s.label}</div>
+              <div className="text-xs text-[#56657A]">{label}</div>
             </div>
           ))}
         </div>
       </div>
     </div>
   </div>
-);
-
-// App Root
+  );
+};

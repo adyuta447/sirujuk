@@ -3,7 +3,7 @@ import { Illustration } from "../atoms/Illustration";
 import { PageHead } from "../atoms/PageHead";
 import { RiskBadge } from "../atoms/RiskBadge";
 import type { RujukanCase } from "../../lib/sirujuk-data";
-import { cocokCari, maskPasien } from "../../lib/formatters";
+import { cocokCari, tampilPasien } from "../../lib/formatters";
 import { useReferrals } from "../../hooks/useReferral";
 
 export const RujukanMasuk = ({
@@ -56,7 +56,7 @@ export const RujukanMasuk = ({
             >
               <div className="min-w-0">
                 <div className="font-semibold text-sm text-[#0E1B2A]">
-                  {maskPasien(c.noRujukan)}
+                  {tampilPasien(c)}
                 </div>
                 <div className="font-mono text-xs text-[#64748B]">
                   {c.noRujukan}

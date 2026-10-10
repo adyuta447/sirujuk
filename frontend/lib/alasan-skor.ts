@@ -9,6 +9,8 @@ export const KODE_ALASAN: Record<string, string> = {
   NARRATIVE_GENERIC: "Narasi dokter terlalu umum",
   INSUFFICIENT_HISTORY: "Riwayat dokter belum cukup",
   SISRUTE_STALE: "Data SISRUTE sudah lama tidak diperbarui",
+  HHI_NEAREST_UNKNOWN: "Faskes terdekat belum diketahui, konsentrasi belum bisa dinilai adil",
+  DIAGNOSIS_UNMAPPED: "Kode diagnosis belum terpetakan ke daftar diagnosis",
 };
 
 export const LEVEL_DARI_KEPUTUSAN: Record<Decision, RiskLevel> = {

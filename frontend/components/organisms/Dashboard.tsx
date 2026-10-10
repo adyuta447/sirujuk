@@ -8,13 +8,16 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { PageHead } from "../atoms/PageHead";
+import { BannerSintetis } from "../atoms/BannerSintetis";
 import { Illustration } from "../atoms/Illustration";
 import { PrimaryButton } from "../atoms/PrimaryButton";
 import { RiskBadge } from "../atoms/RiskBadge";
 import type { RujukanCase, View } from "../../lib/sirujuk-data";
 import { NAVY } from "../../lib/sirujuk-data";
-import { cocokCari, maskPasien } from "../../lib/formatters";
+import { cocokCari, tampilPasien } from "../../lib/formatters";
 import { useReferrals } from "../../hooks/useReferral";
+import { useSession } from "../../hooks/useSession";
+import { periodeSekarang } from "../../lib/formatters";
 
 export const Dashboard = ({
   go,
@@ -23,13 +26,23 @@ export const Dashboard = ({
   go: (v: View) => void;
   onSelect: (c: RujukanCase) => void;
 }) => {
-  const { data: referrals = [], isError } = useReferrals();
+  const { data: referrals = [], isError, isLoading } = useReferrals();
+  const { data: sesi } = useSession();
+  const total = referrals.length;
+  const perluDicek = referrals.filter((c) => c.risk !== "rendah").length;
+  const menunggu = referrals.filter((c) => c.risk !== "rendah" && c.status !== "selesai").length;
+  const selesai = referrals.filter((c) => c.risk !== "rendah" && c.status === "selesai").length;
+  const persen = (a: number, b: number) => (b === 0 ? "0%" : `${((a / b) * 100).toLocaleString("id-ID", { maximumFractionDigits: 1 })}%`);
   const tinggi = referrals.filter(
     (c) => c.risk === "tinggi" && c.status !== "selesai",
   );
   return (
     <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-      <PageHead title="Halo, Adit" sub="Periode Agustus 2024" art="sapaan" />
+      <PageHead title={`Halo, ${sesi?.nama ?? "…"}`} sub={`Periode ${periodeSekarang()}`} art="sapaan" />
+      {referrals.some((c) => c.synthetic) && <BannerSintetis />}
+      {!isLoading && !isError && total === 0 && (
+        <p role="status" className="text-sm text-[#56657A]">Belum ada rujukan.</p>
+      )}
       {isError && (
         <p role="alert" className="text-sm text-[#9B1C1C]">
           Ringkasan gagal dimuat. Coba muat ulang halaman.
@@ -62,23 +75,23 @@ export const Dashboard = ({
             to: "masuk" as View,
             art: "stat-masuk" as const,
             label: "Rujukan masuk",
-            val: "1.284",
-            sub: "bulan ini",
+            val: isLoading ? "…" : total.toLocaleString("id-ID"),
+            sub: "di backend",
             Icon: Inbox,
           },
           {
             to: "queue" as View,
             art: "stat-cek" as const,
             label: "Perlu dicek",
-            val: "186",
-            sub: "14,5% dari total",
+            val: isLoading ? "…" : perluDicek.toLocaleString("id-ID"),
+            sub: `${persen(perluDicek, total)} dari total`,
             Icon: TriangleAlert,
           },
           {
             to: "queue" as View,
             art: "stat-antre" as const,
             label: "Masih mengantre",
-            val: "44",
+            val: isLoading ? "…" : menunggu.toLocaleString("id-ID"),
             sub: "belum ditindaklanjuti",
             Icon: ListChecks,
           },
@@ -86,8 +99,8 @@ export const Dashboard = ({
             to: "analytics" as View,
             art: "stat-selesai" as const,
             label: "Selesai dicek",
-            val: "142",
-            sub: "76,3% dari yang ditandai",
+            val: isLoading ? "…" : selesai.toLocaleString("id-ID"),
+            sub: `${persen(selesai, perluDicek)} dari yang ditandai`,
             Icon: Check,
           },
         ].map(({ label, val, sub, Icon, to, art }) => (
@@ -145,7 +158,7 @@ export const Dashboard = ({
             >
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm text-[#0E1B2A]">
-                  {maskPasien(c.noRujukan)}
+                  {tampilPasien(c)}
                 </div>
                 <div className="text-xs text-[#56657A] truncate">
                   {c.diagnosa}

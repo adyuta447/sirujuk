@@ -122,7 +122,7 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
           <button
             type="button"
             onClick={onEnter}
-            className="min-h-11 px-6 rounded-4xl text-sm font-bold text-white bg-[#1E3A5F] hover:bg-[#16304F] transition-colors"
+            className={`min-h-11 px-6 rounded-4xl text-sm font-bold transition-colors duration-300 ${atas ? "bg-white text-[#1E3A5F] hover:bg-[#E7ECF3]" : "text-white bg-[#1E3A5F] hover:bg-[#16304F]"}`}
           >
             Masuk
           </button>
@@ -203,7 +203,7 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
             </button>
             <a
               href="#cara-kerja"
-              className="min-h-12 inline-flex items-center px-7 rounded-4xl font-bold bg-[#1E3A5F] text-white border-2 border-white hover:bg-[#16304F] transition-colors"
+              className="min-h-12 inline-flex items-center px-7 rounded-4xl font-bold text-white bg-[#1E3A5F] hover:bg-[#16304F] transition-colors"
             >
               Lihat cara kerja
             </a>
@@ -260,6 +260,9 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
         <h2 className="text-4xl md:text-6xl font-extrabold tracking-tighter leading-[1.05] max-w-3xl">
           Satu sistem, empat peran.
         </h2>
+        <p className="mt-4 text-lg text-[#56657A] max-w-2xl">
+          Empat peran memakai satu sistem yang sama, dari antrean sampai klarifikasi.
+        </p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-12">
           {PENGGUNA.map((p) => (
             <article
@@ -273,10 +276,13 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
           ))}
         </div>
 
-        <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-16">Hasilnya ada tiga.</h3>
+        <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-12">Hasilnya ada tiga.</h3>
+        <p className="mt-3 text-[#56657A] max-w-2xl">
+          Apapun peranmu, setiap rujukan berakhir di salah satu dari tiga ini.
+        </p>
         <div className="grid md:grid-cols-3 gap-5 mt-6">
           {KATEGORI.map(({ label, isi, tone, Icon }) => (
-            <div key={label} className="bg-white rounded-4xl border border-[#DCE3EC] p-6">
+            <div key={label} className="bg-white rounded-4xl border border-[#DCE3EC] p-5">
               <span
                 aria-hidden="true"
                 className="w-12 h-12 rounded-2xl flex items-center justify-center"
@@ -284,7 +290,7 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
               >
                 <Icon size={24} />
               </span>
-              <div className="text-2xl font-extrabold tracking-tight mt-4" style={{ color: RISK[tone].solid }}>
+              <div className="text-xl font-extrabold tracking-tight mt-4" style={{ color: RISK[tone].solid }}>
                 {label}
               </div>
               <p className="text-sm text-[#56657A] mt-1">{isi}</p>

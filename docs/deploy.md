@@ -12,7 +12,9 @@ Urutan pipeline (`.github/workflows/deploy.yml`, hanya di `main`): test + scan, 
    PROJECT_ID=<id> REDIS_URL='rediss://default:<pw>@<host>:6379' BILLING_ACCOUNT=<opsional> ./infra/gcp/setup.sh
    ```
    Script membuat registry, service account, secret, Workload Identity Federation, dan mengisi variabel GitHub `GCP_*`.
-3. **Vercel** (project baru, jangan connect Git, Root Directory dikosongkan):
+3. **Vercel.** Pilih satu cara, jangan dua-duanya:
+   - **Integrasi Git Vercel (yang dipakai sekarang):** import repo di vercel.com/new, **Root Directory = `frontend`**, isi env `BACKEND_URL`, `API_TOKEN`, `AUTH_SECRET`. Vercel men-deploy setiap push ke `main` sendiri. Biarkan variabel GitHub `VERCEL_PROJECT_ID` kosong supaya job `deploy-frontend` dilewati.
+   - **Lewat pipeline (backend dulu, baru frontend):** project baru, jangan connect Git, Root Directory dikosongkan, lalu:
    ```bash
    cd frontend && npx vercel@63.1.0 link
    gcloud secrets versions access latest --secret sirujuk-api-token | npx vercel@63.1.0 env add API_TOKEN production --sensitive

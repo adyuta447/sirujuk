@@ -1,7 +1,8 @@
 name: ci-cd
 
 # PRs: tests + security scans only (no cloud credentials).
-# main: same checks, then GCP (ml-service -> backend) first, and only if healthy, the Vercel frontend.
+# main: same checks, then GCP (ml-service -> backend). The Vercel frontend deploys through Vercel's Git integration, or
+# through the deploy-frontend job below if VERCEL_PROJECT_ID is set.
 on:
   pull_request:
   push:
@@ -120,6 +121,9 @@ jobs:
 
   deploy-frontend:
     needs: deploy-gcp
+    # Only when the project is linked for CLI deploys. If Vercel's own Git integration deploys the frontend (Root
+    # Directory = frontend), leave VERCEL_PROJECT_ID unset: this job is skipped and must not run beside it.
+    if: ${{ vars.VERCEL_PROJECT_ID != '' }}
     runs-on: ubuntu-latest
     environment: production
     defaults: {run: {working-directory: frontend}}

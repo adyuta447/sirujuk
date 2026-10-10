@@ -24,6 +24,7 @@ spec:
             - {name: ALLOW_CLIENT_CONTEXT, value: "false"}
             - {name: ML_SERVICE_URL, value: "${ML_URL}"}
             - {name: ML_AUTH, value: cloudrun}
+            - {name: FIRESTORE_PROJECT, value: "${PROJECT}"} # login accounts; the backend account holds roles/datastore.user
             - name: API_TOKEN
               valueFrom: {secretKeyRef: {name: sirujuk-api-token, key: latest}}
             - name: REDIS_URL

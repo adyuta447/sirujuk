@@ -16,15 +16,19 @@ Urutan pipeline (`.github/workflows/deploy.yml`, hanya di `main`): test + scan, 
    ```bash
    cd frontend && npx vercel@63.1.0 link
    gcloud secrets versions access latest --secret sirujuk-api-token | npx vercel@63.1.0 env add API_TOKEN production --sensitive
-   # login frontend: AUTH_SECRET khusus produksi (jangan pakai nilai lokal) dan AUTH_USERS (JSON hash scrypt, bukan akun demo lokal)
+   # penanda tangan sesi login: khusus produksi, jangan pakai nilai lokal
    openssl rand -hex 32 | tr -d '\n' | npx vercel@63.1.0 env add AUTH_SECRET production --sensitive
-   node scripts/buat-pengguna.mjs email@instansi.go.id "Nama" verifikator   # satu entri per pengguna, gabung jadi array JSON
-   npx vercel@63.1.0 env add AUTH_USERS production --sensitive               # tempel array JSON-nya
    gh variable set VERCEL_ORG_ID --body "$(jq -r .orgId .vercel/project.json)"
    gh variable set VERCEL_PROJECT_ID --body "$(jq -r .projectId .vercel/project.json)"
    gh secret set VERCEL_TOKEN   # token dari vercel.com/account/tokens
    ```
-4. Push ke `main`. `BACKEND_URL` diisi otomatis oleh pipeline dari URL Cloud Run.
+4. **Akun login** disimpan di Firestore (dibuat oleh `setup.sh`), bukan di env Vercel. Tambah akun dari laptop:
+   ```bash
+   cd backend-go
+   SANDI='minimal-12-karakter' go run ./cmd/useradd -project <id-project> -email a@instansi.go.id -nama "Nama" -role verifikator
+   ```
+   Peran: `verifikator`, `tkmkb`, `dinkes`, `dokter`. Ganti kata sandi dengan menjalankan perintah yang sama untuk email itu.
+5. Push ke `main`. `BACKEND_URL` diisi otomatis oleh pipeline dari URL Cloud Run.
 
 ## Keamanan
 

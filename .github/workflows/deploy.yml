@@ -84,7 +84,7 @@ jobs:
 
       # ml-service first: the backend needs its URL.
       - id: ml_img
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ml-service
           push: true
@@ -100,7 +100,7 @@ jobs:
           echo "url=$(gcloud run services describe sirujuk-ml --region "$REGION" --format='value(status.url)')" >> "$GITHUB_OUTPUT"
 
       - id: be_img
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: backend-go
           push: true

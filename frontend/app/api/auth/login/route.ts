@@ -15,6 +15,11 @@ function tertahan(kunci: string): boolean {
   if (!p || p.reset < Date.now()) return false;
   return p.n >= BATAS;
 }
+function sisaDetik(kunci: string): number {
+  const p = percobaan.get(kunci);
+  if (!p) return 0;
+  return Math.max(1, Math.ceil((p.reset - Date.now()) / 1000));
+}
 function catatGagal(kunci: string) {
   const p = percobaan.get(kunci);
   if (!p || p.reset < Date.now()) percobaan.set(kunci, { n: 1, reset: Date.now() + JENDELA_MS });
@@ -22,8 +27,8 @@ function catatGagal(kunci: string) {
   if (percobaan.size > 5000) percobaan.clear();
 }
 
-const galat = (status: number, code: string, message: string) =>
-  NextResponse.json({ code, message }, { status, headers: { "Cache-Control": "no-store" } });
+const galat = (status: number, code: string, message: string, extra?: Record<string, string>) =>
+  NextResponse.json({ code, message }, { status, headers: { "Cache-Control": "no-store", ...extra } });
 
 export async function POST(request: Request) {
   if (!asalSama(request)) return galat(403, "FORBIDDEN", "Permintaan ditolak.");
@@ -45,7 +50,7 @@ export async function POST(request: Request) {
 
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "lokal";
   const kunci = `${ip}|${email.toLowerCase()}`;
-  if (tertahan(kunci)) return galat(429, "TOO_MANY_ATTEMPTS", "Terlalu banyak percobaan. Coba lagi 15 menit lagi.");
+  if (tertahan(kunci)) return galat(429, "TOO_MANY_ATTEMPTS", "Terlalu banyak percobaan. Coba lagi 15 menit lagi.", { "Retry-After": String(sisaDetik(kunci)) });
 
   let user;
   try {

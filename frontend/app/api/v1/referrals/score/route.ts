@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     });
     return new Response(await upstream.text(), {
       status: upstream.status,
+      // Data skoring sensitif: jangan pernah izinkan cache menyimpannya.
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
   } catch {

@@ -1,0 +1,34 @@
+I21|Infark Miokard Akut|Kardiovaskular|keluhan nyeri dada menekan menjalar ke lengan rahang, keringat dingin, sesak; pemeriksaan EKG elevasi segmen ST, troponin meningkat; rujuk segera karena perlu intervensi koroner dan perawatan intensif
+I50|Gagal Jantung|Kardiovaskular|keluhan sesak napas saat aktivitas dan berbaring, bengkak tungkai, cepat lelah; pemeriksaan ronki basah, edema, kardiomegali; rujuk untuk ekokardiografi dan tata laksana spesialis
+I48|Fibrilasi Atrium|Kardiovaskular|keluhan jantung berdebar tidak teratur, pusing, sesak; pemeriksaan nadi tidak teratur, EKG tanpa gelombang P; rujuk untuk kontrol irama dan antikoagulan
+I25|Penyakit Jantung Iskemik Kronik|Kardiovaskular|keluhan nyeri dada saat aktivitas hilang istirahat angina stabil; pemeriksaan EKG iskemia, uji latih; rujuk untuk evaluasi koroner
+I63|Stroke Iskemik|Neurologi|keluhan kelemahan separuh tubuh mendadak, bicara pelo, mulut mencong, penurunan kesadaran; pemeriksaan defisit neurologis fokal, CT scan kepala; rujuk segera untuk trombolisis dan perawatan stroke
+I61|Perdarahan Intraserebral|Neurologi|keluhan sakit kepala hebat mendadak, muntah, penurunan kesadaran, kelemahan sebelah tubuh; pemeriksaan hipertensi, defisit neurologis, CT scan perdarahan; rujuk segera ke bedah saraf
+G40|Epilepsi|Neurologi|keluhan kejang berulang tanpa demam, aura, hilang kesadaran; pemeriksaan neurologis, EEG abnormal; rujuk untuk penegakan diagnosis dan pilihan obat antiepilepsi
+J44|Penyakit Paru Obstruktif Kronik|Respirasi|keluhan sesak kronis progresif, batuk berdahak perokok lama; pemeriksaan barrel chest, spirometri obstruksi tidak reversibel; rujuk bila eksaserbasi berat atau perlu oksigen jangka panjang
+J96|Gagal Napas|Respirasi|keluhan sesak berat, bibir biru, bicara terputus; pemeriksaan saturasi oksigen rendah, napas cepat, penggunaan otot bantu napas; rujuk segera untuk ventilasi
+I26|Emboli Paru|Respirasi|keluhan sesak mendadak, nyeri dada pleuritik, batuk darah, riwayat imobilisasi; pemeriksaan takikardia, hipoksia, D-dimer tinggi; rujuk segera untuk CT angiografi
+C50|Kanker Payudara|Onkologi|keluhan benjolan keras tidak nyeri di payudara, perubahan kulit, puting keluar cairan; pemeriksaan massa irregular, kelenjar aksila, biopsi ganas; rujuk ke onkologi dan bedah
+C34|Kanker Paru|Onkologi|keluhan batuk lama berdarah, sesak, berat badan turun perokok; pemeriksaan foto toraks massa, sitologi ganas; rujuk ke pulmonologi onkologi
+C18|Kanker Kolorektal|Onkologi|keluhan buang air besar berdarah, perubahan kebiasaan buang air besar, berat badan turun; pemeriksaan massa rektum, kolonoskopi dan biopsi; rujuk ke bedah onkologi
+N18|Penyakit Ginjal Kronik|Ginjal dan Saluran Kemih|keluhan lemas, bengkak, mual, urin berkurang, hipertensi diabetes lama; pemeriksaan kreatinin tinggi, eGFR rendah; rujuk ke nefrologi untuk dialisis
+N20|Batu Saluran Kemih|Ginjal dan Saluran Kemih|keluhan nyeri pinggang kolik menjalar ke selangkangan, kencing darah, mual; pemeriksaan ultrasonografi batu, hidronefrosis; rujuk ke urologi
+N40|Pembesaran Prostat Jinak|Ginjal dan Saluran Kemih|keluhan sulit memulai kencing, pancaran lemah, sering malam hari pria lanjut usia; pemeriksaan colok dubur prostat membesar; rujuk bila retensi urin atau komplikasi
+K35|Apendisitis Akut|Gastrointestinal|keluhan nyeri perut berpindah ke kanan bawah, mual muntah, demam; pemeriksaan nyeri tekan titik McBurney, defans muskuler, leukositosis; rujuk segera untuk operasi
+K80|Batu Empedu Kolelitiasis|Gastrointestinal|keluhan nyeri perut kanan atas setelah makan berlemak, mual, kadang demam kuning; pemeriksaan tanda Murphy, batu pada ultrasonografi; rujuk ke bedah digestif
+K56|Obstruksi Usus Ileus|Gastrointestinal|keluhan nyeri perut kolik, muntah, perut kembung, tidak flatus; pemeriksaan distensi, bising usus meningkat, foto polos air fluid level; rujuk segera ke bedah
+K92|Perdarahan Saluran Cerna|Gastrointestinal|keluhan muntah darah atau buang air besar hitam, lemas, pusing; pemeriksaan anemia, hipotensi; rujuk segera untuk endoskopi dan transfusi
+O14|Preeklamsia Berat|Obstetri|keluhan ibu hamil sakit kepala hebat, pandangan kabur, nyeri ulu hati, bengkak; pemeriksaan tekanan darah tinggi, proteinuria; rujuk segera ke rumah sakit dengan fasilitas obstetri
+O60|Persalinan Preterm|Obstetri|keluhan kontraksi teratur sebelum usia kehamilan 37 minggu, keluar air ketuban; pemeriksaan pembukaan serviks, denyut jantung janin; rujuk segera ke fasilitas dengan perawatan bayi prematur
+O72|Perdarahan Pascapersalinan|Obstetri|keluhan perdarahan banyak setelah melahirkan, lemas, pucat; pemeriksaan atonia uteri, syok; rujuk segera dengan resusitasi
+S72|Fraktur Femur|Trauma|keluhan nyeri hebat paha atau panggul setelah jatuh, tidak bisa berdiri; pemeriksaan deformitas, pemendekan tungkai, foto rontgen fraktur; rujuk ke ortopedi
+S06|Cedera Kepala|Trauma|keluhan penurunan kesadaran, muntah, kejang setelah benturan kepala; pemeriksaan skala koma Glasgow turun, tanda fraktur basis kranii; rujuk segera untuk CT scan
+H25|Katarak Senilis|Mata|keluhan penglihatan kabur perlahan seperti berkabut pada usia lanjut, silau; pemeriksaan lensa keruh, visus menurun; rujuk untuk operasi katarak
+H40|Glaukoma|Mata|keluhan nyeri mata hebat, kabur, melihat pelangi di sekitar cahaya, mual, atau penyempitan lapang pandang; pemeriksaan tekanan bola mata tinggi, kornea keruh; rujuk segera ke dokter spesialis mata
+H35|Retinopati Diabetik|Mata|keluhan penglihatan kabur, bintik melayang pada penderita diabetes lama; pemeriksaan funduskopi perdarahan retina; rujuk ke dokter spesialis mata untuk laser
+M51|Hernia Nukleus Pulposus|Muskuloskeletal|keluhan nyeri punggung bawah menjalar ke tungkai, kesemutan, kelemahan; pemeriksaan tes Laseque positif, defisit saraf; rujuk untuk MRI dan bedah saraf
+M05|Artritis Reumatoid|Muskuloskeletal|keluhan nyeri kaku sendi kecil tangan pagi hari lebih dari satu jam, bengkak simetris; pemeriksaan sinovitis, faktor reumatoid positif; rujuk ke reumatologi
+E05|Hipertiroid Tirotoksikosis|Endokrin-Metabolik|keluhan berdebar, berkeringat, berat badan turun, gemetar, mata menonjol; pemeriksaan goiter, takikardia, TSH rendah; rujuk ke endokrinologi
+L40|Psoriasis|Integumen|keluhan bercak merah tebal bersisik perak di siku lutut kulit kepala, kronis; pemeriksaan plak eritem skuama, fenomena Auer; rujuk bila luas atau artritis
+D25|Mioma Uteri|Obstetri|keluhan haid banyak lama, nyeri perut bawah, perut membesar; pemeriksaan massa rahim membesar, ultrasonografi mioma; rujuk ke obstetri ginekologi
+A41|Sepsis|Infeksi Tropik|keluhan demam tinggi menggigil, lemas, sesak, penurunan kesadaran dengan fokus infeksi; pemeriksaan hipotensi, takikardia, laktat tinggi; rujuk segera untuk perawatan intensif

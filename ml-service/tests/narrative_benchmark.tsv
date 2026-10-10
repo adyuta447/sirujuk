@@ -1,0 +1,50 @@
+1|I50|Pasien dengan keluhan kronis dan hasil pemeriksaan penunjang lengkap. Tekanan darah, gula darah, dan EKG terlampir. Terapi lini pertama di FKTP sudah diberikan tiga bulan tanpa perbaikan sehingga dirujuk ke poli jantung untuk evaluasi lanjutan dan penyesuaian terapi.
+1|I10|Laki-laki 58 tahun, hipertensi sejak 10 tahun, tekanan darah 190/110 meski amlodipin dan kaptopril dosis maksimal, sakit kepala tengkuk, curiga hipertensi sekunder, rujuk untuk pemeriksaan lanjutan.
+1|J45|Anak 7 tahun batuk mengi malam hari, sesak sejak 2 hari, wheezing ekspirasi, sudah nebulisasi salbutamol dua kali tanpa perbaikan, saturasi 91 persen, dirujuk karena serangan asma berat.
+1|A09|Pasien diare cair lebih dari 10 kali sehari, muntah terus, mata cekung turgor kulit menurun tanda dehidrasi berat, sudah diberi cairan oral, perlu rawat inap dan infus.
+1|E11|Wanita 62 tahun diabetes melitus tipe 2, gula darah sewaktu 420, luka di telapak kaki tidak sembuh tiga minggu dengan nanah berbau, dirujuk karena kaki diabetik dengan infeksi.
+1|N39.0|Nyeri berkemih, anyang-anyangan dan demam menggigil sejak 3 hari, nyeri ketok pinggang kanan, leukosit urin banyak, tidak membaik dengan kotrimoksazol, curiga pielonefritis dengan komplikasi.
+1|J18|Batuk berdahak demam lima hari, sesak, napas cepat 34 kali per menit, ronki basah kedua paru, saturasi 88 persen, pasien lansia dengan diabetes, perlu rawat inap dan oksigen.
+1|A90|Demam tinggi hari ke-4, nyeri otot dan belakang mata, trombosit 62 ribu, hematokrit naik, uji torniket positif, tampak gelisah akral dingin, dirujuk karena curiga syok dengue.
+1|R56.0|Anak 2 tahun kejang demam dua kali dalam 24 jam, durasi lebih dari 15 menit, kejang fokal sisi kanan, perlu pemeriksaan penunjang untuk menyingkirkan meningitis.
+1|O14|Ibu hamil 34 minggu sakit kepala hebat dan pandangan kabur, tekanan darah 170/110, proteinuria 3 plus, nyeri ulu hati, dirujuk segera dengan dugaan preeklamsia berat.
+1|K35|Nyeri perut berpindah dari ulu hati ke kanan bawah sejak 1 hari, mual muntah, demam 38,5, nyeri tekan titik McBurney dan defans muskuler, leukosit 16 ribu, curiga apendisitis akut.
+1|I21|Nyeri dada kiri menekan menjalar ke lengan sejak 2 jam, keringat dingin, EKG elevasi ST di sadapan V1 sampai V4, dirujuk segera untuk reperfusi.
+1|A15|Batuk lebih dari 3 minggu, keringat malam, berat badan turun 6 kilogram, BTA positif, namun juga batuk darah banyak dan sesak sehingga perlu penanganan komplikasi di rumah sakit.
+1|D50|Perempuan 29 tahun lemas dan pucat, hemoglobin 5,2, konjungtiva sangat pucat, sesak saat aktivitas ringan, anemia berat perlu transfusi dan evaluasi sumber perdarahan.
+1|L20|Anak dermatitis atopik sejak bayi, gatal hebat, lesi basah luas di lipat siku dan lutut dengan infeksi sekunder, tidak respons terhadap kortikosteroid topikal potensi sedang selama dua minggu.
+1|H66.0|Nyeri telinga kanan dan demam 3 hari, membran timpani merah menonjol, kemudian bengkak dan nyeri di belakang telinga, curiga mastoiditis, perlu pemeriksaan THT.
+1|E10|Remaja 14 tahun haus dan sering kencing, berat badan turun, napas cepat dalam, gula darah 480, keton urin positif, dirujuk karena ketoasidosis diabetik.
+1|G40|Kejang tonik klonik berulang tiga kali dalam sebulan tanpa demam, aura sebelum kejang, sudah fenitoin dosis penuh namun masih kambuh, perlu EEG dan pengaturan ulang obat antiepilepsi.
+1|N40|Pria 70 tahun sulit memulai kencing, pancaran lemah, tidak bisa kencing sejak kemarin, kandung kemih teraba penuh, kateter sudah dipasang, rujuk untuk evaluasi prostat membesar.
+1|B02|Nyeri terbakar dan lepuh berkelompok di dahi dan kelopak mata kanan, mata merah dan visus menurun, herpes zoster oftalmikus perlu pemeriksaan dokter mata.
+0|I10|Pasien dirujuk ke rumah sakit.
+0|J06.9|Pasien datang dengan keluhan, mohon dirujuk untuk penanganan lebih lanjut.
+0|K30|Pasien datang dengan keluhan berulang. Sudah diberi obat dasar. Perlu pemeriksaan lanjutan di rumah sakit.
+0|E11|Keluhan sejak beberapa hari, dirujuk untuk pemeriksaan lanjutan.
+0|J45|Pasien minta dirujuk, perlu evaluasi spesialis.
+0|A09|Kondisi tidak membaik, rujuk ke rumah sakit.
+0|I10|Mohon penanganan lebih lanjut di fasilitas yang lebih lengkap.
+0|J18|Pasien dirujuk karena perlu pemeriksaan lebih lanjut.
+0|D50|Pasien dengan keluhan lemas, mohon dirujuk ke spesialis.
+0|L20|Rujuk ke dokter spesialis kulit atas permintaan pasien.
+0|E78|Dirujuk untuk evaluasi dan pengobatan lebih lanjut oleh dokter spesialis.
+0|N39.0|Pasien mengeluh tidak enak badan, dirujuk ke rumah sakit untuk pemeriksaan.
+0|M54.5|Alat di faskes asal tidak lengkap, pasien dirujuk.
+0|I10|Pasien dirujuk ke rumah sakit karena keluhan.
+1|I10|TD 190/110 meski amlodipin kaptopril dosis maksimal, curiga hipertensi sekunder.
+1|J45|Asma berat, mengi, saturasi 91 persen, nebulisasi dua kali gagal.
+1|E11|DM tipe 2, GDS 420, ulkus kaki diabetik berbau dengan nanah.
+1|A09|Diare cair 10 kali sehari, dehidrasi berat, mata cekung.
+1|K35|Nyeri perut kanan bawah, McBurney positif, defans muskuler, leukosit 16 ribu.
+1|J18|Pneumonia, napas 34 kali per menit, ronki basah, saturasi 88 persen.
+1|R56.0|Kejang demam kompleks dua kali, durasi lebih dari 15 menit, fokal.
+1|B02|Herpes zoster oftalmikus, lepuh dahi kelopak mata, visus turun.
+0|I10|Pasien datang ke puskesmas pada hari ini dan telah dilakukan pencatatan administrasi sesuai prosedur yang berlaku di fasilitas kami kemudian diputuskan untuk dirujuk ke rumah sakit sesuai permintaan keluarga pasien yang menginginkan pemeriksaan di rumah sakit besar.
+0|J06.9|Berdasarkan hasil kunjungan pasien beserta kelengkapan berkas administrasi dan persetujuan pasien, maka pasien dirujuk ke fasilitas kesehatan tingkat lanjut untuk mendapatkan pelayanan yang lebih baik dan lebih lengkap sesuai kebutuhan pasien.
+0|E11|Pasien dan keluarga meminta dirujuk ke rumah sakit karena merasa lebih nyaman berobat di sana, surat rujukan dibuat sesuai prosedur dan semua dokumen sudah dilengkapi oleh petugas pendaftaran faskes.
+0|J45|Dengan ini pasien kami rujuk ke rumah sakit tujuan untuk mendapatkan penanganan lebih lanjut oleh dokter spesialis yang berwenang, mohon dapat diterima dan ditindaklanjuti sebagaimana mestinya, terima kasih atas kerja samanya.
+0|A09|Pasien mengeluh tidak enak badan sejak beberapa hari yang lalu dan ingin berobat ke rumah sakit, setelah dilakukan pemeriksaan umum pasien dirujuk ke rumah sakit sesuai keinginan pasien.
+0|D50|Rujuk.
+0|L20|Mohon dirujuk.
+0|N39.0|Pasien minta rujuk ke spesialis.

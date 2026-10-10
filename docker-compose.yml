@@ -16,12 +16,18 @@ services:
       APP_ENV: ${APP_ENV:-production}
       API_TOKEN: ${API_TOKEN:?set API_TOKEN in .env}
       ML_SERVICE_URL: http://ml-service:8000
+      STREAM_ENC_KEY: ${STREAM_ENC_KEY:?set STREAM_ENC_KEY in .env (openssl rand -hex 32)}
       REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379/0
       ALLOW_CLIENT_CONTEXT: ${ALLOW_CLIENT_CONTEXT:-false}
-      YELLOW_FROM: ${YELLOW_FROM:-7.8}
-      RED_FROM: ${RED_FROM:-45}
+      SPECIALIST_FILE: /data/specialist.tsv # only read by the demo seed
+      KNS_FILE: /data/kns144.tsv # the ML service's own 144-diagnosis table, so both read one list
       AUTH_USERS: ${AUTH_USERS:-[]} # local login accounts (JSON, see frontend/scripts/buat-pengguna.mjs); production uses Firestore
-      SEED_COUNT: ${SEED_COUNT:-0} # e.g. 50 for a local demo; fills the in-memory list with fake referrals
+      FIRESTORE_PROJECT: ${FIRESTORE_PROJECT:-} # set = accounts come from Firestore (needs GCP credentials, i.e. Cloud Run); empty = in-memory
+      DEMO_ACCOUNTS: ${DEMO_ACCOUNTS:-false} # true = 4 demo accounts, one per role (docs/demo.md); refused when APP_ENV=production
+      SEED_COUNT: ${SEED_COUNT:-0} # e.g. 200 for a local demo; fills the in-memory list with fake referrals
+    volumes:
+      - ./ml-service/app/ml/data/kns144.tsv:/data/kns144.tsv:ro
+      - ./ml-service/app/ml/data/specialist.tsv:/data/specialist.tsv:ro
     expose: ["8080"]
     depends_on: [ml-service, redis]
   ml-service:
@@ -52,6 +58,7 @@ services:
     environment:
       BACKEND_URL: http://backend-go:8080
       API_TOKEN: ${API_TOKEN:?set API_TOKEN in .env}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
     ports:
       - "3000:3000"
     depends_on: [backend-go]

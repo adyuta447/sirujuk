@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sirujuk/backend-go/domain"
 	"github.com/sirujuk/backend-go/internal/repository"
@@ -60,5 +61,25 @@ func TestVerifyHandler(t *testing.T) {
 	down := verify(AuthHandler{Auth: service.Authenticator{Users: downUsers{}}}, `{"email":"a@uji.id","password":"sandi-baru-67890"}`, j)
 	if down.Code != http.StatusServiceUnavailable {
 		t.Fatalf("store failure must be 503, not 401: %d", down.Code)
+	}
+}
+
+type countLimiter struct{ n int64 }
+
+func (l *countLimiter) Hit(context.Context, string, time.Duration) (int64, error) {
+	l.n++
+	return l.n, nil
+}
+
+func TestVerifyThrottlesPerEmail(t *testing.T) {
+	h := AuthHandler{Auth: service.Authenticator{Users: repository.NewMemoryUsers("")}, Limiter: &countLimiter{}}
+	for i := 1; i <= maxLoginTries; i++ {
+		if rec := verify(h, `{"email":"a@uji.id","password":"salah-salah-123"}`, "application/json"); rec.Code != http.StatusUnauthorized {
+			t.Fatalf("attempt %d: want 401, got %d", i, rec.Code)
+		}
+	}
+	rec := verify(h, `{"email":"a@uji.id","password":"salah-salah-123"}`, "application/json")
+	if rec.Code != http.StatusTooManyRequests || rec.Header().Get("Retry-After") == "" {
+		t.Fatalf("attempt over the limit must be 429 with Retry-After: %d", rec.Code)
 	}
 }

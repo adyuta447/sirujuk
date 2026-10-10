@@ -4,9 +4,10 @@ import { PageHead } from "../atoms/PageHead";
 import { PrimaryButton } from "../atoms/PrimaryButton";
 import { RiskBadge } from "../atoms/RiskBadge";
 import { useReferrals } from "../../hooks/useReferral";
-import { maskPasien } from "../../lib/formatters";
+import { tampilPasien } from "../../lib/formatters";
 import type { RujukanCase } from "../../lib/sirujuk-data";
-import { DOKTER_RISIKO, RISK, slugDokter } from "../../lib/sirujuk-data";
+import { useDokterStats } from "../../hooks/useStats";
+import { RISK, slugDokter } from "../../lib/sirujuk-data";
 
 export const DokterProfil = ({
   slug,
@@ -20,7 +21,8 @@ export const DokterProfil = ({
   onKlarifikasi: (c: RujukanCase) => void;
 }) => {
   const { data: referrals = [] } = useReferrals();
-  const dokter = DOKTER_RISIKO.find((d) => slugDokter(d.nama) === slug);
+  const { data: daftarDokter = [] } = useDokterStats();
+  const dokter = daftarDokter.find((d) => slugDokter(d.nama) === slug);
 
   if (!dokter) {
     return (
@@ -35,7 +37,7 @@ export const DokterProfil = ({
           </p>
         )}
         <div className="bg-white rounded-4xl border border-[#DCE3EC] divide-y divide-[#EEF1F5] overflow-hidden">
-          {DOKTER_RISIKO.map((d) => (
+          {daftarDokter.map((d) => (
             <button
               type="button"
               key={d.nama}
@@ -89,7 +91,7 @@ export const DokterProfil = ({
 
       <div className="bg-white rounded-4xl border border-[#DCE3EC] overflow-hidden">
         <div className="px-5 py-4 border-b border-[#DCE3EC] font-bold text-[#0E1B2A]">Rujukan dari dokter ini</div>
-        {kasus.length === 0 && <p className="px-5 py-6 text-sm text-[#56657A]">Belum ada rujukan di data demo.</p>}
+        {kasus.length === 0 && <p className="px-5 py-6 text-sm text-[#56657A]">Belum ada rujukan.</p>}
         <div className="divide-y divide-[#EEF1F5]">
           {kasus.map((c) => (
             <button
@@ -99,7 +101,7 @@ export const DokterProfil = ({
               className="w-full min-h-11 flex items-center gap-3 px-5 py-3.5 hover:bg-[#F8FAFC] text-left"
             >
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-[#0E1B2A]">{maskPasien(c.noRujukan)}</div>
+                <div className="font-semibold text-sm text-[#0E1B2A]">{tampilPasien(c)}</div>
                 <div className="text-xs text-[#56657A] truncate">{c.diagnosa}</div>
               </div>
               <RiskBadge level={c.risk} score={c.riskScore} />

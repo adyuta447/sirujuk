@@ -12,12 +12,39 @@ type Mode = "masuk" | "daftar";
 const inputCls =
   "w-full min-h-12 px-4 text-base bg-white border border-[#DCE3EC] rounded-4xl focus:outline-none focus:border-[#1E3A5F] placeholder:text-[#64748B]";
 
-export const AuthForm = ({ mode }: { mode: Mode }) => {
+const DEMO = [
+  { peran: "verifikator", judul: "Verifikator BPJS", isi: "Antrean, detail, dan audit rujukan" },
+  { peran: "tkmkb", judul: "Anggota TKMKB", isi: "Audit medis kasus berisiko tinggi" },
+  { peran: "dinkes", judul: "Dinas Kesehatan", isi: "Pantauan per wilayah, tanpa data pasien" },
+  { peran: "dokter", judul: "Dokter FKTP", isi: "Menjawab permintaan klarifikasi" },
+];
+
+export const AuthForm = ({ mode, demo = false }: { mode: Mode; demo?: boolean }) => {
   const router = useRouter();
   const daftar = mode === "daftar";
   const [lihat, setLihat] = useState(false);
   const [galat, setGalat] = useState("");
   const [proses, setProses] = useState(false);
+
+  const masukDemo = async (peran: string) => {
+    setGalat("");
+    setProses(true);
+    try {
+      const res = await fetch("/api/auth/demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ peran }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return setGalat(data.message ?? "Akun demo tidak tersedia.");
+      router.push(data.tujuan ?? "/dashboard");
+      router.refresh();
+    } catch {
+      setGalat("Tidak bisa terhubung ke server. Coba lagi.");
+    } finally {
+      setProses(false);
+    }
+  };
 
   const kirim = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -137,6 +164,26 @@ export const AuthForm = ({ mode }: { mode: Mode }) => {
                 {proses ? "Memeriksa…" : "Masuk"}
               </PrimaryButton>
             </form>
+            {demo && (
+              <section aria-labelledby="judul-demo" className="mt-8">
+                <h2 id="judul-demo" className="text-xl font-extrabold tracking-tight">Coba tanpa akun</h2>
+                <p className="text-sm text-[#56657A] mt-1">Pilih peran, langsung masuk. Datanya contoh dan tidak memuat pasien sungguhan.</p>
+                <div className="grid sm:grid-cols-2 gap-3 mt-4">
+                  {DEMO.map((d) => (
+                    <button
+                      key={d.peran}
+                      type="button"
+                      disabled={proses}
+                      onClick={() => masukDemo(d.peran)}
+                      className="text-left rounded-4xl border border-[#DCE3EC] bg-white p-4 min-h-20 hover:border-[#1E3A5F] transition-colors disabled:cursor-not-allowed"
+                    >
+                      <span className="block font-extrabold tracking-tight text-[#0E1B2A]">{d.judul}</span>
+                      <span className="block text-xs text-[#56657A] mt-0.5">{d.isi}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
             <p className="text-sm text-[#56657A] mt-6">
               Belum punya akun?{" "}
               <Link href="/daftar" className="font-bold text-[#1E3A5F] underline underline-offset-2">Minta akses</Link>

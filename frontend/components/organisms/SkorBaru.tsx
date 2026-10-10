@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { FormEvent } from "react";
 import { PageHead } from "../atoms/PageHead";
 import { PrimaryButton } from "../atoms/PrimaryButton";
@@ -19,6 +20,13 @@ const FIELD: { name: keyof ReferralInput; label: string; placeholder: string }[]
   { name: "diagnosis_code", label: "Kode diagnosis (ICD-10)", placeholder: "I10" },
 ];
 
+// Nilai ini sengaja tidak memuat kata kunci yang salah dibaca backend (mis. "dokter" terbaca keterbatasan SDM).
+const ALASAN: { teks: string; kategori: NonNullable<ReferralInput["reason_category"]> }[] = [
+  { teks: "Keterbatasan alat", kategori: "equipment" },
+  { teks: "Keterbatasan SDM", kategori: "staff" },
+  { teks: "Indikasi klinis perlu penanganan spesialis", kategori: "clinical" },
+];
+
 // Terhubung ke backend lewat proxy Next.js. Data klinis tidak disimpan atau dicatat di browser.
 export const SkorBaru = () => {
   const { mutate, data, error, isPending, reset } = useScoreReferral();
@@ -31,7 +39,11 @@ export const SkorBaru = () => {
     const input = Object.fromEntries(
       [...FIELD.map((x) => x.name), "reason", "clinical_narrative"].map((k) => [k, v(k as keyof ReferralInput)]),
     ) as ReferralInput;
-    if (FIELD.some((x) => !input[x.name]) || !input.reason) return setKosong(true);
+    // Pilihan alasan berisi kategori; teks alasan dan kategori dikirim bersama supaya backend tidak menebak.
+    const pilihan = ALASAN.find((x) => x.kategori === input.reason);
+    if (FIELD.some((x) => !input[x.name]) || !pilihan) return setKosong(true);
+    input.reason = pilihan.teks;
+    input.reason_category = pilihan.kategori;
     setKosong(false);
     mutate(input);
   };
@@ -41,6 +53,9 @@ export const SkorBaru = () => {
   return (
     <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
       <PageHead title="Skor Rujukan" sub="Kirim satu rujukan ke sistem skoring dan lihat hasilnya." art="analitik" />
+      <p role="note" className="rounded-4xl px-4 py-3 text-sm bg-[#1E3A5F] text-white">
+        Uji coba: rujukan diisi manual oleh petugas. Belum terhubung ke P-Care atau V-Claim, jadi ini belum titik penerbitan rujukan yang sebenarnya.
+      </p>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_26rem] gap-5 items-start">
         <form onSubmit={kirim} noValidate className="bg-white rounded-4xl border border-[#DCE3EC] p-5 space-y-4">
@@ -58,7 +73,19 @@ export const SkorBaru = () => {
             <label htmlFor="reason" className="block text-sm font-bold text-[#0E1B2A] mb-1.5">
               Alasan rujukan
             </label>
-            <input id="reason" name="reason" maxLength={200} placeholder="Keterbatasan alat" autoComplete="off" className={inputCls} />
+            <div className="relative">
+              <select id="reason" name="reason" defaultValue="" className={`${inputCls} appearance-none pr-12 cursor-pointer`}>
+                <option value="" disabled>
+                  Pilih alasan
+                </option>
+                {ALASAN.map((x) => (
+                  <option key={x.kategori} value={x.kategori}>
+                    {x.teks}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown aria-hidden="true" size={18} className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-[#56657A]" />
+            </div>
           </div>
           <div>
             <label htmlFor="clinical_narrative" className="block text-sm font-bold text-[#0E1B2A] mb-1.5">
@@ -122,7 +149,7 @@ export const SkorBaru = () => {
               )}
               {data.requires_human_review && (
                 <p className="rounded-4xl px-4 py-3 text-sm bg-[#1E3A5F] text-white">
-                  Perlu ditinjau verifikator. Skor ini penunjuk prioritas, bukan bukti kecurangan.
+                  Perlu ditinjau petugas. Skor ini prioritas peninjauan, bukan bukti kecurangan. Kinerja model baru diukur pada data sintetis.
                 </p>
               )}
               {data.model_version && <p className="text-xs text-[#56657A]">Versi model: {data.model_version}</p>}

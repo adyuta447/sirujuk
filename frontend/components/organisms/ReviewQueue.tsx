@@ -5,10 +5,11 @@ import { PageHead } from '../atoms/PageHead'
 import { PrimaryButton } from '../atoms/PrimaryButton'
 import { RiskBadge } from '../atoms/RiskBadge'
 import { StatusBadge } from '../atoms/StatusBadge'
+import { ClaimBadge } from '../atoms/ClaimBadge'
 import { Illustration } from '../atoms/Illustration'
 import type { RiskLevel, RujukanCase } from '../../lib/sirujuk-data'
 import { NAVY, RISK } from '../../lib/sirujuk-data'
-import { cocokCari, maskPasien } from "../../lib/formatters";
+import { cocokCari, tampilPasien } from "../../lib/formatters";
 import { useReferrals } from '../../hooks/useReferral'
 import { useAuditQueue } from '../../hooks/useAuditQueue'
 
@@ -68,12 +69,13 @@ export const QueueView = ({ onSelect, wilayah, query }: { onSelect: (c: RujukanC
                 <span className="text-xs font-bold uppercase tracking-wider" style={{ color: RISK[c.risk].solid }}>{RISK[c.risk].label}</span>
                 <span className="font-mono text-xs text-[#64748B]">Skor {c.riskScore}</span>
                 <StatusBadge status={c.status} />
+                <ClaimBadge status={c.claimStatus} />
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0E1B2A] mt-3">{maskPasien(c.noRujukan)}</h3>
+              <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0E1B2A] mt-3">{tampilPasien(c)}</h3>
 
               <p className="text-sm text-[#56657A] mt-1.5 leading-relaxed">
-                {c.usia} tahun, dari {c.wilayah}, dirujuk ke <span className="font-semibold text-[#0E1B2A]">{c.fasalTujuan}</span>
+                {c.usia ? `${c.usia} tahun, ` : ""}dari {c.wilayah}, dirujuk ke <span className="font-semibold text-[#0E1B2A]">{c.fasalTujuan}</span>
               </p>
 
               {c.alasan.length > 0 && (

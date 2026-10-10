@@ -5,9 +5,9 @@ import { PageHead } from "../atoms/PageHead";
 import { PrimaryButton } from "../atoms/PrimaryButton";
 import { RiskBadge } from "../atoms/RiskBadge";
 import { useReferrals } from "../../hooks/useReferral";
-import { maskPasien } from "../../lib/formatters";
+import { tampilPasien } from "../../lib/formatters";
 import type { RujukanCase } from "../../lib/sirujuk-data";
-import { INDIKATOR_DEMO } from "../../lib/sirujuk-data";
+import { useReferralMutations } from "../../hooks/useReferralMutations";
 
 // Tampilan untuk dokter FKTP: mobile first, nadanya sopan dan tidak menuduh.
 export const Klarifikasi = ({
@@ -23,6 +23,7 @@ export const Klarifikasi = ({
 }) => {
   const [jawaban, setJawaban] = useState("");
   const [terkirim, setTerkirim] = useState(false);
+  const { clarify } = useReferralMutations();
   const { data: referrals = [] } = useReferrals();
 
   if (!kasus) {
@@ -45,7 +46,7 @@ export const Klarifikasi = ({
             >
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm text-[#0E1B2A]">{c.dokter}</div>
-                <div className="text-xs text-[#56657A] truncate">{maskPasien(c.noRujukan)} · {c.diagnosa}</div>
+                <div className="text-xs text-[#56657A] truncate">{tampilPasien(c)} · {c.diagnosa}</div>
               </div>
               <RiskBadge level={c.risk} />
               <ChevronRight aria-hidden="true" size={16} className="text-[#64748B]" />
@@ -92,10 +93,24 @@ export const Klarifikasi = ({
               </div>
             </div>
 
+            {kasus.klarifikasi && kasus.klarifikasi.length > 0 && (
+              <div className="bg-white rounded-4xl border border-[#DCE3EC] p-5">
+                <div className="text-xl font-extrabold tracking-tight text-[#0E1B2A]">Penjelasan yang sudah dikirim</div>
+                <ul className="mt-3 divide-y divide-[#EEF1F5]">
+                  {kasus.klarifikasi.map((k) => (
+                    <li key={k.tanggal} className="py-3">
+                      <div className="text-xs text-[#56657A]">{k.penulis}, {new Date(k.tanggal).toLocaleDateString("id-ID")}</div>
+                      <p className="text-sm text-[#0E1B2A] mt-1 whitespace-pre-line">{k.teks}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="bg-white rounded-4xl border border-[#DCE3EC] p-5">
               <div className="text-xl font-extrabold tracking-tight text-[#0E1B2A]">Angka yang dipakai</div>
               <ul className="mt-3 divide-y divide-[#EEF1F5]">
-                {INDIKATOR_DEMO.map((i) => (
+                {(kasus.indikator ?? []).map((i) => (
                   <li key={i.label} className="py-3 flex items-start justify-between gap-4">
                     <div>
                       <div className="font-semibold text-sm text-[#0E1B2A]">{i.label}</div>
@@ -126,10 +141,14 @@ export const Klarifikasi = ({
                 placeholder="Contoh: alat di puskesmas rusak, atau hanya ada satu RS yang terjangkau."
                 className="w-full h-44 px-4 py-3 text-sm bg-white border border-[#DCE3EC] rounded-4xl resize-none focus:outline-none focus:border-[#1E3A5F] placeholder:text-[#64748B]"
               />
-              <p className="text-xs text-[#56657A]">Batas menjawab: 7 hari kerja sejak pesan ini diterima.</p>
+              {clarify.isError && (
+                <p role="alert" className="text-xs text-[#9B1C1C]">
+                  {clarify.error?.message ?? "Penjelasan belum terkirim."} Penjelasan belum terkirim.
+                </p>
+              )}
               <PrimaryButton
-                onClick={() => setTerkirim(true)}
-                disabled={jawaban.trim().length === 0}
+                onClick={() => clarify.mutate({ id: kasus.id, text: jawaban.trim() }, { onSuccess: () => setTerkirim(true) })}
+                disabled={jawaban.trim().length === 0 || clarify.isPending}
                 className="w-full py-3.5"
               >
                 Kirim penjelasan

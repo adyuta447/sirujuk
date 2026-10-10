@@ -2,6 +2,8 @@ import { PERAN } from "../akses";
 import type { Peran } from "../akses";
 import { keBackend } from "./guard";
 
+export class TerlaluBanyak extends Error {}
+
 export type Pengguna = { email: string; nama: string; role: Peran };
 
 /**
@@ -12,6 +14,7 @@ export type Pengguna = { email: string; nama: string; role: Peran };
 export async function verifikasi(email: string, sandi: string): Promise<Pengguna | null> {
   const res = await keBackend("/api/v1/auth/verify", { method: "POST", body: JSON.stringify({ email, password: sandi }) });
   if (res.status === 401) return null;
+  if (res.status === 429) throw new TerlaluBanyak();
   if (!res.ok) throw new Error(`auth backend ${res.status}`);
   const u = await res.json().catch(() => null);
   if (typeof u?.email !== "string" || typeof u?.nama !== "string" || !PERAN.includes(u?.role)) throw new Error("auth backend: bad response");

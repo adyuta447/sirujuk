@@ -18,6 +18,7 @@ import {
 import Image from "next/image";
 import { SearchBar } from "../molecules/SearchBar";
 import type { View } from "../../lib/sirujuk-data";
+import { periodeSekarang } from "../../lib/formatters";
 import { NAMA_PERAN, bolehAkses } from "../../lib/akses";
 import type { Peran } from "../../lib/akses";
 
@@ -189,7 +190,7 @@ export const TopBar = ({
     <div className="hidden md:block pl-3 ml-1 border-l border-[#DCE3EC] text-right">
       <div className="text-[11px] text-[#64748B]">Periode</div>
       <div className="font-mono text-xs font-semibold text-[#0E1B2A]">
-        Agustus 2024
+        {periodeSekarang()}
       </div>
     </div>
   </div>

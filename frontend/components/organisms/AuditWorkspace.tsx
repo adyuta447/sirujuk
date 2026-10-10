@@ -9,7 +9,9 @@ import { AUDIT_CHECKLIST, NAVY, RISK } from "../../lib/sirujuk-data";
 import { useReferrals } from "../../hooks/useReferral";
 import { submitAudit } from "../../services/referral.service";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatVerifierDate, maskPasien } from "../../lib/formatters";
+import { useSession } from "../../hooks/useSession";
+import { NAMA_PERAN } from "../../lib/akses";
+import { formatVerifierDate, tampilPasien } from "../../lib/formatters";
 
 export const AuditView = ({
   kasus,
@@ -28,7 +30,9 @@ export const AuditView = ({
     AUDIT_CHECKLIST.map(() => false),
   );
   const [submitted, setSubmitted] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [menyimpan, setMenyimpan] = useState(false);
+  const { data: sesi } = useSession();
   const queryClient = useQueryClient();
   const { data: referrals = [], isError } = useReferrals();
 
@@ -62,7 +66,7 @@ export const AuditView = ({
             >
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm text-[#0E1B2A]">
-                  {maskPasien(c.noRujukan)}
+                  {tampilPasien(c)}
                 </div>
                 <div className="text-xs text-[#56657A] truncate">
                   {c.diagnosa}
@@ -109,6 +113,27 @@ export const AuditView = ({
     );
   }
 
+  // Kasus risiko tinggi hanya diputuskan TKMKB. Server tetap menegakkan; ini hanya menghindari jalan buntu.
+  const hanyaTKMKB = kasus.risk === "tinggi" && sesi?.role === "verifikator";
+
+  if (hanyaTKMKB) {
+    return (
+      <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+        <PageHead title="Cek rujukan" sub={`${tampilPasien(kasus)} (${kasus.noRujukan})`} />
+        <p role="note" className="rounded-4xl px-4 py-3 text-sm bg-[#1E3A5F] text-white">
+          Kasus risiko tinggi diputuskan oleh anggota TKMKB. Kamu bisa meneruskannya atau meminta klarifikasi dokter.
+        </p>
+        <button
+          type="button"
+          onClick={() => onKlarifikasi(kasus)}
+          className="min-h-11 px-6 py-3 border border-[#DCE3EC] bg-white text-[#1E3A5F] font-semibold rounded-4xl hover:bg-[#F8FAFC]"
+        >
+          Minta klarifikasi dokter
+        </button>
+      </div>
+    );
+  }
+
   const options: {
     value: Keputusan;
     label: string;
@@ -142,7 +167,7 @@ export const AuditView = ({
       <div className="space-y-5">
         <PageHead
           title="Cek rujukan"
-          sub={`${maskPasien(kasus.noRujukan)} (${kasus.noRujukan})`}
+          sub={`${tampilPasien(kasus)} (${kasus.noRujukan})`}
         />
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_23.75rem] gap-5 items-start">
@@ -314,36 +339,42 @@ export const AuditView = ({
             className="w-8 h-8 rounded-4xl flex items-center justify-center text-white text-xs font-bold"
             style={{ backgroundColor: NAVY }}
           >
-            AS
+            {(sesi?.nama ?? "?").split(" ").map((k) => k[0]).slice(0, 2).join("").toUpperCase()}
           </div>
           <div>
-            <div className="font-semibold text-[#0E1B2A]">Adit Suryanto</div>
+            <div className="font-semibold text-[#0E1B2A]">{sesi?.nama ?? "…"}</div>
             <div className="text-xs text-[#56657A]">
-              Verifikator senior, {formatVerifierDate(new Date())} WIB
+              {sesi ? NAMA_PERAN[sesi.role] : ""}, {formatVerifierDate(new Date())} WIB
             </div>
           </div>
         </div>
 
         {saveError && (
           <p role="alert" className="text-sm text-[#9B1C1C]">
-            Gagal menyimpan ke backend, keputusan tetap tercatat lokal untuk demo.
+            {saveError} Keputusan belum tersimpan dan tidak ada salinan lokal.
           </p>
         )}
         <div className="flex flex-col-reverse sm:flex-row gap-3 pb-2">
           <button
             type="button"
             onClick={() => {
-              if (!canSubmit || !kasus) return;
+              if (!canSubmit || !kasus || menyimpan) return;
+              setSaveError(null);
+              setMenyimpan(true);
+              // Layar sukses hanya setelah server benar-benar menyimpan.
               submitAudit(kasus.id, keputusan as string, catatan.trim())
-                .then(() => queryClient.invalidateQueries({ queryKey: ["referrals"] }))
-                .catch(() => setSaveError(true))
-                .finally(() => setSubmitted(true));
+                .then(() => {
+                  queryClient.invalidateQueries({ queryKey: ["referrals"] });
+                  setSubmitted(true);
+                })
+                .catch((e: Error) => setSaveError(e.message))
+                .finally(() => setMenyimpan(false));
             }}
-            disabled={!canSubmit}
+            disabled={!canSubmit || menyimpan}
             className="flex-1 py-3.5 text-white font-bold rounded-4xl transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed"
             style={{ backgroundColor: canSubmit ? NAVY : "#9AA8BA" }}
           >
-            <Check size={18} /> Simpan keputusanku
+            <Check size={18} /> {menyimpan ? "Menyimpan…" : "Simpan keputusanku"}
           </button>
           <button
             type="button"

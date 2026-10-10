@@ -1,5 +1,7 @@
 import { AuthForm } from "../../components/organisms/AuthForm";
+import { demoAktif } from "../../lib/auth/session";
 
 export default function LoginPage() {
-  return <AuthForm mode="masuk" />;
+  // Dibaca di server per request: akun demo hanya tampil bila DEMO_MODE=true.
+  return <AuthForm mode="masuk" demo={demoAktif()} />;
 }

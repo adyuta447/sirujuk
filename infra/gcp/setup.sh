@@ -37,9 +37,11 @@ gcloud projects add-iam-policy-binding "$P" --member "serviceAccount:$(SA backen
 # Secrets. API_TOKEN is generated here and never printed; REDIS_URL comes from the environment.
 gcloud secrets describe sirujuk-api-token >/dev/null 2>&1 ||
   openssl rand -hex 32 | tr -d '\n' | gcloud secrets create sirujuk-api-token --data-file=-
+gcloud secrets describe sirujuk-stream-key >/dev/null 2>&1 || # encrypts queued referrals in Redis; created once, never overwritten
+  openssl rand -hex 32 | tr -d '\n' | gcloud secrets create sirujuk-stream-key --data-file=-
 gcloud secrets describe sirujuk-redis-url >/dev/null 2>&1 || gcloud secrets create sirujuk-redis-url
 printf %s "$REDIS_URL" | gcloud secrets versions add sirujuk-redis-url --data-file=-
-for sec in sirujuk-api-token sirujuk-redis-url; do
+for sec in sirujuk-api-token sirujuk-redis-url sirujuk-stream-key; do
   gcloud secrets add-iam-policy-binding "$sec" --member "serviceAccount:$(SA backend)" --role roles/secretmanager.secretAccessor >/dev/null
 done
 

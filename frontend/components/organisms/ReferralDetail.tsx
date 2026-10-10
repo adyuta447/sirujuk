@@ -15,9 +15,12 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { PrimaryButton } from "../atoms/PrimaryButton";
+import { ReferralActions } from "./ReferralActions";
+import { ClaimBadge } from "../atoms/ClaimBadge";
+import { useSession } from "../../hooks/useSession";
 import type { RujukanCase } from "../../lib/sirujuk-data";
-import { maskPasien } from "../../lib/formatters";
-import { INDIKATOR_DEMO, NAVY, RISK } from "../../lib/sirujuk-data";
+import { tampilPasien } from "../../lib/formatters";
+import { NAVY, RISK } from "../../lib/sirujuk-data";
 
 export const ReferralDetail = ({
   kasus,
@@ -34,6 +37,9 @@ export const ReferralDetail = ({
 }) => {
   const [open, setOpen] = useState<string | null>("pola");
   const r = RISK[kasus.risk];
+  const { data: sesi } = useSession();
+  // Kasus merah hanya diputuskan TKMKB; server menolak verifikator, jadi tombolnya disembunyikan.
+  const hanyaTKMKB = kasus.risk === "tinggi" && sesi?.role === "verifikator";
 
   const Section = ({
     id,
@@ -98,7 +104,8 @@ export const ReferralDetail = ({
             <div className="font-mono text-xs text-[#C9D6E6] mt-1">
               {kasus.noRujukan}
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{maskPasien(kasus.noRujukan)}</div>
+            <div className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{tampilPasien(kasus)}</div>
+            <div className="mt-2"><ClaimBadge status={kasus.claimStatus} /></div>
           </div>
           <div className="text-center">
             <div
@@ -122,8 +129,8 @@ export const ReferralDetail = ({
           <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-5">
           <dl className="flex flex-wrap gap-x-6 gap-y-3">
               {[
-                { Icon: Cake, k: "Usia", v: `${kasus.usia} tahun` },
-                { Icon: BadgeCheck, k: "Peserta", v: kasus.jenisPeserta },
+                ...(kasus.usia ? [{ Icon: Cake, k: "Usia", v: `${kasus.usia} tahun` }] : []),
+                ...(kasus.jenisPeserta ? [{ Icon: BadgeCheck, k: "Peserta", v: kasus.jenisPeserta }] : []),
                 { Icon: MapPin, k: "Wilayah", v: kasus.wilayah },
                 { Icon: HeartPulse, k: "Diagnosis", v: kasus.diagnosa },
               ].map(({ Icon, k, v }) => (
@@ -218,13 +225,13 @@ export const ReferralDetail = ({
         Data pendukung
       </div>
 
-      {kasus.riskScore >= 50 && (
+      {kasus.indikator && kasus.indikator.length > 0 && (
         <Section id="pola" title="Rincian Skor (4 Indikator)" Icon={TrendingUp}>
           <div className="pt-4 space-y-4">
             <p className="text-sm text-[#56657A]">
               Perbandingan {kasus.dokter} dengan dokter sejenis di wilayah yang sama.
             </p>
-            {INDIKATOR_DEMO.map((row) => (
+            {kasus.indikator.map((row) => (
               <div key={row.label} className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4 text-sm">
                 <div>
                   <div className="font-semibold text-[#0E1B2A]">{row.label}</div>
@@ -235,35 +242,52 @@ export const ReferralDetail = ({
                 </span>
               </div>
             ))}
-            <p
-              role="note"
-              className="rounded-4xl px-4 py-3 text-xs leading-relaxed"
-              style={{ backgroundColor: "#4B3A8A", color: "#FFFFFF" }}
-            >
-              Data SISRUTE sudah lama tidak diperbarui, jadi indikator ini kurang dapat diandalkan. Skor hanya alat bantu
-              prioritas, bukan bukti kecurangan. Keputusan akhir ada pada verifikator.
-            </p>
+            {/(SISRUTE_STALE|INSUFFICIENT_HISTORY)/.test(kasus.kodeAlasan ?? "") && (
+              <p role="note" className="rounded-4xl px-4 py-3 text-xs leading-relaxed" style={{ backgroundColor: "#4B3A8A", color: "#FFFFFF" }}>
+                Kualitas data kurang (riwayat dokter belum cukup atau data SISRUTE sudah lama), jadi kepercayaan skor ini lebih rendah.
+              </p>
+            )}
+            <p className="text-xs text-[#56657A]">Skor adalah prioritas peninjauan, bukan bukti kecurangan. Keputusan akhir ada pada petugas. Kinerja model baru diukur pada data sintetis.</p>
           </div>
         </Section>
       )}
 
-      <Section id="riwayat" title="Riwayat Pasien" Icon={History}>
-        <div className="pt-4 text-sm text-[#56657A] leading-relaxed">
-          Dalam 12 bulan terakhir, pasien tidak memiliki catatan rawat inap atau
-          tindakan spesialis di sistem BPJS. Kunjungan hanya tercatat di
-          fasilitas asal.
-        </div>
+      <Section id="narasi" title="Narasi Dokter" Icon={History}>
+        <p className="pt-4 text-sm text-[#56657A] leading-relaxed whitespace-pre-line">
+          {kasus.narasi || "Narasi klinis belum diisi dokter."}
+        </p>
       </Section>
+
+      {kasus.riwayatSkor && kasus.riwayatSkor.length > 0 && (
+        <Section id="skor-lama" title="Skor Sebelumnya" Icon={History}>
+          <ul className="pt-4 space-y-2 text-sm text-[#56657A]">
+            {kasus.riwayatSkor.map((h) => (
+              <li key={h.tanggal} className="flex justify-between gap-4">
+                <span>{new Date(h.tanggal).toLocaleString("id-ID")} (model {h.versiModel})</span>
+                <span className="font-mono font-bold text-[#0E1B2A]">{h.skor}</span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {kasus.narasi !== undefined && <ReferralActions kasus={kasus} onArchived={onBack} />}
 
       {kasus.status !== "selesai" && (
         <div className="sticky bottom-0 bg-[#F4F6F9] pt-3 pb-1">
           <div className="flex flex-col sm:flex-row gap-3">
-            <PrimaryButton
-              onClick={() => onAudit(kasus)}
-              className="flex-1 py-3.5"
-            >
-              Cek rujukan ini <ArrowRight size={18} />
-            </PrimaryButton>
+            {hanyaTKMKB ? (
+              <p role="note" className="flex-1 rounded-4xl px-4 py-3 text-sm bg-[#1E3A5F] text-white">
+                Kasus risiko tinggi diputuskan oleh TKMKB.
+              </p>
+            ) : (
+              <PrimaryButton
+                onClick={() => onAudit(kasus)}
+                className="flex-1 py-3.5"
+              >
+                Cek rujukan ini <ArrowRight size={18} />
+              </PrimaryButton>
+            )}
             <button
               type="button"
               onClick={() => onKlarifikasi(kasus)}

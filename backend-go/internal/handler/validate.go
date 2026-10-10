@@ -53,6 +53,9 @@ func validate(r domain.ReferralRequest, allowContext bool) error {
 	if text(r.PatientName, maxName, false, false) != nil || text(r.OriginWilayah, 64, false, false) != nil {
 		return errors.New("invalid patient_name or origin_wilayah")
 	}
+	if !reasonCategories[r.ReasonCategory] {
+		return errors.New("invalid reason_category")
+	}
 	if err := text(r.Reason, maxReason, true, false); err != nil {
 		return errors.New("invalid reason")
 	}
@@ -75,7 +78,15 @@ func validate(r domain.ReferralRequest, allowContext bool) error {
 }
 
 // auditOutcomes mirrors the UI's Keputusan type.
-var auditOutcomes = map[string]bool{"valid": true, "tidak-valid": true, "perlu-klarifikasi": true}
+var auditOutcomes = map[string]bool{domain.OutcomeValid: true, domain.OutcomeInvalid: true, domain.OutcomeClarification: true}
+
+// Roles as set by the trusted Next.js proxy from the signed session (see lib/akses.ts).
+const (
+	roleVerifikator = "verifikator"
+	roleTKMKB       = "tkmkb"
+)
+
+var reasonCategories = map[string]bool{"": true, "clinical": true, "equipment": true, "staff": true}
 
 func validateAudit(referralID, reviewer, outcome, note string) error {
 	if !idRe.MatchString(referralID) || !auditOutcomes[outcome] ||

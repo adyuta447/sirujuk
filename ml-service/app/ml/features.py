@@ -4,7 +4,7 @@ from collections import Counter, deque
 import numpy as np
 import pandas as pd
 
-from app.ml.synth import N_NS
+from app.ml.diagnosis import N_NS
 
 MIN_NS, MIN_HHI, W_NS, W_HHI, K_SHRINK = 20, 30, 90, 180, 10
 
@@ -13,7 +13,7 @@ def doctor_history(df: pd.DataFrame) -> pd.DataFrame:
     """Adds ns90, n90, hhi180, n180, dom_dest per referral (rolling, excluding the referral itself)."""
     out = np.zeros((len(df), 5))
     for _, g in df.groupby("doc", sort=False):
-        idx, days, ns, dest = g.index.values, g.day.values, (g.diag.values < N_NS), g.dest.values
+        idx, days, ns, dest = g.index.values, g.day.values, (g.diag.values >= 0) & (g.diag.values < N_NS), g.dest.values
         q90, q180, c180, ns_sum = deque(), deque(), Counter(), 0
         for k, i in enumerate(idx):
             while q90 and days[q90[0]] <= days[k] - W_NS:

@@ -22,4 +22,4 @@ Endpoint utama: `POST /api/v1/referrals/score`. Skor adalah alat bantu prioritis
 
 ## Prinsip keputusan
 
-Go menggabungkan sinyal rule-based dan hasil ML menjadi skor 0–100, lalu mengklasifikasikan `green`, `yellow`, atau `red`. Keputusan akhir untuk kasus berisiko tetap berada pada verifikator/TKMKB melalui proses human-in-the-loop.
+Skor 0–100 dan kategori `green`, `yellow`, `red` dihitung ML service (ambang p80/p95 ada di model); Go menyiapkan masukannya (fitur dokter dari batch, snapshot SISRUTE), meneruskan hasilnya, dan menyimpannya beserta masukan itu untuk banding. Keputusan akhir untuk kasus berisiko tetap berada pada verifikator/TKMKB melalui proses human-in-the-loop.

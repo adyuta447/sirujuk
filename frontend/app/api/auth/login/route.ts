@@ -3,7 +3,7 @@ import { asalSama } from "../../../../lib/auth/origin";
 import { RUMAH } from "../../../../lib/akses";
 import { COOKIE, TTL_DETIK, opsiCookie, rahasia } from "../../../../lib/auth/session";
 import { buatToken } from "../../../../lib/auth/token";
-import { verifikasi } from "../../../../lib/auth/users";
+import { TerlaluBanyak, verifikasi } from "../../../../lib/auth/users";
 
 // shortcut: pembatas percobaan di memori satu instance; pindahkan ke Redis bila server lebih dari satu.
 const percobaan = new Map<string, { n: number; reset: number }>();
@@ -43,14 +43,16 @@ export async function POST(request: Request) {
   }
   if (!email || !sandi) return galat(400, "INVALID_REQUEST", "Email dan kata sandi wajib diisi.");
 
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "lokal";
-  const kunci = `${ip}|${email.toLowerCase()}`;
+  // Kunci hanya email: header IP (x-forwarded-for) bisa dipalsukan klien di luar proxy tepercaya, sehingga kunci
+  // berbasis IP bisa dilewati dengan mengganti nilainya. Batas yang berlaku lintas instance ada di backend (Redis).
+  const kunci = email.toLowerCase();
   if (tertahan(kunci)) return galat(429, "TOO_MANY_ATTEMPTS", "Terlalu banyak percobaan. Coba lagi 15 menit lagi.");
 
   let user;
   try {
     user = await verifikasi(email, sandi);
-  } catch {
+  } catch (e) {
+    if (e instanceof TerlaluBanyak) return galat(429, "TOO_MANY_ATTEMPTS", "Terlalu banyak percobaan. Coba lagi 15 menit lagi.");
     return galat(503, "AUTH_UNAVAILABLE", "Layanan login sedang tidak tersedia. Coba lagi sebentar.");
   }
   if (!user) {

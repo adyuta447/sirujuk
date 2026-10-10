@@ -15,7 +15,7 @@ import {
   LogOut,
   FilePlus2,
 } from "lucide-react";
-import Image from "next/image";
+import { BrandMark } from "../atoms/BrandMark";
 import { SearchBar } from "../molecules/SearchBar";
 import type { View } from "../../lib/sirujuk-data";
 import { NAMA_PERAN, bolehAkses } from "../../lib/akses";
@@ -77,7 +77,7 @@ export const Sidebar = ({
       type="button"
       onClick={onClose}
       aria-label="Tutup menu"
-      className="lg:hidden absolute top-4 right-4 w-12 h-12 flex items-center justify-center rounded-4xl hover:bg-[#2C4E78]"
+      className="lg:hidden absolute top-5 right-5 w-12 h-12 flex items-center justify-center rounded-4xl text-[#0E1B2A] hover:bg-[#EEF1F5]"
     >
       <X size={18} />
     </button>
@@ -85,15 +85,9 @@ export const Sidebar = ({
       type="button"
       onClick={onHome}
       aria-label="Kembali ke halaman utama"
-      className="px-5 pt-6 pb-5 pr-20 lg:pr-5 flex items-center gap-2.5 text-left border-b border-[#2C4E78]"
+      className="bg-[#F8FAFC] px-5 pt-6 pb-6 pr-20 lg:pr-5 flex items-center text-left rounded-tr-3xl"
     >
-      <Image
-        src="/sirujuk_logoweb.png"
-        alt="SIRUJUK Anti Fraud"
-        width={1047}
-        height={306}
-        className="w-full h-auto rounded-3xl bg-white px-2 py-1"
-      />
+      <BrandMark variant="light" shield={64} />
     </button>
     <div className="px-5 pt-5 pb-2 text-[11px] font-bold tracking-widest uppercase text-[#C9D6E6]">
       Menu utama

@@ -4,10 +4,13 @@ export type RiskDecision = {
   score: number;
   decision: Decision;
   requires_human_review: boolean;
-  signals: { nlp_similarity: number; anomaly_score: number; fraud_score: number };
+  status: "SCORED" | "ACCEPTED_ASYNC"; // ACCEPTED_ASYNC: no score yet, the referral still proceeds
   model_version?: string;
+  reason_codes?: string[];
+  // Backend selalu mengirim objek (termasuk skor dummy: code DUMMY_*).
+  reasons?: { code: string; detail: string; contribution: number }[];
+  signals: { nlp_similarity: number; anomaly_score: number; fraud_score: number };
   signals_source?: string;
-  reasons?: string[];
 };
 
 export type StoredReferral = {

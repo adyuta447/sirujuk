@@ -1,6 +1,7 @@
 package service
 
 import (
+	"math"
 	"strings"
 
 	"github.com/sirujuk/backend-go/domain"
@@ -8,6 +9,10 @@ import (
 
 // DummyVersion labels every score made without a dataset or ML model.
 const DummyVersion = "dummy-heuristic-v0"
+
+// DummyEngine cuts dummy scores at 50/80. The ML cut-offs (YELLOW_FROM/RED_FROM) are calibrated for a different
+// score distribution, so they must not be applied to these heuristics.
+var DummyEngine = DecisionEngine{YellowFrom: 50, RedFrom: 80}
 
 // knsDemo is a small subset of the 144 KNS list, enough for dummy tiering.
 var knsDemo = map[string]bool{
@@ -17,7 +22,7 @@ var knsDemo = map[string]bool{
 
 // ScoreDummy builds deterministic signals from request fields only.
 // No dataset, no ML call. Same output for same input.
-func (ScoringService) ScoreDummy(req domain.ReferralRequest) (domain.MLScores, float64, []string) {
+func ScoreDummy(req domain.ReferralRequest) domain.MLScores {
 	code := strings.ToUpper(strings.TrimSpace(req.DiagnosisCode))
 	knsHit := knsDemo[code]
 
@@ -62,23 +67,28 @@ func (ScoringService) ScoreDummy(req domain.ReferralRequest) (domain.MLScores, f
 		fraud = 0.95
 	}
 
-	signals := domain.MLScores{NLPSimilarity: nlp, AnomalyScore: anomaly, FraudScore: fraud}
-	score := ClampScore(100 * (0.4*fraud + 0.35*anomaly + 0.25*(1-nlp)))
-
-	var reasons []string
+	var reasons []domain.Reason
 	if knsHit {
-		reasons = append(reasons, "Diagnosis "+code+" termasuk keluhan ringan yang umumnya bisa ditangani di FKTP.")
+		reasons = append(reasons, domain.Reason{Code: "DUMMY_KNS_DIAGNOSIS", Detail: "Diagnosis " + code + " termasuk keluhan ringan yang umumnya bisa ditangani di FKTP."})
 	}
 	if flag {
-		reasons = append(reasons, "Alasan menyebut keterbatasan alat atau SDM, perlu cek silang ketersediaan faskes asal.")
+		reasons = append(reasons, domain.Reason{Code: "DUMMY_EQUIPMENT_OR_STAFF", Detail: "Alasan menyebut keterbatasan alat atau SDM, perlu cek silang ketersediaan faskes asal."})
 	}
 	if words < 20 {
-		reasons = append(reasons, "Catatan klinis terlalu singkat dan belum menjelaskan kebutuhan rujukan spesialis.")
+		reasons = append(reasons, domain.Reason{Code: "DUMMY_NARRATIVE_SHORT", Detail: "Catatan klinis terlalu singkat dan belum menjelaskan kebutuhan rujukan spesialis."})
 	}
 	if len(reasons) == 0 {
-		reasons = append(reasons, "Belum ada pola mencurigakan. Rujukan terlihat sesuai prosedur.")
+		reasons = append(reasons, domain.Reason{Code: "DUMMY_NO_PATTERN", Detail: "Belum ada pola mencurigakan. Rujukan terlihat sesuai prosedur."})
 	}
-	return signals, score, reasons
+	return domain.MLScores{
+		NLPSimilarity: nlp, AnomalyScore: anomaly, FraudScore: fraud,
+		Score:   ClampScore(100 * (0.4*fraud + 0.35*anomaly + 0.25*(1-nlp))),
+		Reasons: reasons, ModelVersion: DummyVersion,
+	}
+}
+
+func ClampScore(score float64) float64 {
+	return math.Max(0, math.Min(100, score))
 }
 
 func hashSum(s string) int {

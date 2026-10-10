@@ -1,30 +1,21 @@
 package router
 
 import (
-	"github.com/sirujuk/backend-go/internal/handler"
 	"net/http"
+
+	"github.com/sirujuk/backend-go/internal/handler"
+	"github.com/sirujuk/backend-go/internal/middleware"
 )
 
-func New(h handler.ReferralHandler) http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/v1/referrals/score", h.Score)
-	mux.HandleFunc("GET /api/v1/referrals", h.List)
-	mux.HandleFunc("GET /api/v1/referrals/{id}", h.Get)
-	mux.HandleFunc("POST /api/v1/audits", h.Audit)
-	return cors(mux)
-}
+func New(h handler.ReferralHandler, token, corsOrigin string) http.Handler {
+	api := http.NewServeMux()
+	api.HandleFunc("POST /api/v1/referrals/score", h.Score)
+	api.HandleFunc("GET /api/v1/referrals", h.List)
+	api.HandleFunc("GET /api/v1/referrals/{id}", h.Get)
+	api.HandleFunc("POST /api/v1/audits", h.Audit)
 
-// cors allows the Next.js frontend on another origin to call the API.
-// Demo setup: allow all origins. Tighten for production.
-func cors(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+	root := http.NewServeMux()
+	root.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	root.Handle("/", middleware.Auth(token)(api))
+	return middleware.SecureHeaders(middleware.CORS(corsOrigin)(middleware.Logger(root)))
 }

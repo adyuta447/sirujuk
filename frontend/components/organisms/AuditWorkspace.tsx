@@ -3,22 +3,24 @@ import { useEffect, useState } from "react";
 import { Check, ChevronRight, TriangleAlert } from "lucide-react";
 import { PageHead } from "../atoms/PageHead";
 import { RiskBadge } from "../atoms/RiskBadge";
-import { IllustrationAudit, IllustrationDone } from "../atoms/Illustrations";
+import { Illustration } from "../atoms/Illustration";
 import type { Keputusan, RiskLevel, RujukanCase } from "../../lib/sirujuk-data";
 import { AUDIT_CHECKLIST, NAVY, RISK } from "../../lib/sirujuk-data";
 import { useReferrals } from "../../hooks/useReferral";
 import { submitAudit } from "../../services/referral.service";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatVerifierDate } from "../../lib/formatters";
+import { formatVerifierDate, maskPasien } from "../../lib/formatters";
 
 export const AuditView = ({
   kasus,
   onDone,
   onSelect,
+  onKlarifikasi,
 }: {
   kasus: RujukanCase | null;
   onDone: () => void;
   onSelect: (c: RujukanCase) => void;
+  onKlarifikasi: (c: RujukanCase) => void;
 }) => {
   const [keputusan, setKeputusan] = useState<Keputusan | null>(null);
   const [catatan, setCatatan] = useState("");
@@ -31,36 +33,25 @@ export const AuditView = ({
   const { data: referrals = [], isError } = useReferrals();
 
   useEffect(() => {
-    if (!submitted) return;
+    if (!submitted || keputusan === "perlu-klarifikasi") return;
     const timeout = window.setTimeout(onDone, 2200);
     return () => window.clearTimeout(timeout);
-  }, [onDone, submitted]);
+  }, [keputusan, onDone, submitted]);
 
   if (!kasus) {
     const pending = referrals.filter((c) => c.status !== "selesai");
     return (
-      <div className="scroll-area flex-1 overflow-y-auto p-6 space-y-5">
+      <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
         <PageHead
-          eyebrow="Ruang audit"
           title="Audit"
-          sub="Pilih rujukan yang mau kamu cek lebih lanjut."
+          sub="Pilih rujukan yang akan diperiksa."
+          art="audit"
         />
         {isError && (
           <p role="alert" className="text-sm text-[#9B1C1C]">
-            Rujukan belum bisa dimuat. Coba lagi sebentar.
+            Rujukan gagal dimuat. Coba muat ulang halaman.
           </p>
         )}
-        <div className="bg-white rounded-4xl border border-[#DCE3EC] p-8 flex flex-col items-center text-center">
-          <div className="w-52 h-40">
-            <IllustrationAudit />
-          </div>
-          <div className="font-bold text-[#0E1B2A] mt-2">
-            Belum ada yang dipilih
-          </div>
-          <p className="text-sm text-[#56657A] mt-1 max-w-sm">
-            Pilih rujukan yang masih menunggu keputusan di bawah buat mulai.
-          </p>
-        </div>
         <div className="bg-white rounded-4xl border border-[#DCE3EC] divide-y divide-[#EEF1F5] overflow-hidden">
           {pending.map((c) => (
             <button
@@ -71,14 +62,14 @@ export const AuditView = ({
             >
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm text-[#0E1B2A]">
-                  {c.pasien}
+                  {maskPasien(c.noRujukan)}
                 </div>
                 <div className="text-xs text-[#56657A] truncate">
                   {c.diagnosa}
                 </div>
               </div>
               <RiskBadge level={c.risk} score={c.riskScore} />
-              <ChevronRight size={16} className="text-[#8A98AC]" />
+              <ChevronRight size={16} className="text-[#64748B]" />
             </button>
           ))}
         </div>
@@ -88,17 +79,32 @@ export const AuditView = ({
 
   if (submitted) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-10 text-center">
+      <div role="status" className="flex-1 flex flex-col items-center justify-center p-10 text-center">
         <div className="w-52 h-40 mb-4">
-          <IllustrationDone />
+          <Illustration name="selesai" className="w-full h-full" />
         </div>
-        <h2 className="text-2xl font-extrabold text-[#0E1B2A] mb-2">
-          Sip, sudah tersimpan!
+        <h2 className="text-3xl font-extrabold tracking-tight text-[#0E1B2A] mb-2">
+          Keputusan tersimpan
         </h2>
         <p className="text-sm text-[#56657A] max-w-xs">
-          Keputusan untuk {kasus.noRujukan} sudah kami catat. Balik ke antrean,
-          ya.
+          Keputusan untuk {kasus.noRujukan} sudah dicatat.
         </p>
+        {keputusan === "perlu-klarifikasi" && (
+          <button
+            type="button"
+            onClick={() => onKlarifikasi(kasus)}
+            className="mt-4 min-h-11 px-5 py-3 text-white font-semibold rounded-4xl bg-[#1E3A5F] hover:bg-[#16304F]"
+          >
+            Kirim permintaan klarifikasi ke dokter
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onDone}
+          className="mt-3 min-h-11 px-5 py-2 text-sm font-semibold text-[#56657A]"
+        >
+          Kembali ke antrean
+        </button>
       </div>
     );
   }
@@ -132,36 +138,24 @@ export const AuditView = ({
   const canSubmit = keputusan && catatan.trim().length > 0;
 
   return (
-    <div className="scroll-area flex-1 overflow-y-auto p-6">
-      <div className="max-w-2xl space-y-5">
+    <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="space-y-5">
         <PageHead
-          eyebrow="Ruang audit"
           title="Cek rujukan"
-          sub={`${kasus.pasien} (${kasus.noRujukan})`}
+          sub={`${maskPasien(kasus.noRujukan)} (${kasus.noRujukan})`}
         />
 
-        <div
-          className="rounded-4xl px-4 py-3 flex items-start gap-2.5 text-sm"
-          style={{ backgroundColor: RISK.sedang.soft, color: RISK.sedang.text }}
-        >
-          <TriangleAlert size={16} className="mt-0.5 shrink-0" />
-          <span>
-            <span className="font-bold">
-              Kami bantu tunjukkan prioritasnya.
-            </span>{" "}
-            Keputusan akhir tetap di tangan kamu, bukan di skor risikonya.
-          </span>
-        </div>
-
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_23.75rem] gap-5 items-start">
+          <div className="space-y-5">
         <div className="bg-white rounded-4xl border border-[#DCE3EC] p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="font-bold text-sm text-[#0E1B2A]">
-              Checklist dulu
+              Daftar periksa
             </div>
             <span
               className="text-xs font-semibold"
               style={{
-                color: checks.every(Boolean) ? RISK.rendah.text : "#8A98AC",
+                color: checks.every(Boolean) ? RISK.rendah.text : "#64748B",
               }}
             >
               {checks.filter(Boolean).length} dari {AUDIT_CHECKLIST.length}{" "}
@@ -172,7 +166,7 @@ export const AuditView = ({
             {AUDIT_CHECKLIST.map((item, i) => (
               <label
                 key={i}
-                className="flex items-center gap-3 py-1.5 cursor-pointer"
+                className="flex items-center gap-3 min-h-11 cursor-pointer rounded-4xl focus-within:outline focus-within:outline-2 focus-within:outline-[#1E3A5F]"
               >
                 <span
                   className="w-5 h-5 rounded-4xl border-2 flex items-center justify-center shrink-0 transition-colors"
@@ -212,10 +206,10 @@ export const AuditView = ({
             return (
               <label
                 key={opt.value}
-                className="flex items-start gap-3.5 p-4 rounded-4xl border-2 cursor-pointer transition-colors"
+                className="flex items-start gap-3.5 p-4 rounded-4xl border-2 cursor-pointer transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#1E3A5F]"
                 style={
                   on
-                    ? { backgroundColor: c.soft, borderColor: c.solid }
+                    ? { backgroundColor: c.solid, borderColor: c.solid }
                     : { backgroundColor: "#fff", borderColor: "#DCE3EC" }
                 }
               >
@@ -228,20 +222,20 @@ export const AuditView = ({
                 />
                 <span
                   className="mt-0.5 w-5 h-5 rounded-4xl border-2 shrink-0 flex items-center justify-center"
-                  style={{ borderColor: on ? c.solid : "#C4CFDC" }}
+                  style={{ borderColor: on ? "#fff" : "#C4CFDC" }}
                 >
                   {on && (
                     <span
                       className="w-2.5 h-2.5 rounded-4xl"
-                      style={{ backgroundColor: c.solid }}
+                      style={{ backgroundColor: "#fff" }}
                     />
                   )}
                 </span>
                 <div>
-                  <div className="font-bold text-sm text-[#0E1B2A]">
+                  <div className="font-bold text-sm" style={{ color: on ? "#fff" : "#0E1B2A" }}>
                     {opt.label}
                   </div>
-                  <div className="text-xs text-[#56657A] mt-0.5">
+                  <div className="text-xs mt-0.5" style={{ color: on ? "#fff" : "#56657A" }}>
                     {opt.desc}
                   </div>
                 </div>
@@ -255,21 +249,66 @@ export const AuditView = ({
             htmlFor="catatan-verifikator"
             className="text-sm font-bold text-[#0E1B2A]"
           >
-            Catatan kamu <span style={{ color: RISK.tinggi.solid }}>*</span>
+            Catatan alasan <span style={{ color: RISK.tinggi.solid }}>*</span>
           </label>
           <textarea
             id="catatan-verifikator"
             aria-required="true"
             value={catatan}
             onChange={(e) => setCatatan(e.target.value)}
-            placeholder="Tulis alasan keputusan atau langkah berikutnya di sini."
-            className="w-full h-32 px-4 py-3 text-sm text-[#0E1B2A] bg-white border border-[#DCE3EC] rounded-4xl resize-none focus:outline-none focus:border-[#1E3A5F] placeholder:text-[#8A98AC]"
+            placeholder="Tulis alasan keputusan atau langkah berikutnya."
+            className="w-full h-32 px-4 py-3 text-sm text-[#0E1B2A] bg-white border border-[#DCE3EC] rounded-4xl resize-none focus:outline-none focus:border-[#1E3A5F] placeholder:text-[#64748B]"
           />
+        </div>
+
+          </div>
+          <aside className="space-y-5 lg:sticky lg:top-0">
+        <div className="bg-white rounded-4xl border border-[#DCE3EC] p-5 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="font-bold text-[#0E1B2A]">Ringkasan rujukan</div>
+            <RiskBadge level={kasus.risk} score={kasus.riskScore} />
+          </div>
+          <dl className="space-y-3 text-sm">
+            {[
+              ["Diagnosis", kasus.diagnosa],
+              ["Dari", kasus.fasalOrigin],
+              ["Dirujuk ke", kasus.fasalTujuan],
+              ["Dokter", kasus.dokter],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <dt className="text-xs text-[#56657A]">{k}</dt>
+                <dd className="font-semibold text-[#0E1B2A]">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          {kasus.alasan.length > 0 && (
+            <div className="pt-4 border-t border-[#EEF1F5]">
+              <div className="text-xs text-[#56657A] mb-2">Alasan ditandai</div>
+              <ul className="space-y-2 text-sm text-[#0E1B2A] list-disc pl-4">
+                {kasus.alasan.map((a) => (
+                  <li key={a.judul}>{a.judul}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <div
+          className="rounded-4xl px-4 py-3 flex items-start gap-2.5 text-sm"
+          style={{ backgroundColor: RISK.sedang.solid, color: "#FFFFFF" }}
+        >
+          <TriangleAlert size={16} className="mt-0.5 shrink-0" />
+          <span>
+            <span className="font-bold">
+              Skor hanya menunjukkan prioritas.
+            </span>{" "}
+            Keputusan akhir ada pada kamu, bukan pada skor.
+          </span>
         </div>
 
         <div
           className="flex items-center gap-3 px-4 py-3 rounded-4xl text-sm"
-          style={{ backgroundColor: "#E7ECF3" }}
+          style={{ backgroundColor: "#fff", border: "1px solid #DCE3EC" }}
         >
           <div
             className="w-8 h-8 rounded-4xl flex items-center justify-center text-white text-xs font-bold"
@@ -280,7 +319,7 @@ export const AuditView = ({
           <div>
             <div className="font-semibold text-[#0E1B2A]">Adit Suryanto</div>
             <div className="text-xs text-[#56657A]">
-              Senior verifier, {formatVerifierDate(new Date())}
+              Verifikator senior, {formatVerifierDate(new Date())} WIB
             </div>
           </div>
         </div>
@@ -290,7 +329,7 @@ export const AuditView = ({
             Gagal menyimpan ke backend, keputusan tetap tercatat lokal untuk demo.
           </p>
         )}
-        <div className="flex gap-3 pb-2">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 pb-2">
           <button
             type="button"
             onClick={() => {
@@ -301,18 +340,20 @@ export const AuditView = ({
                 .finally(() => setSubmitted(true));
             }}
             disabled={!canSubmit}
-            className="flex-1 py-3.5 text-white font-bold rounded-4xl transition-colors flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ backgroundColor: NAVY }}
+            className="flex-1 py-3.5 text-white font-bold rounded-4xl transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+            style={{ backgroundColor: canSubmit ? NAVY : "#9AA8BA" }}
           >
-            <Check size={18} /> Simpan keputusan
+            <Check size={18} /> Simpan keputusanku
           </button>
           <button
             type="button"
             onClick={onDone}
-            className="px-5 py-3.5 border border-[#DCE3EC] text-[#56657A] font-semibold rounded-4xl hover:bg-white transition-colors"
+            className="px-5 py-3.5 border border-[#DCE3EC] bg-white text-[#56657A] font-semibold rounded-4xl hover:bg-[#F8FAFC] transition-colors"
           >
-            Nanti dulu
+            Batal
           </button>
+        </div>
+          </aside>
         </div>
       </div>
     </div>

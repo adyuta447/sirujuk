@@ -1,9 +1,9 @@
 type Status = "menunggu" | "sedang-diaudit" | "selesai";
 
 const statuses = {
-  menunggu: { label: "Masih antre", bg: "#8A98AC" },
-  "sedang-diaudit": { label: "Lagi dicek", bg: "#1E3A5F" },
-  selesai: { label: "Sudah beres", bg: "#0E1B2A" },
+  menunggu: { label: "Menunggu", bg: "#64748B" },
+  "sedang-diaudit": { label: "Sedang dicek", bg: "#1E3A5F" },
+  selesai: { label: "Selesai", bg: "#0E1B2A" },
 } as const;
 
 export function StatusBadge({ status }: { status: Status }) {

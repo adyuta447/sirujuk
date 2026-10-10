@@ -2,34 +2,47 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"log"
+
 	"github.com/sirujuk/backend-go/domain"
 	"github.com/sirujuk/backend-go/internal/repository"
 )
 
 type DecisionService struct {
-	ML     MLServiceClient
-	Engine DecisionEngine
-	Scorer ScoringService
-	UseML  bool
-	Store  *repository.MemoryStore
+	ML         MLServiceClient
+	Engine     DecisionEngine
+	Cache      Cache                         // doctor features from the nightly batch; nil = cold start
+	Facilities repository.FacilityRepository // SISRUTE availability of the origin faskes
+	Dummy      bool                          // DUMMY_SCORING: heuristic scores, no ML call; demo only (main.go refuses it in production)
 }
 
 func (s DecisionService) Evaluate(ctx context.Context, request domain.ReferralRequest) (domain.RiskDecision, error) {
-	if request.ReferralID == "" {
-		request.ReferralID = "r-dummy"
+	if s.Dummy {
+		d := DummyEngine.Decide(request.ReferralID, ScoreDummy(request))
+		d.SignalsSource = "backend-dummy"
+		return d, nil
 	}
-	if !s.UseML {
-		signals, score, reasons := s.Scorer.ScoreDummy(request)
-		decision := s.Engine.Decide(request.ReferralID, score, signals)
-		decision.ModelVersion = DummyVersion
-		decision.SignalsSource = "backend-dummy"
-		decision.Reasons = reasons
-		return decision, nil
+	c := request.Context // fallback when batch features / SISRUTE snapshot are unavailable
+	in := domain.ScoringInput{
+		Referral: request, SisruteAvailable: c.SisruteAvailable, SisruteAgeDays: c.SisruteAgeDays,
+		Doctor: domain.DoctorFeatures{Stratum: c.Stratum, N90: c.N90, NS90: c.NS90, N180: c.N180, HHI180: c.HHI180, ToDominantDest: c.ToDominantDest, DestIsNearest: c.DestIsNearest},
 	}
-	signals, err := s.ML.Predict(ctx, request)
+	if s.Cache != nil {
+		if b, err := s.Cache.Get(ctx, "doctor:"+request.DoctorID); err == nil && b != nil {
+			if err := json.Unmarshal(b, &in.Doctor); err != nil {
+				log.Printf("doctor features unreadable for %s, cold start", request.DoctorID)
+			}
+		}
+	}
+	if s.Facilities != nil {
+		if avail, age, err := s.Facilities.Availability(ctx, request.OriginFacilityID); err == nil {
+			in.SisruteAvailable, in.SisruteAgeDays = avail, age
+		}
+	}
+	signals, err := s.ML.Predict(ctx, in)
 	if err != nil {
 		return domain.RiskDecision{}, err
 	}
-	score := s.Scorer.Score(signals)
-	return s.Engine.Decide(request.ReferralID, score, signals), nil
+	return s.Engine.Decide(request.ReferralID, signals), nil
 }

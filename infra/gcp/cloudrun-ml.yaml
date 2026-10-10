@@ -1,9 +1,21 @@
+# Rendered by .github/workflows/deploy.yml (envsubst) and applied with `gcloud run services replace`.
+# Private: no allUsers invoker. Only sirujuk-backend's service account holds run.invoker (see setup.sh).
 apiVersion: serving.knative.dev/v1
 kind: Service
-metadata: {name: sirujuk-ml}
+metadata:
+  name: sirujuk-ml
 spec:
   template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "${ML_MIN_INSTANCES}" # 0 = free when idle, but a cold start misses the 300 ms budget (backend fails open to async)
+        autoscaling.knative.dev/maxScale: "2" # caps the bill under abuse
+        run.googleapis.com/startup-cpu-boost: "true"
     spec:
+      serviceAccountName: sirujuk-ml@${PROJECT}.iam.gserviceaccount.com # no roles
+      containerConcurrency: 10
+      timeoutSeconds: 10
       containers:
-        - image: REGION-docker.pkg.dev/PROJECT/sirujuk/ml-service:TAG
+        - image: ${IMAGE}
           ports: [{containerPort: 8000}]
+          resources: {limits: {cpu: "1", memory: 1Gi}}

@@ -1,8 +1,5 @@
 import type { ReactNode } from "react";
 
-const NAVY = "#1E3A5F";
-const NAVY_HOVER = "#16304F";
-
 export function PrimaryButton({
   children,
   onClick,
@@ -21,14 +18,7 @@ export function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex items-center justify-center gap-2 text-white font-semibold rounded-4xl transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
-      style={{ backgroundColor: NAVY }}
-      onMouseEnter={(event) => {
-        event.currentTarget.style.backgroundColor = NAVY_HOVER;
-      }}
-      onMouseLeave={(event) => {
-        event.currentTarget.style.backgroundColor = NAVY;
-      }}
+      className={`inline-flex items-center justify-center gap-2 min-h-11 text-white font-semibold rounded-4xl bg-[#1E3A5F] hover:bg-[#16304F] transition-colors disabled:cursor-not-allowed disabled:bg-[#9AA8BA] ${className}`}
     >
       {children}
     </button>

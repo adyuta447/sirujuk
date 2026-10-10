@@ -91,11 +91,8 @@ func loadFacilities() (origins []string, originWilayah map[string]string, dests 
 
 // Run fills the store with n deterministic dummy referrals.
 // Tiering: first 60% green, next 26% yellow, rest red.
-func Run(store *repository.MemoryStore, scorer service.ScoringService, engine service.DecisionEngine, n int) {
-	if n <= 0 {
-		n = 50
-	}
-	if store.Count() > 0 {
+func Run(store *repository.MemoryStore, n int) {
+	if n <= 0 || store.Count() > 0 {
 		return
 	}
 	rng := rand.New(rand.NewSource(42))
@@ -133,17 +130,14 @@ func Run(store *repository.MemoryStore, scorer service.ScoringService, engine se
 			DoctorID:              doctors[i%len(doctors)],
 			OriginFacilityID:      origin,
 			OriginWilayah:         originWilayah[origin],
-			DestinationFacilityID:   dests[i%len(dests)],
+			DestinationFacilityID: dests[i%len(dests)],
 			DiagnosisCode:         dx,
 			Reason:                reason,
 			ClinicalNarrative:     narrative,
 			IssuedAt:              time.Now().AddDate(0, 0, -(i % 30)),
 		}
-		signals, score, reasons := scorer.ScoreDummy(req)
-		decision := engine.Decide(id, score, signals)
-		decision.ModelVersion = service.DummyVersion
+		decision := service.DummyEngine.Decide(id, service.ScoreDummy(req))
 		decision.SignalsSource = "backend-dummy"
-		decision.Reasons = reasons
 		store.Upsert(req, decision)
 	}
 }

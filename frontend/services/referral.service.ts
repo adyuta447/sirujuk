@@ -1,7 +1,8 @@
 import { api } from "./api";
 import { CASES } from "../lib/sirujuk-data";
 import type { RujukanCase, RiskLevel } from "../lib/sirujuk-data";
-import type { StoredReferral } from "../types/referral";
+import type { RiskDecision, StoredReferral } from "../types/referral";
+import { validateReferral, type ReferralInput } from "../lib/validate";
 
 const WILAYAH_OF: Record<string, string> = {
   "fktp-cilincing": "Jakarta Utara",
@@ -31,7 +32,7 @@ export function mapStored(item: StoredReferral): RujukanCase {
   const h = hashSum(id);
   const risk = riskOf(decision.decision, decision.score);
   const score = Math.round(decision.score);
-  const reasons = (decision.reasons ?? []).map((judul, i) => ({
+  const reasons = (decision.reasons ?? []).map((r) => r.detail || r.code).map((judul, i) => ({
     judul,
     penjelasan: i === 0 ? request.clinical_narrative || request.reason : request.reason,
   }));
@@ -67,6 +68,17 @@ export async function getReferrals(): Promise<RujukanCase[]> {
 export function submitAudit(referralId: string, outcome: string, note: string) {
   return api("/audits", {
     method: "POST",
-    body: JSON.stringify({ referral_id: referralId, reviewer: "verifikator", outcome, note }),
+    body: JSON.stringify({ referral_id: referralId, outcome, note }),
+  });
+}
+
+export async function scoreReferral(input: ReferralInput): Promise<RiskDecision> {
+  const error = validateReferral(input);
+  if (error) throw new Error(error);
+  const { referral_no, ...rest } = input;
+  return api<RiskDecision>("/referrals/score", {
+    method: "POST",
+    headers: { "Idempotency-Key": referral_no },
+    body: JSON.stringify({ ...rest, issued_at: new Date().toISOString() }),
   });
 }

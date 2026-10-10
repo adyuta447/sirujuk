@@ -1,4 +1,6 @@
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+// Browser calls the Next.js proxy (same origin). The backend URL and token stay server-side.
+// Fixed same-origin path: no env override, so the browser can never be pointed at another host.
+const baseURL = "/api/v1";
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${baseURL}${path}`, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
   if (!response.ok) {

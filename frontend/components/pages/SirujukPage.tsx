@@ -17,6 +17,7 @@ import { RujukanMasuk } from "../organisms/ReferralList";
 import { QueueView } from "../organisms/ReviewQueue";
 import { SkorBaru } from "../organisms/SkorBaru";
 import { useFilterStore } from "../../store/useFilterStore";
+import { useReferrals } from "../../hooks/useReferral";
 import { CASES, slugDokter } from "../../lib/sirujuk-data";
 import type { RujukanCase, View } from "../../lib/sirujuk-data";
 
@@ -45,7 +46,9 @@ export default function SirujukPage({
   const { wilayah, setWilayah, query, setQuery } = useFilterStore();
   const [menuOpen, setMenuOpen] = useState(false);
   // Konteks halaman dibaca dari URL (initialId), jadi tombol back dan refresh tetap jalan.
-  const kasus = CASES.find((c) => c.id === initialId) ?? null;
+  // Detail/audit mencari di daftar API (data seed backend), bukan di CASES statis yang hanya berisi 6 contoh.
+  const { data: daftarRujukan, isPending: memuatRujukan } = useReferrals();
+  const kasus = (daftarRujukan ?? CASES).find((c) => c.id === initialId) ?? null;
 
   if (initialView === "landing") {
     return <Landing onEnter={() => router.push("/login")} onDaftar={() => router.push("/daftar")} />;
@@ -104,6 +107,8 @@ export default function SirujukPage({
                 onDokter={keDokter}
                 onKlarifikasi={keKlarifikasi}
               />
+            ) : memuatRujukan ? (
+              <p className="p-6 text-sm">Memuat rujukan…</p>
             ) : (
               <p role="alert" className="p-6 text-sm text-[#9B1C1C]">
                 Rujukan tidak ditemukan. Kembali ke antrean.

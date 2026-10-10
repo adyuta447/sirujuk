@@ -11,8 +11,30 @@ const WILAYAH_OF: Record<string, string> = {
   "klinik-mitra-sehat": "Jakarta Barat",
 };
 
-// Kategori sepenuhnya dari keputusan backend; frontend tidak punya ambang skor sendiri.
-const RISK_DARI_KEPUTUSAN: Record<string, RiskLevel> = { red: "tinggi", yellow: "sedang", green: "rendah" };
+// Direktori ID dokter dummy milik seeder backend (d-001..d-006) ke nama tampilan.
+// Empat pertama sama dengan DOKTER_RISIKO supaya tautan "profil dokter" tetap nyambung.
+const DOKTER_SEED: Record<string, string> = {
+  "d-001": "dr. Andi Pratama",
+  "d-002": "dr. Rini Kusuma",
+  "d-003": "dr. Siti Aminah",
+  "d-004": "dr. Budi Santoso",
+  "d-005": "dr. Maya Putri",
+  "d-006": "dr. Agus Wijaya",
+};
+
+const PESERTA = ["PBI", "Pekerja", "Mandiri"];
+
+function riskOf(decision: string, score: number): RiskLevel {
+  if (decision === "red" || score >= 80) return "tinggi";
+  if (decision === "yellow" || score >= 50) return "sedang";
+  return "rendah";
+}
+
+function hashSum(s: string): number {
+  let total = 0;
+  for (let i = 0; i < s.length; i++) total += s.charCodeAt(i);
+  return total;
+}
 
 export function mapStored(item: StoredReferral): RujukanCase {
   const { request, decision } = item;
@@ -33,7 +55,7 @@ export function mapStored(item: StoredReferral): RujukanCase {
     fasalTujuan: request.destination_facility_id,
     wilayah: request.origin_wilayah || WILAYAH_OF[request.origin_facility_id] || "Belum tercatat",
     diagnosa: request.diagnosis_code,
-    dokter: request.doctor_id,
+    dokter: DOKTER_SEED[request.doctor_id] ?? request.doctor_id,
     tanggal: new Date(request.issued_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
     risk,
     riskScore: score,

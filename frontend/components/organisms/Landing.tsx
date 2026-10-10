@@ -86,7 +86,7 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
   <div className="min-h-screen bg-white text-[#0E1B2A]">
     <header className={`fixed top-0 inset-x-0 z-30 transition-colors ${atas ? "bg-transparent" : "bg-white border-b border-[#DCE3EC]"}`}>
       <div className="max-w-[75rem] mx-auto flex items-center justify-between gap-4 px-5 md:px-10 h-[4.5rem]">
-        <Image src="/sirujuk_logoweb.png" alt="SIRUJUK Anti Fraud" width={1047} height={306} priority className="h-9 w-auto rounded-3xl bg-white px-2 py-1" />
+        <Image src="/sirujuk-logo-long.png" alt="SIRUJUK Anti Fraud" width={829} height={274} priority className={`w-auto h-12 ${atas ? "rounded-2xl bg-white px-3 py-1.5" : ""}`} />
         <nav aria-label="Navigasi halaman" className={`hidden md:flex items-center gap-8 text-sm font-bold ${atas ? "text-white [text-shadow:0_1px_10px_#0E1B2A]" : "text-[#56657A]"}`}>
           {MENU.map(([href, label]) => (
             <a key={href} href={href} className={atas ? "hover:underline underline-offset-4" : "hover:text-[#0E1B2A]"}>{label}</a>

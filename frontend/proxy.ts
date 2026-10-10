@@ -31,6 +31,8 @@ export async function proxy(request: NextRequest) {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
+    // Perkuat skema https di produksi. Di dev (http://localhost) tidak dipakai supaya tidak merusak server lokal.
+    ...(dev ? [] : ["upgrade-insecure-requests"]),
   ].join("; ");
 
   const headers = new Headers(request.headers);

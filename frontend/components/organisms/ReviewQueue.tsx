@@ -9,7 +9,7 @@ import { ClaimBadge } from '../atoms/ClaimBadge'
 import { Illustration } from '../atoms/Illustration'
 import type { RiskLevel, RujukanCase } from '../../lib/sirujuk-data'
 import { NAVY, RISK } from '../../lib/sirujuk-data'
-import { cocokCari, tampilPasien } from "../../lib/formatters";
+import { cocokCari } from "../../lib/formatters";
 import { useReferrals } from '../../hooks/useReferral'
 import { useAuditQueue } from '../../hooks/useAuditQueue'
 
@@ -72,7 +72,7 @@ export const QueueView = ({ onSelect, wilayah, query }: { onSelect: (c: RujukanC
                 <ClaimBadge status={c.claimStatus} />
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0E1B2A] mt-3">{tampilPasien(c)}</h3>
+              <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0E1B2A] mt-3">{c.pasien}</h3>
 
               <p className="text-sm text-[#56657A] mt-1.5 leading-relaxed">
                 {c.usia ? `${c.usia} tahun, ` : ""}dari {c.wilayah}, dirujuk ke <span className="font-semibold text-[#0E1B2A]">{c.fasalTujuan}</span>

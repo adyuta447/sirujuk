@@ -19,8 +19,7 @@ import { ReferralActions } from "./ReferralActions";
 import { ClaimBadge } from "../atoms/ClaimBadge";
 import { useSession } from "../../hooks/useSession";
 import type { RujukanCase } from "../../lib/sirujuk-data";
-import { tampilPasien } from "../../lib/formatters";
-import { NAVY, RISK } from "../../lib/sirujuk-data";
+import { INDIKATOR_DEMO, NAVY, RISK } from "../../lib/sirujuk-data";
 
 export const ReferralDetail = ({
   kasus,
@@ -104,8 +103,7 @@ export const ReferralDetail = ({
             <div className="font-mono text-xs text-[#C9D6E6] mt-1">
               {kasus.noRujukan}
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{tampilPasien(kasus)}</div>
-            <div className="mt-2"><ClaimBadge status={kasus.claimStatus} /></div>
+            <div className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{kasus.pasien}</div>
           </div>
           <div className="text-center">
             <div

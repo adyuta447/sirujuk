@@ -41,6 +41,9 @@ services:
   redis:
     <<: *hardened
     image: redis:7-alpine
+    # /data milik user `redis`; tanpa ini redis jalan sebagai root yang dengan
+    # cap_drop ALL tak bisa menulis ke direktori milik user lain (appendonly gagal).
+    user: "redis"
     command: ["sh", "-c", "exec redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\""]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
@@ -59,6 +62,9 @@ services:
       BACKEND_URL: http://backend-go:8080
       API_TOKEN: ${API_TOKEN:?set API_TOKEN in .env}
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      # Lokal saja (http://localhost): izinkan cookie sesi tanpa flag Secure.
+      # Jangan tiru di produksi; Vercel tetap https + __Host- + Secure.
+      ALLOW_INSECURE_COOKIE: "true"
     ports:
       - "3000:3000"
     depends_on: [backend-go]

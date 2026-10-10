@@ -1,8 +1,33 @@
+# One grouped PR per ecosystem per month (the default is one PR per dependency, checked weekly).
+# Dependabot security updates (vulnerabilities) are separate and still open their own PRs right away.
 version: 2
 updates:
-  - {package-ecosystem: github-actions, directory: /, schedule: {interval: weekly}}
-  - {package-ecosystem: gomod, directory: /backend-go, schedule: {interval: weekly}}
-  - {package-ecosystem: npm, directory: /frontend, schedule: {interval: weekly}}
-  - {package-ecosystem: pip, directory: /ml-service, schedule: {interval: weekly}}
-  - {package-ecosystem: docker, directory: /backend-go, schedule: {interval: weekly}}
-  - {package-ecosystem: docker, directory: /ml-service, schedule: {interval: weekly}}
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1
+    groups: {actions: {patterns: ["*"]}}
+  - package-ecosystem: gomod
+    directory: /backend-go
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1
+    groups: {go: {patterns: ["*"]}}
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1
+    groups: {npm: {patterns: ["*"]}}
+    ignore:
+      - {dependency-name: "*", update-types: ["version-update:semver-major"]}
+  - package-ecosystem: pip
+    directory: /ml-service
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1
+    groups: {python: {patterns: ["*"]}}
+    ignore:
+      # The model is a pickle trained and verified with these exact versions; a bump needs a retrain, not a merge.
+      - {dependency-name: scikit-learn}
+      - {dependency-name: numpy}
+      - {dependency-name: pandas}
+      - {dependency-name: joblib}
+      - {dependency-name: "*", update-types: ["version-update:semver-major"]}

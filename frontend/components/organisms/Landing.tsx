@@ -12,8 +12,8 @@ import { NAVY, RISK } from "../../lib/sirujuk-data";
 
 const FITUR: { judul: string; isi: string; art: IllustrationName; bg: string; teks: string }[] = [
   { judul: "Urutannya jelas", isi: "Rujukan paling berisiko selalu ada di atas antrean. Tidak perlu menebak mulai dari mana.", art: "antrean-kosong", bg: NAVY, teks: "#FFFFFF" },
-  { judul: "Ada alasannya", isi: "Tiap rujukan disertai penjelasan dan angka pembanding, bukan cuma skor.", art: "analitik", bg: RISK.rendah.solid, teks: "#FFFFFF" },
-  { judul: "Kamu yang memutuskan", isi: "Skor hanya penunjuk prioritas. Keputusan akhir dan catatan alasannya ada di tangan verifikator.", art: "audit", bg: RISK.sedang.solid, teks: "#FFFFFF" },
+  { judul: "Ada alasannya", isi: "Tiap rujukan disertai penjelasan dan angka pembanding, bukan cuma skor.", art: "analitik", bg: "#FFFFFF", teks: "#0E1B2A" },
+  { judul: "Kamu yang memutuskan", isi: "Skor hanya penunjuk prioritas. Keputusan akhir dan catatan alasannya ada di tangan verifikator.", art: "audit", bg: "#FFFFFF", teks: "#0E1B2A" },
 ];
 
 
@@ -243,14 +243,35 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
         </h2>
         <div className="grid md:grid-cols-3 gap-5 mt-12">
           {FITUR.map((f) => (
-            <article key={f.judul} className="rounded-4xl p-7 flex flex-col" style={{ backgroundColor: f.bg, color: f.teks }}>
+            <article
+              key={f.judul}
+              className="group rounded-4xl p-7 flex flex-col bg-white border border-[#DCE3EC] text-[#0E1B2A] transition-colors hover:bg-[#1E3A5F] hover:text-white hover:border-[#1E3A5F]"
+            >
               <h3 className="text-2xl font-extrabold tracking-tight">{f.judul}</h3>
               <p className="mt-2 flex-1">{f.isi}</p>
-              <div className="bg-white rounded-4xl mt-7 p-4">
+              <div className="rounded-4xl mt-7 p-4 bg-[#F4F6F9] transition-colors group-hover:bg-white">
                 <Illustration name={f.art} className="w-full h-40" />
               </div>
             </article>
           ))}
+        </div>
+        <div className="mt-5 bg-white rounded-4xl border border-[#DCE3EC] p-6 md:p-8 flex flex-col sm:flex-row items-start gap-6">
+          <Image
+            src="/logo-sisrute-removebg-preview.png"
+            alt="Logo SISRUTE"
+            width={920}
+            height={980}
+            className="w-24 h-auto shrink-0"
+          />
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#64748B]">Sumber data</p>
+            <h3 className="text-2xl font-extrabold tracking-tight mt-1">Memakai data SISRUTE Kemenkes</h3>
+            <p className="mt-2 text-[#56657A] leading-relaxed">
+              Salah satu dari empat indikator skor memeriksa ketersediaan alat dan SDM di faskes asal menurut SISRUTE.
+              Bila rujukan beralasan alat tidak tersedia padahal datanya menunjukkan tersedia, skor menandainya.
+              Data yang sudah lama otomatis berbobot rendah.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -318,14 +339,23 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
     <footer className="bg-[#0E1B2A] text-[#C9D6E6] rounded-t-4xl">
       <div className="max-w-[75rem] mx-auto px-5 md:px-10 py-14 grid gap-10 md:grid-cols-[1.6fr_1fr_1fr_1fr] text-sm">
         <div>
-          <Image
-            src="/sirujuk-logo-long.png"
-            alt="SIRUJUK Anti Fraud"
-            width={829}
-            height={274}
-            className="w-auto h-10"
-            style={{ filter: "brightness(0) invert(1)" }}
-          />
+          <div className="flex items-center gap-5">
+            <Image
+              src="/sirujuk-logo-long.png"
+              alt="SIRUJUK Anti Fraud"
+              width={829}
+              height={274}
+              className="w-auto h-10"
+              style={{ filter: "brightness(0) invert(1)" }}
+            />
+            <Image
+              src="/logo-bpjs.png"
+              alt="BPJS Kesehatan"
+              width={320}
+              height={320}
+              className="w-auto h-10"
+            />
+          </div>
           <p className="mt-3 max-w-xs leading-relaxed">
             Sistem verifikasi rujukan berbasis data untuk Program JKN. Skor risiko hanya penunjuk prioritas, bukan bukti kecurangan.
           </p>

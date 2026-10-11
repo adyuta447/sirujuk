@@ -3,13 +3,13 @@ import { asalSama } from "../../../../lib/auth/origin";
 import { RUMAH } from "../../../../lib/akses";
 import { COOKIE, TTL_DETIK, opsiCookie, rahasia } from "../../../../lib/auth/session";
 import { buatToken } from "../../../../lib/auth/token";
-import { buatPembatas } from "../../../../lib/auth/pembatas";
+import { buatPembatas, kunciPercobaan } from "../../../../lib/auth/pembatas";
 import { TerlaluBanyak, verifikasi } from "../../../../lib/auth/users";
 
 const pembatas = buatPembatas(5, 15 * 60 * 1000, 5000);
 
-const galat = (status: number, code: string, message: string) =>
-  NextResponse.json({ code, message }, { status, headers: { "Cache-Control": "no-store" } });
+const galat = (status: number, code: string, message: string, extra?: Record<string, string>) =>
+  NextResponse.json({ code, message }, { status, headers: { "Cache-Control": "no-store", ...extra } });
 
 export async function POST(request: Request) {
   if (!asalSama(request)) return galat(403, "FORBIDDEN", "Permintaan ditolak.");
@@ -29,10 +29,8 @@ export async function POST(request: Request) {
   }
   if (!email || !sandi) return galat(400, "INVALID_REQUEST", "Email dan kata sandi wajib diisi.");
 
-  // Kunci hanya email: header IP (x-forwarded-for) bisa dipalsukan klien di luar proxy tepercaya, sehingga kunci
-  // berbasis IP bisa dilewati dengan mengganti nilainya. Batas yang berlaku lintas instance ada di backend (Redis).
-  const kunci = email.toLowerCase();
-  if (pembatas.tertahan(kunci)) return galat(429, "TOO_MANY_ATTEMPTS", "Terlalu banyak percobaan. Coba lagi 15 menit lagi.");
+  const kunci = kunciPercobaan(email, request.headers);
+  if (pembatas.tertahan(kunci)) return galat(429, "TOO_MANY_ATTEMPTS", "Terlalu banyak percobaan. Coba lagi 15 menit lagi.", { "Retry-After": String(pembatas.sisaDetik(kunci)) });
 
   let user;
   try {

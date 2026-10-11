@@ -1,7 +1,15 @@
 import { bacaToken } from "./token";
 import type { Sesi } from "./token";
 
-const prod = process.env.NODE_ENV === "production";
+// Cookie Secure + prefix __Host- wajib di produksi (https). Satu-satunya kelonggaran: build produksi lokal di
+// http://localhost (compose), yang butuh ALLOW_INSECURE_COOKIE=true agar browser mau menyimpan cookie. Kelonggaran itu
+// diabaikan di Vercel Production dan bila APP_ENV=production, jadi salah set di sana tidak melemahkan cookie.
+export function cookieAman(env: Record<string, string | undefined> = process.env): boolean {
+  if (env.NODE_ENV !== "production") return false;
+  const longgarLokal = env.ALLOW_INSECURE_COOKIE === "true" && env.VERCEL_ENV !== "production" && env.APP_ENV !== "production";
+  return !longgarLokal;
+}
+const prod = cookieAman();
 // __Host- mengunci cookie ke host ini, path "/", wajib Secure. Di dev (http) tidak bisa dipakai.
 export const COOKIE = prod ? "__Host-sirujuk_session" : "sirujuk_session";
 export const TTL_DETIK = 8 * 60 * 60;

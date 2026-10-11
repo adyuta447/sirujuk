@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useReferrals } from "../../hooks/useReferral";
 import { useSession } from "../../hooks/useSession";
 import { AnalyticsView } from "../organisms/Analytics";
 import { BottomNav, Sidebar, TopBar } from "../organisms/AppShell";
@@ -18,6 +17,7 @@ import { RujukanMasuk } from "../organisms/ReferralList";
 import { QueueView } from "../organisms/ReviewQueue";
 import { SkorBaru } from "../organisms/SkorBaru";
 import { useFilterStore } from "../../store/useFilterStore";
+import { useReferrals } from "../../hooks/useReferral";
 import { DEFAULT_REGION } from "../../lib/constants";
 import { opsiWilayah } from "../../lib/formatters";
 import { slugDokter } from "../../lib/sirujuk-data";
@@ -48,9 +48,9 @@ export default function SirujukPage({
   const { wilayah, setWilayah, query, setQuery } = useFilterStore();
   const [menuOpen, setMenuOpen] = useState(false);
   // Konteks halaman dibaca dari URL (initialId), jadi tombol back dan refresh tetap jalan.
-  // Hanya data dari backend.
-  const { data: daftar = [], isLoading: memuatDaftar } = useReferrals();
-  const kasus = daftar.find((c) => c.id === initialId) ?? null;
+  // Detail dan audit mencari di daftar dari backend. Tidak ada data cadangan.
+  const { data: daftarRujukan, isPending: memuatRujukan } = useReferrals();
+  const kasus = (daftarRujukan ?? []).find((c) => c.id === initialId) ?? null;
 
   if (initialView === "landing") {
     return <Landing onEnter={() => router.push("/login")} onDaftar={() => router.push("/daftar")} />;
@@ -88,7 +88,7 @@ export default function SirujukPage({
         <TopBar
           wilayah={wilayah}
           setWilayah={setWilayah}
-          opsi={opsiWilayah(daftar, wilayah, DEFAULT_REGION)}
+          opsi={opsiWilayah(daftarRujukan ?? [], wilayah, DEFAULT_REGION)}
           query={query}
           setQuery={setQuery}
         />
@@ -109,8 +109,8 @@ export default function SirujukPage({
                 onDokter={keDokter}
                 onKlarifikasi={keKlarifikasi}
               />
-            ) : memuatDaftar ? (
-              <p role="status" className="p-6 text-sm text-[#56657A]">Memuat rujukan…</p>
+            ) : memuatRujukan ? (
+              <p className="p-6 text-sm">Memuat rujukan…</p>
             ) : (
               <p role="alert" className="p-6 text-sm text-[#9B1C1C]">
                 Rujukan tidak ditemukan. Kembali ke antrean.

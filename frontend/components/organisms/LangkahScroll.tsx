@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
+import { motion, useScroll, useSpring } from "framer-motion";
 import Lenis from "lenis";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Illustration } from "../atoms/Illustration";
 import type { IllustrationName } from "../atoms/Illustration";
 
@@ -13,97 +12,126 @@ const LANGKAH: { judul: string; isi: string; art: IllustrationName }[] = [
   { judul: "Hasilnya satu skor", isi: "Skor 0 sampai 100 menentukan rujukan lolos, ditinjau verifikator, atau ditahan untuk audit medis.", art: "selesai-terang" },
 ];
 
-// Satu layar penuh yang di-pin; tiap scroll menggeser ke langkah berikutnya.
+// Geometri garis penghubung: ular longgar di antara kolom teks dan ilustrasi.
+const ALUR =
+  "M 500 0 C 640 200, 360 400, 500 600 C 640 800, 360 1000, 500 1200";
+
+// Mekanik scroll persis dari anchor (WorkflowSection): progress garis via
+// useScroll scrub + useSpring — framer-motion menulis ke DOM langsung tanpa
+// re-render React tiap frame, jadi mulus dua arah; langkah masuk via
+// whileInView spring sekali tampil. Isi dan tema tetap SIRUJUK.
 export const LangkahScroll = () => {
   const root = useRef<HTMLElement>(null);
+  const daftarRef = useRef<HTMLOListElement>(null);
   const [anim, setAnim] = useState(false);
+  const { scrollYProgress } = useScroll({
+    target: daftarRef,
+    offset: ["start center", "end center"],
+  });
+  const halus = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001,
+  });
 
   useEffect(() => {
     setAnim(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
 
+  // Smooth scroll seluruh halaman (jangkar #tetap jalan).
   useEffect(() => {
-    if (!anim || !root.current) return;
-    gsap.registerPlugin(ScrollTrigger);
-    gsap.ticker.lagSmoothing(0);
-    // Smooth scroll untuk seluruh halaman, disinkronkan dengan ScrollTrigger.
+    if (!anim) return;
     const lenis = new Lenis({ lerp: 0.08, anchors: true });
-    lenis.on("scroll", ScrollTrigger.update);
-    const tick = (t: number) => lenis.raf(t * 1000);
-    gsap.ticker.add(tick);
-    const ctx = gsap.context(() => {
-      const track = root.current!.querySelector("[data-track]");
-      const count = LANGKAH.length;
-      const bars = gsap.utils.toArray<HTMLElement>("[data-bar]");
-      gsap.set(bars, { scaleX: 0, transformOrigin: "left center" });
-      gsap.set(bars[0], { scaleX: 1 });
-
-      const tl = gsap.timeline({
-        defaults: { ease: "sine.inOut", force3D: true },
-        scrollTrigger: {
-          trigger: root.current,
-          start: "top top",
-          end: `+=${count * 100}%`,
-          scrub: 0.6,
-          invalidateOnRefresh: true,
-          pin: true,
-        },
-      });
-      tl.to({}, { duration: 0.6 });
-      for (let i = 1; i < count; i++) {
-        tl.to(track, { xPercent: -100 * i, duration: 1 })
-          .to(bars[i], { scaleX: 1, duration: 1 }, "<")
-          .to({}, { duration: 0.6 });
-      }
-    }, root);
-    return () => {
-      gsap.ticker.remove(tick);
-      lenis.destroy();
-      ctx.revert();
+    let raf = 0;
+    const loop = (t: number) => {
+      lenis.raf(t);
+      raf = requestAnimationFrame(loop);
     };
-  }, [anim]);
+    raf = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(raf);
+      lenis.destroy();
+    };
+  }, [anim ]);
+
+  const Item = anim ? motion.li : "li";
 
   return (
     <section
       ref={root}
       id="cara-kerja"
       aria-labelledby="judul-cara-kerja"
-      className={`bg-[#1E3A5F] text-white ${anim ? "h-screen overflow-hidden" : "py-20"}`}
+      className="bg-[#1E3A5F] text-white scroll-mt-20"
     >
-      <div className={anim ? "h-full flex flex-col" : ""}>
-        <div className="w-full max-w-[75rem] mx-auto px-5 md:px-10">
-          <div className={anim ? "pt-24 md:pt-28" : ""}>
-            <h2 id="judul-cara-kerja" className="text-3xl md:text-5xl font-extrabold tracking-tighter leading-[1.05]">
-              Empat pemeriksaan, satu skor.
-            </h2>
-            <div aria-hidden="true" className={`${anim ? "grid" : "hidden"} grid-cols-4 gap-2 mt-5`}>
-              {LANGKAH.map((l) => (
-                <div key={l.judul} className="h-1.5 rounded-4xl bg-[#3A5880] overflow-hidden">
-                  <div data-bar className="h-full w-full bg-white" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+      <div className="w-full max-w-[75rem] mx-auto px-5 md:px-10 py-20 md:py-28">
+        <h2 id="judul-cara-kerja" className="text-3xl md:text-5xl font-extrabold tracking-tighter leading-[1.05]">
+          Empat pemeriksaan, satu skor.
+        </h2>
+        <p className="mt-4 text-lg text-[#D5DFEC] max-w-2xl">
+          Setiap rujukan melewati empat pemeriksaan berurutan sebelum menjadi satu skor.
+        </p>
 
-        <div className={anim ? "flex-1 min-h-0" : ""}>
-          <ol data-track className={anim ? "flex h-full will-change-transform" : "mt-10 space-y-16"}>
-            {LANGKAH.map(({ judul, isi, art }, i) => (
-              <li key={judul} className={anim ? "w-full h-full shrink-0 flex items-center" : ""}>
-                <div className="w-full max-w-[75rem] mx-auto px-5 md:px-10 grid lg:grid-cols-[1.25fr_1fr] gap-6 lg:gap-12 items-stretch lg:min-h-[min(26rem,52vh)]">
-                  <div className="flex flex-col justify-center order-2 lg:order-1">
-                    <div className="flex items-center gap-3 md:gap-5 whitespace-nowrap font-extrabold tracking-tighter leading-[1.05] text-[7vw] md:text-[min(6vw,4.5rem)] lg:text-[min(4.2vw,3.4rem)]">
-                      <span className="text-[#7DB4F5]">{i + 1}</span>
-                      <h3>{judul}</h3>
+        <div className="relative mt-8 md:mt-12">
+          {anim && (
+            <svg
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full hidden md:block pointer-events-none"
+              viewBox="0 0 1000 1200"
+              preserveAspectRatio="none"
+            >
+              <motion.path
+                d={ALUR}
+                fill="none"
+                stroke="#7DB4F5"
+                strokeWidth="3"
+                strokeLinecap="round"
+                style={{ pathLength: halus }}
+              />
+            </svg>
+          )}
+          <ol ref={daftarRef} className={anim ? "" : "mt-10 space-y-16"}>
+            {LANGKAH.map(({ judul, isi, art }, i) => {
+              const kiri = i % 2 === 0;
+              return (
+                <Item
+                  key={judul}
+                  {...(anim
+                    ? {
+                        initial: { opacity: 0, y: 40 },
+                        whileInView: { opacity: 1, y: 0 },
+                        viewport: { once: true, margin: "-100px" },
+                        transition: { type: "spring", stiffness: 80, damping: 20, delay: 0.1 },
+                      }
+                    : {})}
+                  className={anim ? "relative min-h-[72vh] flex items-center py-10" : ""}
+                >
+                  <div className="w-full grid lg:grid-cols-2 gap-10 lg:gap-32 items-center">
+                    <div className={`relative flex flex-col justify-center ${kiri ? "order-2 lg:order-1" : "order-2 lg:order-2"}`}>
+                      <span
+                        aria-hidden="true"
+                        className="absolute -top-14 md:-top-20 -left-2 font-black tracking-tighter leading-none select-none text-[6rem] md:text-[9rem] text-white/10"
+                      >
+                        {i + 1}
+                      </span>
+                      <div className="relative">
+                        <span className="inline-block text-xs font-extrabold uppercase tracking-widest text-[#7DB4F5]">
+                          Langkah {i + 1}
+                        </span>
+                        <h3 className="mt-2 text-3xl md:text-5xl font-extrabold tracking-tighter leading-[1.05]">
+                          {judul}
+                        </h3>
+                        <p className="mt-4 text-lg md:text-xl leading-relaxed text-[#D5DFEC] max-w-xl">
+                          {isi}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-lg md:text-2xl lg:text-3xl leading-snug text-[#D5DFEC] mt-4 lg:mt-6">{isi}</p>
+                    <div className={`relative h-52 md:h-72 lg:h-[22rem] ${kiri ? "order-1 lg:order-2" : "order-1 lg:order-1"}`}>
+                      <Illustration name={art} className="absolute inset-0 w-full h-full" />
+                    </div>
                   </div>
-                  <div className="relative h-44 md:h-64 lg:h-auto order-1 lg:order-2">
-                    <Illustration name={art} className="absolute inset-0 w-full h-full" />
-                  </div>
-                </div>
-              </li>
-            ))}
+                </Item>
+              );
+            })}
           </ol>
         </div>
       </div>

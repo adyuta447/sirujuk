@@ -75,3 +75,16 @@ and the same cuts as the full model:
 - Labels are not audit-biased in the simulation; real labels exist only for audited cases (keep a 0.5-1% random green audit).
 - Embedding is char n-gram TF-IDF (no external service, no narrative leaves the process). Benchmark a self-hosted
   Indonesian sentence model on hand-labelled narratives before the pilot.
+
+## Fewer live layers: the cuts stay, SISRUTE "unknown" is explicit
+With HHI off (no distance data) and SISRUTE not connected, only NS and the narrative score. On the synthetic test set that
+flags 41% of the fraud (all layers: 91%) and red falls to 1.6% of referrals (`train.py` reports it as
+`production_regime_no_hhi_no_sisrute`).
+- **Not re-cut.** Cuts re-derived on the train split under that regime and scored on the test split: keeping 5% red gives
+  red precision 0.36 (now 0.76) and total recall 0.44 (now 0.41); keeping 2% red gives 0.57 and 0.44. Holding claims with
+  a 64% false-hold rate to recover recall of 3 points is the wrong trade, so the full-regime cuts stay. Fewer reds is the
+  safe direction when evidence is thinner; the shortfall is a coverage gap to state in the proposal, not to tune away.
+- **`sisrute_available` is nullable.** null = not connected (flag 0, reason `SISRUTE_UNKNOWN` on equipment/staff referrals,
+  `indicators.sisrute.known = false`); false = checked and the facility has no such equipment (flag 0, no warning). The
+  score is identical for both. The ML service is ready; **the backend must send null instead of false while SISRUTE has
+  no data** (`ScoringInput.SisruteAvailable` is a plain bool today, so production still sends false).

@@ -1,46 +1,40 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Building2, Check, Eye, Menu, Pause, Plus, ShieldCheck, UserCheck, Users, X } from "lucide-react";
+import { ArrowRight, Building2, Check, Eye, Menu, OctagonAlert, ShieldCheck, UserCheck, Users, X } from "lucide-react";
 import { Illustration } from "../atoms/Illustration";
+import { CountUp } from "../atoms/CountUp";
+import { Faq } from "./Faq";
 import { LangkahScroll } from "./LangkahScroll";
 import type { IllustrationName } from "../atoms/Illustration";
 import { NAVY, RISK } from "../../lib/sirujuk-data";
 
 const FITUR: { judul: string; isi: string; art: IllustrationName; bg: string; teks: string }[] = [
   { judul: "Urutannya jelas", isi: "Rujukan paling berisiko selalu ada di atas antrean. Tidak perlu menebak mulai dari mana.", art: "antrean-kosong", bg: NAVY, teks: "#FFFFFF" },
-  { judul: "Ada alasannya", isi: "Tiap rujukan disertai penjelasan dan angka pembanding, bukan cuma skor.", art: "analitik", bg: RISK.rendah.solid, teks: "#FFFFFF" },
-  { judul: "Kamu yang memutuskan", isi: "Skor hanya penunjuk prioritas. Keputusan akhir dan catatan alasannya ada di tangan verifikator.", art: "audit", bg: RISK.sedang.solid, teks: "#FFFFFF" },
+  { judul: "Ada alasannya", isi: "Tiap rujukan disertai penjelasan dan angka pembanding, bukan cuma skor.", art: "analitik", bg: "#FFFFFF", teks: "#0E1B2A" },
+  { judul: "Kamu yang memutuskan", isi: "Skor hanya penunjuk prioritas. Keputusan akhir dan catatan alasannya ada di tangan verifikator.", art: "audit", bg: "#FFFFFF", teks: "#0E1B2A" },
 ];
 
 
-const KATEGORI = [
-  { label: RISK.rendah.label, isi: "Lolos otomatis. Tidak perlu dicek manual.", warna: RISK.rendah.solid, Icon: Check },
-  { label: RISK.sedang.label, isi: "Masuk antrean verifikator dengan prioritas menengah.", warna: RISK.sedang.solid, Icon: Eye },
-  { label: RISK.tinggi.label, isi: "Klaim ditahan sementara sampai audit medis selesai.", warna: RISK.tinggi.solid, Icon: Pause },
+const KATEGORI: { label: string; isi: string; tone: "rendah" | "sedang" | "tinggi"; Icon: typeof Check }[] = [
+  { label: "Lolos", isi: "Lolos otomatis. Tidak perlu dicek manual.", tone: "rendah", Icon: Check },
+  { label: "Perlu Ditinjau", isi: "Masuk antrean verifikator dengan prioritas menengah.", tone: "sedang", Icon: Eye },
+  { label: "Risiko Tinggi", isi: "Klaim ditahan sementara sampai audit medis selesai.", tone: "tinggi", Icon: OctagonAlert },
 ];
 
 const PENGGUNA: { judul: string; isi: string; href: string; art: IllustrationName }[] = [
-  { judul: "Verifikator BPJS", isi: "Kerjakan antrean rujukan dari yang paling berisiko.", href: "/queue", art: "pintasan-analitik" },
-  { judul: "TKMKB", isi: "Periksa kasus merah beserta bukti dan catatan keputusan.", href: "/audit", art: "audit" },
-  { judul: "Dinas Kesehatan", isi: "Pantau pola rujukan tiap wilayah tanpa data pasien.", href: "/dinkes", art: "pintasan-wilayah" },
-  { judul: "Dokter FKTP", isi: "Terima permintaan klarifikasi dan jawab langsung.", href: "/klarifikasi", art: "pintasan-klarifikasi" },
+  { judul: "Verifikator BPJS", isi: "Buka antrean yang sudah diurutkan dari skor tertinggi, periksa, lalu catat keputusan dan alasannya.", href: "/queue", art: "pintasan-analitik" },
+  { judul: "TKMKB", isi: "Bedah kasus merah satu per satu: bukti pendukung, penjelasan dokter, dan riwayat keputusannya.", href: "/audit", art: "audit" },
+  { judul: "Dinas Kesehatan", isi: "Pantau agregat per wilayah, dari porsi risiko tinggi sampai konsentrasi RS tujuan. Tanpa identitas pasien.", href: "/dinkes", art: "pintasan-wilayah" },
+  { judul: "Dokter FKTP", isi: "Terima permintaan klarifikasi atas rujukanmu dan kirim penjelasan sebelum 7 hari kerja.", href: "/klarifikasi", art: "pintasan-klarifikasi" },
 ];
 
-const TANYA = [
-  ["Apakah skor tinggi berarti dokter berbuat curang?", "Tidak. Skor hanya penunjuk prioritas untuk diperiksa. Dokter lebih dulu diminta klarifikasi, dan keputusan akhir ada pada manusia."],
-  ["Siapa yang memutuskan rujukan ditahan?", "Verifikator dan TKMKB. Sistem tidak pernah menahan klaim atau menjatuhkan sanksi sendiri."],
-  ["Bagaimana dengan daerah yang rumah sakitnya terbatas?", "Pola seperti itu bisa punya alasan sah. Ambang skor disesuaikan per wilayah, dan dokter bisa menjelaskannya lewat klarifikasi."],
-  ["Apakah data pasien terlihat?", "Pasien ditampilkan sebagai pseudonim. Dinas Kesehatan hanya melihat angka per wilayah."],
-  ["Apa yang belum bisa dideteksi?", "Pasien yang memalsukan keluhan dan kolusi dokter dengan pasien. Itu masuk pengembangan berikutnya."],
-];
-
-const STAT = [
-  { v: "284 juta", l: "peserta JKN yang dilayani", Icon: Users },
-  { v: "23.758", l: "fasilitas kesehatan tingkat pertama", Icon: Building2 },
-  { v: "4", l: "indikator di balik setiap skor", Icon: ShieldCheck },
-  { v: "0", l: "keputusan yang diambil otomatis", Icon: UserCheck },
+const STAT: { v: number; suffix: string; l: string; Icon: typeof Users }[] = [
+  { v: 284, suffix: " juta", l: "peserta JKN yang dilayani", Icon: Users },
+  { v: 23758, suffix: "", l: "fasilitas kesehatan tingkat pertama", Icon: Building2 },
+  { v: 4, suffix: "", l: "indikator di balik setiap skor", Icon: ShieldCheck },
+  { v: 0, suffix: "", l: "keputusan yang diambil otomatis", Icon: UserCheck },
 ];
 
 const MENU = [
@@ -52,6 +46,8 @@ const MENU = [
 
 export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: () => void }) => {
   const [menu, setMenu] = useState(false);
+  const [statMulai, setStatMulai] = useState(false);
+  const statRef = useRef<HTMLElement>(null);
   const [atas, setAtas] = useState(true);
 
   useEffect(() => {
@@ -71,7 +67,22 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
     };
   }, []);
 
-  // Menu layar penuh (HP): kunci scroll halaman dan tutup dengan Escape.
+  // Counter statistik mulai sekali saat seksi masuk viewport.
+  useEffect(() => {
+    const el = statRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setStatMulai(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.3 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   useEffect(() => {
     if (!menu) return;
     const tutup = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
@@ -84,10 +95,18 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
   }, [menu]);
   return (
   <div className="min-h-screen bg-white text-[#0E1B2A]">
-    <header className={`fixed top-0 inset-x-0 z-30 transition-colors ${atas ? "bg-transparent" : "bg-white border-b border-[#DCE3EC]"}`}>
+    <header className={`fixed top-0 inset-x-0 z-30 transition-colors duration-300 ${atas ? "bg-transparent" : "bg-white border-b border-[#DCE3EC]"}`}>
       <div className="max-w-[75rem] mx-auto flex items-center justify-between gap-4 px-5 md:px-10 h-[4.5rem]">
-        <Image src="/sirujuk_logoweb.png" alt="SIRUJUK Anti Fraud" width={1047} height={306} priority className="h-9 w-auto rounded-3xl bg-white px-2 py-1" />
-        <nav aria-label="Navigasi halaman" className={`hidden md:flex items-center gap-8 text-sm font-bold ${atas ? "text-white [text-shadow:0_1px_10px_#0E1B2A]" : "text-[#56657A]"}`}>
+        <Image
+          src="/sirujuk-logo-long.png"
+          alt="SIRUJUK Anti Fraud"
+          width={829}
+          height={274}
+          priority
+          className="w-auto h-11 transition-[filter] duration-300"
+          style={atas ? { filter: "brightness(0) invert(1)" } : undefined}
+        />
+        <nav aria-label="Navigasi halaman" className={`hidden md:flex items-center gap-8 text-sm font-bold transition-colors duration-300 ${atas ? "text-white [text-shadow:0_1px_10px_#0E1B2A]" : "text-[#56657A]"}`}>
           {MENU.map(([href, label]) => (
             <a key={href} href={href} className={atas ? "hover:underline underline-offset-4" : "hover:text-[#0E1B2A]"}>{label}</a>
           ))}
@@ -96,14 +115,14 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
           <button
             type="button"
             onClick={onDaftar}
-            className={`hidden sm:inline-flex min-h-11 items-center px-4 rounded-4xl text-sm font-bold ${atas ? "text-white [text-shadow:0_1px_10px_#0E1B2A]" : "text-[#1E3A5F]"}`}
+            className={`hidden sm:inline-flex min-h-11 items-center px-4 rounded-4xl text-sm font-bold transition-colors duration-300 ${atas ? "text-white [text-shadow:0_1px_10px_#0E1B2A]" : "text-[#1E3A5F]"}`}
           >
             Daftar
           </button>
           <button
             type="button"
             onClick={onEnter}
-            className="min-h-11 px-6 rounded-4xl text-sm font-bold text-white bg-[#1E3A5F] hover:bg-[#16304F] transition-colors"
+            className={`min-h-11 px-6 rounded-4xl text-sm font-bold transition-colors duration-300 ${atas ? "bg-white text-[#1E3A5F] hover:bg-[#E7ECF3]" : "text-white bg-[#1E3A5F] hover:bg-[#16304F]"}`}
           >
             Masuk
           </button>
@@ -184,7 +203,7 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
             </button>
             <a
               href="#cara-kerja"
-              className="min-h-12 inline-flex items-center px-7 rounded-4xl font-bold bg-[#1E3A5F] text-white border-2 border-white hover:bg-[#16304F] transition-colors"
+              className="min-h-12 inline-flex items-center px-7 rounded-4xl font-bold text-white bg-[#1E3A5F] hover:bg-[#16304F] transition-colors"
             >
               Lihat cara kerja
             </a>
@@ -203,13 +222,15 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
         </div>
       </section>
 
-      <section aria-label="SIRUJUK dalam angka" className="relative z-10 max-w-[75rem] mx-auto px-5 md:px-10 lg:-mt-16">
+      <section ref={statRef} aria-label="SIRUJUK dalam angka" className="relative z-10 max-w-[75rem] mx-auto px-5 md:px-10 lg:-mt-16">
         <h2 className="sr-only">SIRUJUK dalam angka</h2>
         <dl className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-8 lg:pt-0">
-          {STAT.map(({ v, l, Icon }) => (
+          {STAT.map(({ v, suffix, l, Icon }, i) => (
             <div key={l} className="bg-white rounded-4xl border border-[#DCE3EC] p-5 md:p-6">
               <Icon aria-hidden="true" size={28} className="text-[#1E3A5F]" />
-              <dt className="text-3xl md:text-5xl font-extrabold tracking-tight text-[#0E1B2A] mt-4">{v}</dt>
+              <dt className="text-3xl md:text-5xl font-extrabold tracking-tight text-[#0E1B2A] mt-4 tabular-nums">
+                <CountUp target={v} suffix={suffix} mulai={statMulai} delay={i * 150} />
+              </dt>
               <dd className="text-sm text-[#56657A] mt-1">{l}</dd>
             </div>
           ))}
@@ -222,72 +243,84 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
         </h2>
         <div className="grid md:grid-cols-3 gap-5 mt-12">
           {FITUR.map((f) => (
-            <article key={f.judul} className="rounded-4xl p-7 flex flex-col" style={{ backgroundColor: f.bg, color: f.teks }}>
+            <article
+              key={f.judul}
+              className="group rounded-4xl p-7 flex flex-col bg-white border border-[#DCE3EC] text-[#0E1B2A] transition-colors hover:bg-[#1E3A5F] hover:text-white hover:border-[#1E3A5F]"
+            >
               <h3 className="text-2xl font-extrabold tracking-tight">{f.judul}</h3>
               <p className="mt-2 flex-1">{f.isi}</p>
-              <div className="bg-white rounded-4xl mt-7 p-4">
+              <div className="rounded-4xl mt-7 p-4 bg-[#F4F6F9] transition-colors group-hover:bg-white">
                 <Illustration name={f.art} className="w-full h-40" />
               </div>
             </article>
           ))}
         </div>
-      </section>
-
-      <LangkahScroll />
-
-      <section className="bg-[#F4F6F9]">
-        <div className="max-w-[75rem] mx-auto px-5 md:px-10 py-20">
-          <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight ">Hasilnya ada tiga.</h3>
-          <div className="grid md:grid-cols-3 gap-5 mt-6">
-            {KATEGORI.map(({ label, isi, warna, Icon }) => (
-              <div key={label} className="rounded-4xl p-6 text-white" style={{ backgroundColor: warna }}>
-                <Icon aria-hidden="true" size={28} />
-                <div className="text-2xl font-extrabold tracking-tight mt-3">{label}</div>
-                <p className="mt-1">{isi}</p>
-              </div>
-            ))}
+        <div className="mt-5 bg-white rounded-4xl border border-[#DCE3EC] p-6 md:p-8 flex flex-col sm:flex-row items-start gap-6">
+          <Image
+            src="/logo-sisrute-removebg-preview.png"
+            alt="Logo SISRUTE"
+            width={920}
+            height={980}
+            className="w-24 h-auto shrink-0"
+          />
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#64748B]">Sumber data</p>
+            <h3 className="text-2xl font-extrabold tracking-tight mt-1">Memakai data SISRUTE Kemenkes</h3>
+            <p className="mt-2 text-[#56657A] leading-relaxed">
+              Salah satu dari empat indikator skor memeriksa ketersediaan alat dan SDM di faskes asal menurut SISRUTE.
+              Bila rujukan beralasan alat tidak tersedia padahal datanya menunjukkan tersedia, skor menandainya.
+              Data yang sudah lama otomatis berbobot rendah.
+            </p>
           </div>
         </div>
       </section>
+
+      <LangkahScroll />
 
       <section id="pengguna" className="max-w-[75rem] mx-auto px-5 md:px-10 py-20 scroll-mt-20">
         <h2 className="text-4xl md:text-6xl font-extrabold tracking-tighter leading-[1.05] max-w-3xl">
           Satu sistem, empat peran.
         </h2>
+        <p className="mt-4 text-lg text-[#56657A] max-w-2xl">
+          Empat peran memakai satu sistem yang sama, dari antrean sampai klarifikasi.
+        </p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-12">
           {PENGGUNA.map((p) => (
-            <Link
+            <article
               key={p.judul}
-              href={p.href}
-              className="group bg-white rounded-4xl border border-[#DCE3EC] p-5 hover:border-[#1E3A5F] transition-colors flex flex-col"
+              className="bg-white rounded-4xl border border-[#DCE3EC] p-5 flex flex-col"
             >
               <Illustration name={p.art} className="w-full h-36" />
               <h3 className="text-xl font-extrabold tracking-tight mt-4">{p.judul}</h3>
               <p className="text-sm text-[#56657A] mt-1 flex-1">{p.isi}</p>
-              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-[#1E3A5F] mt-4">
-                Buka <ArrowRight aria-hidden="true" size={16} />
+            </article>
+          ))}
+        </div>
+
+        <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-12">Hasilnya ada tiga.</h3>
+        <p className="mt-3 text-[#56657A] max-w-2xl">
+          Apapun peranmu, setiap rujukan berakhir di salah satu dari tiga ini.
+        </p>
+        <div className="grid md:grid-cols-3 gap-5 mt-6">
+          {KATEGORI.map(({ label, isi, tone, Icon }) => (
+            <div key={label} className="bg-white rounded-4xl border border-[#DCE3EC] p-5">
+              <span
+                aria-hidden="true"
+                className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                style={{ backgroundColor: RISK[tone].soft, color: RISK[tone].solid }}
+              >
+                <Icon size={24} />
               </span>
-            </Link>
+              <div className="text-xl font-extrabold tracking-tight mt-4" style={{ color: RISK[tone].solid }}>
+                {label}
+              </div>
+              <p className="text-sm text-[#56657A] mt-1">{isi}</p>
+            </div>
           ))}
         </div>
       </section>
 
-      <section id="tanya-jawab" className="bg-[#F4F6F9] scroll-mt-20">
-        <div className="max-w-[56rem] mx-auto px-5 md:px-10 py-20">
-          <h2 className="text-4xl md:text-6xl font-extrabold tracking-tighter leading-[1.05]">Tanya jawab.</h2>
-          <div className="mt-10 space-y-3">
-            {TANYA.map(([q, a]) => (
-              <details key={q} className="group bg-white rounded-4xl border border-[#DCE3EC] px-6 py-2">
-                <summary className="min-h-14 flex items-center justify-between gap-4 cursor-pointer list-none font-bold text-lg [&::-webkit-details-marker]:hidden">
-                  {q}
-                  <Plus aria-hidden="true" size={20} className="shrink-0 transition-transform group-open:rotate-45" />
-                </summary>
-                <p className="text-[#56657A] pb-4">{a}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
+      <Faq />
 
       <section className="max-w-[75rem] mx-auto px-5 md:px-10 py-20">
         <div className="rounded-4xl p-8 md:p-14 grid md:grid-cols-[1fr_auto] gap-8 items-center text-white" style={{ backgroundColor: NAVY }}>
@@ -306,8 +339,22 @@ export const Landing = ({ onEnter, onDaftar }: { onEnter: () => void; onDaftar: 
     <footer className="bg-[#0E1B2A] text-[#C9D6E6] rounded-t-4xl">
       <div className="max-w-[75rem] mx-auto px-5 md:px-10 py-14 grid gap-10 md:grid-cols-[1.6fr_1fr_1fr_1fr] text-sm">
         <div>
-          <div className="text-3xl font-extrabold tracking-tighter text-white">
-            Sirujuk<span className="text-[#7DB4F5]">.</span>
+          <div className="flex items-center gap-5">
+            <Image
+              src="/sirujuk-logo-long.png"
+              alt="SIRUJUK Anti Fraud"
+              width={829}
+              height={274}
+              className="w-auto h-10"
+              style={{ filter: "brightness(0) invert(1)" }}
+            />
+            <Image
+              src="/logo-bpjs.png"
+              alt="BPJS Kesehatan"
+              width={320}
+              height={320}
+              className="w-auto h-10"
+            />
           </div>
           <p className="mt-3 max-w-xs leading-relaxed">
             Sistem verifikasi rujukan berbasis data untuk Program JKN. Skor risiko hanya penunjuk prioritas, bukan bukti kecurangan.

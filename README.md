@@ -10,6 +10,7 @@ Sistem Verifikasi Rujukan Berbasis Data untuk mendeteksi rujukan berisiko pada P
 - `infra/` — Redis, Cloud Run, Docker, dan monitoring.
 - `tests/` — strategi pengujian lintas komponen.
 - `system-rules/` — aturan batas tanggung jawab agar sistem tidak chaos.
+- `docs/` — panduan per area; mulai dari `docs/kriteria-proposal.md` (status sistem terhadap kriteria proposal dan daftar tindakan).
 
 ## Quick start
 

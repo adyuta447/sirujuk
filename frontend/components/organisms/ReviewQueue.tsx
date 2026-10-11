@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronRight, Check } from 'lucide-react'
 import { PageHead } from '../atoms/PageHead'
 import { PrimaryButton } from '../atoms/PrimaryButton'
@@ -7,17 +7,31 @@ import { RiskBadge } from '../atoms/RiskBadge'
 import { StatusBadge } from '../atoms/StatusBadge'
 import { ClaimBadge } from '../atoms/ClaimBadge'
 import { Illustration } from '../atoms/Illustration'
+import { Pagination } from '../molecules/Pagination'
+import { PAGE_SIZE } from '../../lib/constants'
 import type { RiskLevel, RujukanCase } from '../../lib/sirujuk-data'
 import { NAVY, RISK } from '../../lib/sirujuk-data'
-import { cocokCari, tampilPasien } from "../../lib/formatters";
+import { cocokCari } from "../../lib/formatters";
 import { useReferrals } from '../../hooks/useReferral'
 import { useAuditQueue } from '../../hooks/useAuditQueue'
 
 export const QueueView = ({ onSelect, wilayah, query }: { onSelect: (c: RujukanCase) => void; wilayah: string; query: string }) => {
   const [filter, setFilter] = useState<RiskLevel | 'semua'>('semua')
+  const [page, setPage] = useState(1)
+  const wadahRef = useRef<HTMLDivElement>(null)
   const { data: referrals = [], isError, isLoading } = useReferrals()
   const cari = referrals.filter(c => cocokCari(c, query))
   const { base, filtered, counts } = useAuditQueue(cari, wilayah, filter)
+  useEffect(() => {
+    setPage(1)
+  }, [wilayah, query, filter])
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const halaman = Math.min(page, totalPages)
+  const tampak = filtered.slice((halaman - 1) * PAGE_SIZE, halaman * PAGE_SIZE)
+  const gantiHalaman = (p: number) => {
+    setPage(p)
+    wadahRef.current?.scrollTo({ top: 0 })
+  }
 
   const segments: { key: RiskLevel | 'semua'; label: string; count: number }[] = [
     { key: 'semua', label: 'Semua', count: base.length },
@@ -27,7 +41,7 @@ export const QueueView = ({ onSelect, wilayah, query }: { onSelect: (c: RujukanC
   ]
 
   return (
-    <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+    <div ref={wadahRef} className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
       <PageHead title="Antrean Cek" sub="Data dummy dari backend, diurutkan dari skor tertinggi. Skor heuristik, bukan evaluasi kecurangan." art="antrean-kosong" />
       {isError && <p role="alert" className="text-sm text-[#9B1C1C]">Antrean gagal dimuat. Coba muat ulang halaman.</p>}
 
@@ -59,7 +73,7 @@ export const QueueView = ({ onSelect, wilayah, query }: { onSelect: (c: RujukanC
         </div>
       ) : (
       <div className="space-y-4">
-        {filtered.map((c) => (
+        {tampak.map((c) => (
           <article
             key={c.id}
             className="bg-white rounded-4xl border border-[#DCE3EC] px-5 sm:px-7 py-5 sm:py-6 hover:border-[#1E3A5F] transition-colors flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8"
@@ -72,7 +86,7 @@ export const QueueView = ({ onSelect, wilayah, query }: { onSelect: (c: RujukanC
                 <ClaimBadge status={c.claimStatus} />
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0E1B2A] mt-3">{tampilPasien(c)}</h3>
+              <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0E1B2A] mt-3">{c.pasien}</h3>
 
               <p className="text-sm text-[#56657A] mt-1.5 leading-relaxed">
                 {c.usia ? `${c.usia} tahun, ` : ""}dari {c.wilayah}, dirujuk ke <span className="font-semibold text-[#0E1B2A]">{c.fasalTujuan}</span>
@@ -99,6 +113,7 @@ export const QueueView = ({ onSelect, wilayah, query }: { onSelect: (c: RujukanC
         ))}
       </div>
       )}
+      <Pagination page={halaman} totalPages={totalPages} onChange={gantiHalaman} totalItems={filtered.length} pageSize={PAGE_SIZE} />
     </div>
   )
 }

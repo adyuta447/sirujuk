@@ -1,6 +1,6 @@
 /** @jest-environment node */
 import { bacaBody, keBackendSebagai, wajibTingkat } from "../../lib/auth/guard";
-import { demoAktif } from "../../lib/auth/session";
+import { cookieAman, demoAktif } from "../../lib/auth/session";
 
 const sesi = (role: "verifikator" | "tkmkb") => ({ sub: "a@b.id", nama: "A", role, exp: 9999999999 });
 const backend = (status: number, body: unknown) =>
@@ -64,5 +64,35 @@ describe("backend calls and body limits", () => {
     const text = jest.spyOn(req, "text");
     expect(await bacaBody(req, 50)).toBeNull();
     expect(text).not.toHaveBeenCalled();
+  });
+});
+
+describe("cookieAman", () => {
+  const produksi = { NODE_ENV: "production" };
+
+  it("is strict in production by default", () => {
+    expect(cookieAman(produksi)).toBe(true);
+  });
+
+  it("relaxes only for a local production build that opts in", () => {
+    expect(cookieAman({ ...produksi, ALLOW_INSECURE_COOKIE: "true" })).toBe(false);
+  });
+
+  it("ignores the opt-in on Vercel Production", () => {
+    expect(cookieAman({ ...produksi, ALLOW_INSECURE_COOKIE: "true", VERCEL_ENV: "production" })).toBe(true);
+  });
+
+  it("ignores the opt-in when APP_ENV is production", () => {
+    expect(cookieAman({ ...produksi, ALLOW_INSECURE_COOKIE: "true", APP_ENV: "production" })).toBe(true);
+  });
+
+  it("only the exact value true opts in", () => {
+    for (const v of ["1", "yes", "TRUE", "", "false"]) {
+      expect(cookieAman({ ...produksi, ALLOW_INSECURE_COOKIE: v })).toBe(true);
+    }
+  });
+
+  it("uses plain cookies outside production builds", () => {
+    expect(cookieAman({ NODE_ENV: "development" })).toBe(false);
   });
 });

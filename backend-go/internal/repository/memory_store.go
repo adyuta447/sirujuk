@@ -15,8 +15,9 @@ import (
 // maxStored bounds memory: an authenticated caller must not be able to grow the process without limit.
 const (
 	maxStored         = 5000
-	maxClarifications = 20 // per referral
-	persistTimeout    = 2 * time.Second
+	maxClarifications = 20                      // per referral
+	persistTimeout    = 4 * time.Second         // a strict change may need several read and write rounds under contention
+	bestEffortTimeout = 1500 * time.Millisecond // the patient path must not wait long for storage
 )
 
 var (
@@ -26,15 +27,22 @@ var (
 	ErrStorage = errors.New("storage unavailable")
 )
 
-// MemoryStore holds referrals in memory and, when a Persister is set, writes every change through to it first.
-// shortcut: reads come from memory, so with several instances each only sees what it loaded at start plus its own
-// writes; read from the database (or add a change feed) before scaling out. Writes hold the lock during the save.
+// MemoryStore serves reads from memory and, when a Persister is set, writes every change through to the database.
+//
+// Several instances may run at once (Cloud Run scales out), so a write never trusts this instance's copy: it reads the
+// freshest document, applies the change on top, and saves with a version check. If another instance wrote in between,
+// it reads again and re-applies, so audits and clarifications from different instances cannot overwrite each other.
+// Reads are eventually consistent: Sync refreshes the in-memory copy every few seconds, so a change made on another
+// instance shows up here after at most one interval. Writes hold the lock while talking to the database.
 type MemoryStore struct {
 	mu      sync.RWMutex
 	items   map[string]*domain.StoredReferral
 	order   []string
 	persist Persister
 }
+
+// casAttempts bounds how often one change retries after losing a race to another instance.
+const casAttempts = 4
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{items: make(map[string]*domain.StoredReferral)}
@@ -48,28 +56,127 @@ func (s *MemoryStore) UsePersister(ctx context.Context, p Persister) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for i := range saved {
-		item := saved[i]
-		if _, exists := s.items[item.Request.ReferralID]; !exists {
-			s.order = append(s.order, item.Request.ReferralID)
-		}
-		s.items[item.Request.ReferralID] = &item
-	}
+	s.merge(saved)
 	s.persist = p
 	return nil
 }
 
-func (s *MemoryStore) save(item domain.StoredReferral) error {
-	if s.persist == nil {
+// merge makes the persisted documents authoritative; items that only exist here (a save that failed) are kept.
+func (s *MemoryStore) merge(saved []domain.StoredReferral) {
+	for i := range saved {
+		item := saved[i]
+		id := item.Request.ReferralID
+		if _, exists := s.items[id]; !exists {
+			s.order = append(s.order, id)
+		}
+		s.items[id] = &item
+	}
+}
+
+// Sync reloads the persisted referrals every interval until ctx ends, so changes from other instances become visible.
+// It reads every document, which Firestore bills per read: keep the interval at tens of seconds, not seconds.
+func (s *MemoryStore) Sync(ctx context.Context, every time.Duration) {
+	if s.persist == nil || every <= 0 {
+		return
+	}
+	tick := time.NewTicker(every)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+			lctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			saved, err := s.persist.LoadAll(lctx)
+			cancel()
+			if err != nil {
+				log.Printf(`{"event":"store_sync_failed"}`)
+				continue
+			}
+			s.mu.Lock()
+			s.merge(saved)
+			s.mu.Unlock()
+		}
+	}
+}
+
+// freshest returns the newest copy of a referral and its version: the database copy when there is one, else the local
+// one (a referral whose first save failed), else nil. Must be called with s.mu held.
+func (s *MemoryStore) freshest(ctx context.Context, id string) (*domain.StoredReferral, string, error) {
+	if s.persist != nil {
+		item, version, found, err := s.persist.Load(ctx, id)
+		if err != nil {
+			return nil, "", err
+		}
+		if found {
+			return &item, version, nil
+		}
+	}
+	if local, ok := s.items[id]; ok {
+		c := clone(*local)
+		return &c, "", nil
+	}
+	return nil, "", nil
+}
+
+// change applies fn to the freshest copy of a referral and stores the result. create allows making a new referral.
+// bestEffort is for the patient path: if the database cannot be reached the change still lands in memory (and
+// ErrStorage is returned for logging); otherwise an unsaved change is not applied at all.
+func (s *MemoryStore) change(id string, create, bestEffort bool, fn func(*domain.StoredReferral) error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	timeout := persistTimeout
+	if bestEffort {
+		timeout = bestEffortTimeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	for attempt := 0; attempt < casAttempts; attempt++ {
+		base, version, err := s.freshest(ctx, id)
+		if err != nil {
+			return s.storageFailed(id, err)
+		}
+		var next domain.StoredReferral
+		switch {
+		case base != nil:
+			next = clone(*base)
+		case !create:
+			return ErrNotFound
+		case len(s.items) >= maxStored:
+			return ErrLimit
+		}
+		if err := fn(&next); err != nil {
+			return err
+		}
+		if s.persist != nil {
+			switch err := s.persist.Save(ctx, next, version); {
+			case errors.Is(err, ErrConflict):
+				continue // another instance wrote first: read again and re-apply
+			case err != nil:
+				if !bestEffort {
+					return s.storageFailed(id, err)
+				}
+				s.place(id, next)
+				return s.storageFailed(id, err)
+			}
+		}
+		s.place(id, next)
 		return nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), persistTimeout)
-	defer cancel()
-	if err := s.persist.Save(ctx, item); err != nil {
-		log.Printf(`{"event":"persist_failed","referral_id":%q}`, item.Request.ReferralID)
-		return ErrStorage
+	return s.storageFailed(id, ErrConflict)
+}
+
+func (s *MemoryStore) storageFailed(id string, cause error) error {
+	log.Printf(`{"event":"persist_failed","referral_id":%q,"cause":%q}`, id, cause.Error())
+	return ErrStorage
+}
+
+func (s *MemoryStore) place(id string, item domain.StoredReferral) {
+	if _, exists := s.items[id]; !exists {
+		s.order = append(s.order, id)
 	}
-	return nil
+	s.items[id] = &item
 }
 
 // Upsert stores a score. It is on the patient path, so a failed save is logged and the in-memory copy still serves.
@@ -83,45 +190,27 @@ func (s *MemoryStore) UpsertSynthetic(req domain.ReferralRequest, decision domai
 }
 
 func (s *MemoryStore) upsert(req domain.ReferralRequest, decision domain.RiskDecision, synthetic bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	item, exists := s.items[req.ReferralID]
-	if !exists {
-		if len(s.items) >= maxStored {
-			return
+	_ = s.change(req.ReferralID, true, true, func(r *domain.StoredReferral) error {
+		if prev := r.Decision; r.Request.ReferralID != "" && prev.Status == "SCORED" { // an existing referral: keep the old score
+			r.History = append(r.History, domain.ScoreSnapshot{Score: prev.Score, Decision: prev.Decision, ModelVersion: prev.ModelVersion, ScoredAt: prev.ScoredAt})
+			if len(r.History) > 20 {
+				r.History = r.History[len(r.History)-20:]
+			}
 		}
-		item = &domain.StoredReferral{}
-		s.items[req.ReferralID] = item
-		s.order = append(s.order, req.ReferralID)
-	} else if prev := item.Decision; prev.Status == "SCORED" {
-		item.History = append(item.History, domain.ScoreSnapshot{Score: prev.Score, Decision: prev.Decision, ModelVersion: prev.ModelVersion, ScoredAt: prev.ScoredAt})
-		if len(item.History) > 20 {
-			item.History = item.History[len(item.History)-20:]
-		}
-	}
-	item.Request, item.Decision = req, decision
-	item.Synthetic = item.Synthetic || synthetic
-	_ = s.save(*item)
+		r.Request, r.Decision = req, decision
+		r.Synthetic = r.Synthetic || synthetic
+		return nil
+	})
 }
 
-// mutate applies fn to a copy, saves it durably, and only then replaces the stored item: an audit or clarification
-// is never acknowledged unless it is saved.
+// mutate changes an existing, non archived referral. An audit or clarification is never acknowledged unless it is saved.
 func (s *MemoryStore) mutate(id string, fn func(*domain.StoredReferral) error) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	current, ok := s.items[id]
-	if !ok || current.Archived {
-		return ErrNotFound
-	}
-	next := clone(*current)
-	if err := fn(&next); err != nil {
-		return err
-	}
-	if err := s.save(next); err != nil {
-		return err
-	}
-	*current = next
-	return nil
+	return s.change(id, false, false, func(r *domain.StoredReferral) error {
+		if r.Archived {
+			return ErrNotFound
+		}
+		return fn(r)
+	})
 }
 
 func (s *MemoryStore) AddAudit(id string, audit domain.AuditReview) error {

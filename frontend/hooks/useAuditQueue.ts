@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_REGION } from "../lib/constants";
 import { useMemo } from "react";
 import type { RiskLevel, RujukanCase } from "../lib/sirujuk-data";
 import { RISK_ORDER } from "../lib/constants";
@@ -11,7 +12,7 @@ export function useAuditQueue(
 ) {
   return useMemo(() => {
     const base = (referrals ?? [])
-      .filter((referral) => wilayah === "Semua Wilayah" || referral.wilayah === wilayah)
+      .filter((referral) => wilayah === DEFAULT_REGION || referral.wilayah === wilayah)
       .slice()
       .sort(
         (a, b) =>

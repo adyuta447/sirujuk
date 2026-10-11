@@ -39,9 +39,11 @@ gcloud secrets describe sirujuk-api-token >/dev/null 2>&1 ||
   openssl rand -hex 32 | tr -d '\n' | gcloud secrets create sirujuk-api-token --data-file=-
 gcloud secrets describe sirujuk-stream-key >/dev/null 2>&1 || # encrypts queued referrals in Redis; created once, never overwritten
   openssl rand -hex 32 | tr -d '\n' | gcloud secrets create sirujuk-stream-key --data-file=-
+gcloud secrets describe sirujuk-data-key >/dev/null 2>&1 || # seals patient data in Firestore; created once. LOSING IT MAKES SAVED REFERRALS UNREADABLE, so never delete or rotate it casually
+  openssl rand -hex 32 | tr -d '\n' | gcloud secrets create sirujuk-data-key --data-file=-
 gcloud secrets describe sirujuk-redis-url >/dev/null 2>&1 || gcloud secrets create sirujuk-redis-url
 printf %s "$REDIS_URL" | gcloud secrets versions add sirujuk-redis-url --data-file=-
-for sec in sirujuk-api-token sirujuk-redis-url sirujuk-stream-key; do
+for sec in sirujuk-api-token sirujuk-redis-url sirujuk-stream-key sirujuk-data-key; do
   gcloud secrets add-iam-policy-binding "$sec" --member "serviceAccount:$(SA backend)" --role roles/secretmanager.secretAccessor >/dev/null
 done
 

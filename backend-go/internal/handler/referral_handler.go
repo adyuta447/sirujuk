@@ -25,11 +25,14 @@ const (
 
 type ReferralHandler struct {
 	Decisions service.DecisionService
-	Queue     service.Queue                           // nil in tests
-	Ready     func(context.Context) map[string]string // dependency labels for /ready; nil = not wired
-	Users     repository.UserRepository               // resolves actor -> doctor_id; nil = doctors see nothing
-	Results   service.Store                           // idempotent replay + async results (Redis); nil in tests
-	Store     *repository.MemoryStore                 // demo list/detail/audit store; nil = those endpoints return empty/404
+	Queue     service.Queue // nil in tests
+	// Regions maps a facility to its region from a trusted directory, so statistics do not depend on what the issuer
+	// typed. nil or unknown facility = keep the issuer's value.
+	Regions func(facilityID string) string
+	Ready   func(context.Context) map[string]string // dependency labels for /ready; nil = not wired
+	Users   repository.UserRepository               // resolves actor -> doctor_id; nil = doctors see nothing
+	Results service.Store                           // idempotent replay + async results (Redis); nil in tests
+	Store   *repository.MemoryStore                 // demo list/detail/audit store; nil = those endpoints return empty/404
 	// AllowClientContext trusts request.Context (doctor history). Demo only: a real client could lower its own risk.
 	AllowClientContext bool
 }
@@ -79,6 +82,11 @@ func (h ReferralHandler) Score(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request.ReferralID = key // Idempotency-Key = referral_no
+	if h.Regions != nil {
+		if region := h.Regions(request.OriginFacilityID); region != "" {
+			request.OriginWilayah = region
+		}
+	}
 	if !h.AllowClientContext {
 		request.Context = domain.ReferralContext{}
 	}

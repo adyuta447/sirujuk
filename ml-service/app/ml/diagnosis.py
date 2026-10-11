@@ -1,7 +1,8 @@
 """Diagnosis table: the 144 non-specialist (KNS, competence 4A) list + specialist diagnoses, with PPK reference text.
 
 Provenance: KNS ICD-10 codes come from a secondary source (medminutes.io, 2026-05) that cites the Permenkes 5/2014
-appendix; that regulation may have been replaced, so verify against the official appendix before production.
+appendix. That regulation was revoked by Permenkes 4/2026 (no successor list), so the list has no current legal
+basis: choose and cite an authority, and have a physician validate it, before production.
 PPK texts are drafts written for this PoC and MUST be reviewed by a physician before use.
 """
 import re

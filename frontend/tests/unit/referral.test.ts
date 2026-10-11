@@ -74,3 +74,16 @@ describe("bangunIndikator", () => {
     expect(hhi.banding).toContain("Jarak faskes belum diketahui");
   });
 });
+
+import { opsiWilayah } from "../../lib/formatters";
+
+describe("opsiWilayah", () => {
+  const semua = "Semua Wilayah";
+  it("builds the region filter from real data, sorted, without the unknown bucket", () => {
+    const daftar = [{ wilayah: "Jakarta Utara" }, { wilayah: "Belum tercatat" }, { wilayah: "Bandung" }, { wilayah: "Jakarta Utara" }];
+    expect(opsiWilayah(daftar, semua, semua)).toEqual([semua, "Bandung", "Jakarta Utara"]);
+  });
+  it("keeps the active choice even before the data has loaded", () => {
+    expect(opsiWilayah([], "Surabaya", semua)).toEqual([semua, "Surabaya"]);
+  });
+});

@@ -29,7 +29,8 @@ type fsString struct {
 }
 
 type fsDoc struct {
-	Fields map[string]fsString `json:"fields"`
+	Fields     map[string]fsString `json:"fields"`
+	UpdateTime string              `json:"updateTime,omitempty"` // set by Firestore on every write; used as the document version
 }
 
 func (f firestoreREST) do(ctx context.Context, method, url string, body []byte) (*http.Response, error) {

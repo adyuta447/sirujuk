@@ -33,6 +33,11 @@ func NewRedis(url string) (Redis, error) {
 	if err != nil { // NewClient(nil) would panic
 		return Redis{}, err
 	}
+	// Fail fast: the defaults retry with growing pauses, which would push every request past the 300 ms scoring budget
+	// while Redis is down. One quick retry is enough; Resilient handles the rest.
+	opt.MaxRetries = 1
+	opt.MinRetryBackoff, opt.MaxRetryBackoff = time.Millisecond, 20*time.Millisecond
+	opt.DialTimeout, opt.ReadTimeout, opt.WriteTimeout = 500*time.Millisecond, 500*time.Millisecond, 500*time.Millisecond
 	return Redis{C: redis.NewClient(opt)}, nil
 }
 

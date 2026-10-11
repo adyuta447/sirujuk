@@ -1,6 +1,13 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
+
+// DemoDomain is reserved for demo accounts. Their password is published or printed once, so an account here must
+// carry an expiry; one without it counts as expired, even if it was created before expiries existed.
+const DemoDomain = "@demo.sirujuk.id"
 
 // User is a login account. Hash is "scrypt:<salt hex>:<key hex>" and never leaves the backend.
 type User struct {
@@ -17,10 +24,11 @@ type User struct {
 	Hash      string `json:"hash,omitempty"`
 }
 
-// Expired reports whether the account is past its expiry. A malformed ExpiresAt is treated as expired.
+// Expired reports whether the account is past its expiry. A malformed ExpiresAt is treated as expired, and so is a
+// missing one on a demo account.
 func (u User) Expired(now time.Time) bool {
 	if u.ExpiresAt == "" {
-		return false
+		return strings.HasSuffix(strings.ToLower(u.Email), DemoDomain)
 	}
 	t, err := time.Parse(time.RFC3339, u.ExpiresAt)
 	return err != nil || !now.Before(t)

@@ -59,6 +59,7 @@ func main() {
 	nama := flag.String("nama", "", "display name (also recorded as the audit reviewer)")
 	role := flag.String("role", "", "verifikator | tkmkb | dinkes | dokter")
 	doctorID := flag.String("doctor-id", "", "doctor_id on referrals this dokter account may see and answer (role dokter)")
+	setExpiry := flag.String("set-expiry", "", "email of an existing account whose lifetime to set from now, using -expires-in (0 = never expires). The password is not touched")
 	disable := flag.String("disable", "", "email of an existing account to disable (blocks login and any live session within ~30s)")
 	enable := flag.String("enable", "", "email of a disabled account to enable again")
 	demoPassword := flag.String("demo-password", "", "with -demo: use this password instead of a random one (for throwaway demo accounts only)")
@@ -70,6 +71,18 @@ func main() {
 		log.Fatal("-project is required")
 	}
 
+	if *setExpiry != "" {
+		if *expiresIn < 0 {
+			log.Fatal("-set-expiry needs -expires-in, for example 168h, or 0 for no expiry")
+		}
+		updateAccount(*project, *setExpiry, func(u *domain.User) {
+			u.ExpiresAt = ""
+			if *expiresIn > 0 {
+				u.ExpiresAt = time.Now().Add(*expiresIn).UTC().Format(time.RFC3339)
+			}
+		})
+		return
+	}
 	if *disable != "" || *enable != "" {
 		setDisabled(*project, firstNonEmpty(*disable, *enable), *disable != "")
 		return
@@ -144,19 +157,27 @@ func firstNonEmpty(a, b string) string {
 	return b
 }
 
-// setDisabled flips the flag on an existing account and keeps everything else, including the password hash.
-func setDisabled(project, email string, disabled bool) {
+// updateAccount changes one field of an existing account and keeps everything else, including the password hash.
+func updateAccount(project, email string, change func(*domain.User)) {
 	repo := repository.NewFirestoreUsers(project, gcloudToken)
 	ctx := context.Background()
 	u, found, err := repo.Find(ctx, email)
 	if err != nil || !found {
 		log.Fatalf("account %s not found (err=%v)", email, err)
 	}
-	u.Disabled = disabled
+	change(&u)
 	if err := repo.Put(ctx, u); err != nil {
 		log.Fatalf("saving %s: %v", email, err)
 	}
-	fmt.Printf("%s disabled=%v\n", strings.ToLower(email), disabled)
+	expires := u.ExpiresAt
+	if expires == "" {
+		expires = "never"
+	}
+	fmt.Printf("%s role=%s disabled=%v expires=%s\n", strings.ToLower(email), u.Role, u.Disabled, expires)
+}
+
+func setDisabled(project, email string, disabled bool) {
+	updateAccount(project, email, func(u *domain.User) { u.Disabled = disabled })
 }
 
 // expiry picks the lifetime: an explicit -expires-in wins (0 = never); otherwise demo accounts get a week.

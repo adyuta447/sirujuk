@@ -137,6 +137,7 @@ func main() {
 	log.Printf("sirujuk backend listening on :%s", port)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	go store.Sync(ctx, storeSyncInterval()) // pick up changes made by other instances
 	go service.RunFeatureJob(ctx, store, cache, kns, 6*time.Hour)
 	go cache.Consume(ctx, "go-"+port, func(c context.Context, r domain.ReferralRequest) (domain.RiskDecision, error) {
 		d, err := decisions.Evaluate(c, r)
@@ -216,4 +217,14 @@ func withStreamKey(r rc.Redis, prod bool) rc.Redis {
 		return r
 	}
 	return r.WithKey(key)
+}
+
+// storeSyncInterval reads STORE_SYNC_SECONDS (default 30; 0 turns it off). Each sync reads every referral document,
+// which Firestore bills per read, so keep it in the tens of seconds.
+func storeSyncInterval() time.Duration {
+	n, err := strconv.Atoi(os.Getenv("STORE_SYNC_SECONDS"))
+	if err != nil || n < 0 {
+		return 30 * time.Second
+	}
+	return time.Duration(n) * time.Second
 }

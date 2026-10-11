@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -110,5 +111,40 @@ func TestConsumerWaitsForRedisInsteadOfGivingUp(t *testing.T) {
 	case <-done: // returns only because ctx ended, after it kept waiting
 	case <-time.After(3 * time.Second):
 		t.Fatal("consumer must stop promptly when the context ends")
+	}
+}
+
+func TestFloodOfJunkEmailsCannotResetTheCountOfAnAttackedAccount(t *testing.T) {
+	r := deadRedis(t)
+	ctx := context.Background()
+	for i := 0; i < 8; i++ { // someone is guessing passwords for one account
+		_, _ = r.Hit(ctx, "login:victim", time.Hour)
+	}
+	for i := 0; i < memHitsMax+2000; i++ { // while a flood of unique emails tries to flush the map
+		_, _ = r.Hit(ctx, "login:junk"+strconv.Itoa(i), time.Hour)
+	}
+	if n, _ := r.Hit(ctx, "login:victim", time.Hour); n != 9 {
+		t.Fatalf("the attacked account must keep its count (9th attempt), got %d", n)
+	}
+	r.m.mu.Lock()
+	size := len(r.m.hits)
+	r.m.mu.Unlock()
+	if size > memHitsMax+1 {
+		t.Fatalf("the map must stay bounded, got %d keys", size)
+	}
+}
+
+func TestDownRedisIsSkippedSoRequestsStayFast(t *testing.T) {
+	r := deadRedis(t)
+	ctx := context.Background()
+	_ = r.Set(ctx, "k", []byte("v")) // the first failure opens the breaker
+	start := time.Now()
+	for i := 0; i < 200; i++ {
+		_, _ = r.Get(ctx, "k")
+		_, _ = r.Hit(ctx, "login:x", time.Minute)
+		_ = r.Enqueue(ctx, domain.ReferralRequest{ReferralID: "r"}, "x")
+	}
+	if took := time.Since(start); took > 300*time.Millisecond {
+		t.Fatalf("600 calls took %v: a Redis that is known to be down must not be retried on every request", took)
 	}
 }

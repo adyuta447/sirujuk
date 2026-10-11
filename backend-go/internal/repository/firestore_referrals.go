@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/sirujuk/backend-go/domain"
 	"github.com/sirujuk/backend-go/internal/sealbox"
@@ -22,9 +23,17 @@ const (
 	loadPageSize        = 300
 )
 
+// ErrConflict means another writer changed the document after it was read; the caller re-reads and applies its change again.
+var ErrConflict = errors.New("concurrent change")
+
 // Persister makes referral state (scores, audits, clarifications) survive restarts and be shared by instances.
+// Writes are conditional on the version that was read, so two instances cannot overwrite each other's changes.
 type Persister interface {
-	Save(ctx context.Context, item domain.StoredReferral) error
+	// Load reads one referral with its version. found is false when it does not exist.
+	Load(ctx context.Context, id string) (item domain.StoredReferral, version string, found bool, err error)
+	// Save writes item only if the stored version is still `version`; "" means "must not exist yet".
+	// It returns ErrConflict when someone else wrote first.
+	Save(ctx context.Context, item domain.StoredReferral, version string) error
 	LoadAll(ctx context.Context) ([]domain.StoredReferral, error)
 }
 
@@ -81,7 +90,7 @@ func (f FirestoreReferrals) doc(id string) string {
 	return f.collection(referralsCollection) + "/" + hex.EncodeToString(h[:])
 }
 
-func (f FirestoreReferrals) Save(ctx context.Context, item domain.StoredReferral) error {
+func (f FirestoreReferrals) Save(ctx context.Context, item domain.StoredReferral, version string) error {
 	raw, err := json.Marshal(item)
 	if err != nil {
 		return err
@@ -91,15 +100,62 @@ func (f FirestoreReferrals) Save(ctx context.Context, item domain.StoredReferral
 		return err
 	}
 	body, _ := json.Marshal(fsDoc{Fields: fields})
-	resp, err := f.do(ctx, http.MethodPatch, f.doc(item.Request.ReferralID), body)
+	precondition := "currentDocument.exists=false"
+	if version != "" {
+		precondition = "currentDocument.updateTime=" + url.QueryEscape(version)
+	}
+	resp, err := f.do(ctx, http.MethodPatch, f.doc(item.Request.ReferralID)+"?"+precondition, body)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("firestore status %d", resp.StatusCode)
+	switch {
+	case resp.StatusCode == http.StatusOK:
+		return nil
+	case isConflict(resp):
+		return ErrConflict
 	}
-	return nil
+	return fmt.Errorf("firestore status %d", resp.StatusCode)
+}
+
+// isConflict recognizes a failed precondition: Firestore answers 409 (document already exists) or 400 FAILED_PRECONDITION
+// (version no longer matches).
+func isConflict(resp *http.Response) bool {
+	if resp.StatusCode == http.StatusConflict || resp.StatusCode == http.StatusPreconditionFailed {
+		return true
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		return false
+	}
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
+	return strings.Contains(string(b), "FAILED_PRECONDITION") || strings.Contains(string(b), "ABORTED")
+}
+
+func (f FirestoreReferrals) Load(ctx context.Context, id string) (domain.StoredReferral, string, bool, error) {
+	resp, err := f.do(ctx, http.MethodGet, f.doc(id), nil)
+	if err != nil {
+		return domain.StoredReferral{}, "", false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return domain.StoredReferral{}, "", false, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return domain.StoredReferral{}, "", false, fmt.Errorf("firestore status %d", resp.StatusCode)
+	}
+	var d fsDoc
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxReferralDoc*2)).Decode(&d); err != nil {
+		return domain.StoredReferral{}, "", false, err
+	}
+	raw, err := f.decode(d.Fields)
+	if err != nil {
+		return domain.StoredReferral{}, "", false, fmt.Errorf("unreadable referral document: %w", err)
+	}
+	var item domain.StoredReferral
+	if err := json.Unmarshal(raw, &item); err != nil {
+		return domain.StoredReferral{}, "", false, fmt.Errorf("corrupt referral document: %w", err)
+	}
+	return item, d.UpdateTime, true, nil
 }
 
 func (f FirestoreReferrals) LoadAll(ctx context.Context) ([]domain.StoredReferral, error) {

@@ -32,10 +32,12 @@ def top_share(y, s, share):
     return dict(review_share=share, precision=round(float(y[idx].mean()), 3), recall=round(float(y[idx].sum() / max(y.sum(), 1)), 3))
 
 
-def evaluate(m, te, hide_near=False):
+def evaluate(m, te, hide_near=False, hide_sisrute=False):
     t = te.copy()
     if hide_near:
         t["near"] = np.nan
+    if hide_sisrute:
+        t["sis_avail"] = 0  # what the backend sends while SISRUTE is not connected: indistinguishable from "available = false"
     s = m.score(m.terms(t)); y = t.fraud.values
     cat = m.category(s); red = cat == "red"
     return s, y, cat, dict(
@@ -76,6 +78,12 @@ def main():
     }
     # --- honesty checks -----------------------------------------------------------------------------------------
     rep["nearest_facility_unknown"] = evaluate(m, te, hide_near=True)[3]  # what happens if the backend cannot supply it
+    # The regime deployed today: no distance data (HHI off) and SISRUTE not connected (flag off). Only NS and narrative score.
+    sp, yp, cp, ev = evaluate(m, te, hide_near=True, hide_sisrute=True)
+    fraud = te.fraud.values == 1
+    rep["production_regime_no_hhi_no_sisrute"] = {**ev, "cat_share": {c: round(float((cp == c).mean()), 3) for c in ["green", "yellow", "red"]},
+        "recall_by_scenario": {t: round(float((cp[fraud & (te.tag.values == t)] != "green").mean()), 3) for t in sorted(te.tag[fraud].unique())},
+        "note": "cuts are still the full-regime percentiles, so red shrinks and recall drops; see MODEL_CARD.md"}
     weak = doctor_history(generate(seed=99, strength=0.5)); weak = weak[weak.day >= SPLIT]
     rep["robustness_subtler_fraud_half_strength"] = evaluate(m, weak)[3]
     X = m.terms(te)

@@ -1,3 +1,5 @@
 __pycache__/
 .venv/
 models/*.joblib
+models/train_report.json
+models/*.sha256

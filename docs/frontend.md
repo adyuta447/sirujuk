@@ -107,7 +107,7 @@ All of this was run on 10 October 2026, from the `frontend` folder, on the curre
 
 Type check. `npx tsc --noEmit` finished with no errors.
 
-Unit tests. `npm test` ran 7 suites and 41 tests. All passed in about 1.1 seconds.
+Unit tests. `npm test` ran 11 suites and 58 tests. All passed. The extra suites cover pagination, the regional view, the audit queue hook and the loading, empty and error states.
 
 The suites cover these areas:
 

@@ -1,4 +1,4 @@
-import { buatPembatas } from "../../lib/auth/pembatas";
+import { buatPembatas, kunciPercobaan } from "../../lib/auth/pembatas";
 
 describe("login limiter", () => {
   it("blocks a key after the allowed number of failures", () => {
@@ -21,5 +21,19 @@ describe("login limiter", () => {
     p.catatGagal("a@b.id");
     p.hapus("a@b.id");
     expect(p.tertahan("a@b.id")).toBe(false);
+  });
+});
+
+describe("login limiter key", () => {
+  it("separates the same email from different trusted client addresses", () => {
+    const dari = (ip: string) => new Headers({ "x-vercel-forwarded-for": ip });
+    expect(kunciPercobaan("A@B.id", dari("1.1.1.1"))).not.toBe(kunciPercobaan("a@b.id", dari("2.2.2.2")));
+    expect(kunciPercobaan("A@B.id", dari("1.1.1.1"))).toBe(kunciPercobaan("a@b.id", dari("1.1.1.1")));
+  });
+
+  it("ignores x-forwarded-for, which a client can set freely", () => {
+    const palsu = (ip: string) => new Headers({ "x-forwarded-for": ip });
+    expect(kunciPercobaan("a@b.id", palsu("9.9.9.9"))).toBe("a@b.id");
+    expect(kunciPercobaan("a@b.id", palsu("8.8.8.8"))).toBe("a@b.id");
   });
 });

@@ -36,11 +36,12 @@ func main() {
 		log.Fatal(err)
 	}
 	redis = withStreamKey(redis, env("APP_ENV", "development") == "production")
+	cache := rc.NewResilient(redis) // Redis with a per-instance memory fallback
 	pingCtx, cancelPing := context.WithTimeout(context.Background(), 2*time.Second)
 	if err := redis.Ping(pingCtx); err != nil {
 		// Not fatal (scoring still works), but batch features, idempotency, the async queue and the login limiter are
 		// all off until it answers. /ready reports it.
-		log.Printf(`{"event":"redis_unreachable","effect":"cold-start features, no idempotent replay, no async queue, no shared login limiter"}`)
+		log.Printf(`{"event":"redis_unreachable","effect":"running on per-instance memory fallback: features, idempotent replay, queue and login limiter work on this instance only"}`)
 	}
 	cancelPing()
 
@@ -61,7 +62,7 @@ func main() {
 	decisions := service.DecisionService{
 		ML:         ml,
 		Engine:     service.DecisionEngine{MinRedLayers: minRedLayers()},
-		Cache:      redis,
+		Cache:      cache,
 		Facilities: facilities,
 		Dummy:      dummy,
 	}
@@ -72,6 +73,7 @@ func main() {
 	// Demo list/detail/audit store. SEED_COUNT>0 fills it with fake referrals (local demo only; unset = empty).
 	store := repository.NewMemoryStore()
 	project := os.Getenv("FIRESTORE_PROJECT")
+	dataEncrypted := false
 	seedCount, _ := strconv.Atoi(os.Getenv("SEED_COUNT"))
 	if seedCount > 0 && (prod || project != "") {
 		// Fake patients must not enter the real database; archiving is a soft delete, so cleanup would be manual.
@@ -81,6 +83,12 @@ func main() {
 	case project != "":
 		// Scores, audits and clarifications survive restarts. Load before seeding: seeding is skipped when data exists.
 		persister := repository.NewFirestoreReferrals(project, client.MetadataAccessToken)
+		if key := hexKey("DATA_ENC_KEY"); key != nil {
+			persister = persister.WithKey(key)
+			dataEncrypted = true
+		} else if prod {
+			log.Print(`{"event":"data_unencrypted","effect":"patient names and narratives are plaintext in Firestore; set DATA_ENC_KEY"}`)
+		}
 		if err := store.UsePersister(context.Background(), persister); err != nil {
 			log.Fatalf("cannot load referrals from Firestore: %v", err)
 		}
@@ -117,19 +125,20 @@ func main() {
 	}
 	ready := func(ctx context.Context) map[string]string {
 		return map[string]string{
-			"redis":     status(redis.Ping(ctx) == nil),
-			"firestore": status(project != ""),
-			"kns":       status(kns.Known()),
+			"redis":           status(redis.Ping(ctx) == nil),
+			"firestore":       status(project != ""),
+			"kns":             status(kns.Known()),
+			"data_encryption": status(dataEncrypted),
 		}
 	}
-	h := handler.ReferralHandler{Ready: ready, Decisions: decisions, Queue: redis, Results: redis, Store: store, Users: users, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
-	auth := handler.AuthHandler{Auth: service.Authenticator{Users: users}, Limiter: redis}
+	h := handler.ReferralHandler{Regions: seed.Regions(), Ready: ready, Decisions: decisions, Queue: cache, Results: cache, Store: store, Users: users, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
+	auth := handler.AuthHandler{Auth: service.Authenticator{Users: users}, Limiter: cache}
 	port := env("GO_PORT", "8080")
 	log.Printf("sirujuk backend listening on :%s", port)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	go service.RunFeatureJob(ctx, store, redis, kns, 6*time.Hour)
-	go redis.Consume(ctx, "go-"+port, func(c context.Context, r domain.ReferralRequest) (domain.RiskDecision, error) {
+	go service.RunFeatureJob(ctx, store, cache, kns, 6*time.Hour)
+	go cache.Consume(ctx, "go-"+port, func(c context.Context, r domain.ReferralRequest) (domain.RiskDecision, error) {
 		d, err := decisions.Evaluate(c, r)
 		if err == nil {
 			store.Upsert(r, d) // async result becomes visible in list/detail
@@ -182,19 +191,29 @@ func status(ok bool) string {
 	return "down"
 }
 
-// withStreamKey encrypts queued referrals with STREAM_ENC_KEY (64 hex chars). Production refuses to run without it.
-func withStreamKey(r rc.Redis, prod bool) rc.Redis {
-	raw := os.Getenv("STREAM_ENC_KEY")
+// hexKey reads a 64 hex character (32 byte) key from the environment. Unset returns nil; malformed is fatal, because
+// a typo that silently disables encryption is worse than a refusal to start.
+func hexKey(name string) []byte {
+	raw := os.Getenv(name)
 	if raw == "" {
+		return nil
+	}
+	key, err := hex.DecodeString(raw)
+	if err != nil || len(key) != 32 {
+		log.Fatalf("%s must be 64 hex characters (32 bytes); generate with: openssl rand -hex 32", name)
+	}
+	return key
+}
+
+// withStreamKey encrypts queued referrals with STREAM_ENC_KEY. Production refuses to run without it.
+func withStreamKey(r rc.Redis, prod bool) rc.Redis {
+	key := hexKey("STREAM_ENC_KEY")
+	if key == nil {
 		if prod {
 			log.Fatal("STREAM_ENC_KEY is required in production: queued referrals contain patient data")
 		}
 		log.Print("STREAM_ENC_KEY not set: queued referrals are stored in plaintext (development only)")
 		return r
-	}
-	key, err := hex.DecodeString(raw)
-	if err != nil || len(key) != 32 {
-		log.Fatal("STREAM_ENC_KEY must be 64 hex characters (32 bytes); generate with: openssl rand -hex 32")
 	}
 	return r.WithKey(key)
 }

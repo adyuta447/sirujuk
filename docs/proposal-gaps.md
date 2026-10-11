@@ -25,22 +25,21 @@ Acuan: `system-rules/backend-go-rules.md`. Status: ✅ sudah di kode, 📄 perlu
 | 17 | **Rumus skor ambigu.** `w3·w_f·Flag` dan Z(NS), Z(HHI) bisa NULL/negatif; sigmoid atas jumlah bobot 0,25 menghasilkan skor menggerombol sekitar 50. | Definisikan skala input sebelum sigmoid (mis. bias/intersep) agar distribusi skor tidak menumpuk; validasi di data sintetis. |
 | 18 | **Klaim referensi/angka** (statistik 31 Juli 2026, dll.) ditulis pasti. | Tandai sebagai asumsi yang harus diverifikasi; data 2015 sudah dinyatakan usang, pertahankan. |
 
-## B. Ketidaksesuaian kode saat ini terhadap rules
+## B. Kesesuaian kode terhadap rules (diperbarui)
 
-| Temuan | Status |
-|--------|--------|
-| Score endpoint tidak fail-open, error → 502 | ✅ diperbaiki: timeout 300 ms, error → 202 |
-| Tidak ada `Idempotency-Key` | ✅ wajib, = `referral_no` |
-| Emergency tidak di-bypass | ✅ langsung 202, tanpa hold |
-| Error body tanpa `{code,message,correlation_id}` | ✅ + header `X-Correlation-ID` |
-| Kategori `green/yellow/red` lowercase, ambang hard-coded 50/80 | ✅ `GREEN/YELLOW/RED`, ambang injeksi (nilai riil dari p80/p95) |
-| `scoring_service.go`: `FraudScore` dihitung dua kali | ✅ dihapus; skor 0–100 dimiliki ML service, Go hanya menerapkan ambang |
-| Skor final dihitung di Go | ✅ skor di ML service; kategori diterapkan Go. 🔧 penulisan `risk_scores` belum ada |
-| Tidak ada Postgres/repository nyata, tabel `risk_scores`/`case_decisions`/`audit_log` | 🔧 migrasi dari sketsa DB rules |
-| Antrean async | ✅ enqueue + worker (3x backoff) + DLQ `scoring:dlq`; 🔧 reclaim pesan pending (XAUTOCLAIM) dan alert DLQ belum ada |
-| `middleware.Auth`/`Logger` no-op, belum ada RBAC/mTLS/audit | 🔧 |
-| Endpoint `/v1/cases`, `/v1/cases/{id}/decision`, clarifications belum ada; route masih `/api/v1/...` vs kontrak `/v1/...` | 🔧 |
-| Adapter eksternal belum ada | 🔧 mock sintetis dulu |
+| Temuan awal | Status sekarang |
+|-------------|-----------------|
+| Score endpoint tidak fail-open | Selesai: timeout 300 ms, error atau ML mati menjawab 202, rujukan lanjut |
+| Tidak ada `Idempotency-Key` | Selesai: wajib, sama dengan `referral_no`, ulangan mengembalikan hasil tersimpan |
+| Emergency tidak di-bypass | Selesai: langsung 202, tidak pernah ditahan; rasio darurat per dokter dipantau di `/stats` |
+| Error body tanpa `{code,message,correlation_id}` | Selesai |
+| Ambang hard-coded | Selesai: backend tidak punya ambang; kategori dan cut-off p80/p95 datang dari ML dan disimpan per skor |
+| Skor dihitung dua kali di Go | Selesai: file lama dihapus; skor dan kategori dimiliki ML |
+| Tidak ada tabel `risk_scores`, `case_decisions`, `audit_log` | **Menyimpang dari rules dengan alasan tertulis:** rules menyebut PostgreSQL, PoC memakai Firestore karena sudah dipakai untuk akun, tanpa server yang harus dikelola, dan dokumen per rujukan memuat skor, riwayat, audit, dan klarifikasi. Skema Postgres untuk skala nasional tetap di `database-schema.md`. Audit append only dipaksa di kode, belum di level database. |
+| Antrean async belum ada | Selesai: Redis Stream, 3 kali coba dengan backoff, DLQ terenkripsi. Bila Redis mati, antrean berpindah ke memori instance. Belum ada: reclaim pesan pending (XAUTOCLAIM) dan alert DLQ |
+| `Auth`/`Logger` no-op, belum ada RBAC/audit | Selesai: token layanan, `X-Actor` dicek ulang tiap request, peran ditegakkan di backend, log akses per pengguna. Belum ada: token per pengguna dan mTLS |
+| Endpoint `/v1/cases` belum ada | Diputuskan lain: rute tetap `/api/v1/referrals`, `/audits`, `/referrals/{id}/clarifications`. Fungsinya setara; kontrak ada di `api-contract.md` |
+| Adapter eksternal belum ada | Sebagian: antarmuka `FacilityRepository` (SISRUTE, mock sintetis), daftar KNS, `Cache`/`Queue`/`Store`. Belum ada: `ReferralSource` (P-Care/V-Claim) dan `DoctorCredential`. Tidak boleh dianggap selesai sampai ada akses resmi |
 
 ## C. Urutan kerja hackathon (sesuai rules)
 1. Generator data sintetis + mock adapter → 2. schema + ingest + score fail-open end to end → 3. case queue & decision API → 4. audit log & RBAC → 5. dashboard Grafana → 6. halaman "path to production" (apa yang di-mock, apa yang butuh akses resmi, apa yang berubah di skala nasional).
@@ -66,3 +65,8 @@ Acuan: `system-rules/backend-go-rules.md`. Status: ✅ sudah di kode, 📄 perlu
 | Baris contoh tak bisa dibedakan dari data asli | `synthetic: true` pada tiap baris seed dan di `/stats`; seed ditolak di produksi atau dengan Firestore |
 | Komposisi seed 60/26/14 tak sesuai proposal | seed berbasis perilaku dokter; komposisi hasil model (±84/10/6), tidak diatur seed |
 | Merah bisa karena satu lapis saja | `MIN_RED_LAYERS=2` menahan merah bila kurang dari 2 lapis independen; kategori model tetap di `model_category`. Default 1 sampai tim memutuskan |
+| Redis mati membuat fitur dokter, antrean, idempotensi, dan pembatas login mati diam-diam | Semuanya jatuh ke memori per instance (tidak dibagi antar instance, hilang saat restart); `/ready` tetap melaporkan `redis: down` |
+| Akun demo dengan sandi publik bertahan selamanya | Akun punya `expires_at`; `useradd -demo` memberi masa 7 hari secara bawaan, dan login serta tiap request ditolak setelahnya |
+| Wilayah ditentukan oleh penerbit rujukan | Wilayah diambil dari direktori faskes di server bila faskesnya dikenal (direktori demo; produksi butuh register resmi) |
+| Nama pasien dan narasi plaintext di Firestore | Bisa disegel dengan `DATA_ENC_KEY`; **belum aktif di produksi** sampai secret dibuat dan baris YAML dibuka |
+| Verifikasi Permenkes 5/2014 terhadap aturan terbaru (JDIH) | **Belum dilakukan**; tabel 144 diagnosis masih bersumber sekunder |

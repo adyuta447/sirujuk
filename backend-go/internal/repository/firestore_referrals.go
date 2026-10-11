@@ -3,14 +3,17 @@ package repository
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 
 	"github.com/sirujuk/backend-go/domain"
+	"github.com/sirujuk/backend-go/internal/sealbox"
 )
 
 const (
@@ -25,13 +28,51 @@ type Persister interface {
 	LoadAll(ctx context.Context) ([]domain.StoredReferral, error)
 }
 
-// FirestoreReferrals stores each referral as one document: the whole StoredReferral as a JSON string.
-// shortcut: patient name and narrative are plaintext here (Firestore encrypts at rest, but the rules ask for
-// pseudonymized IDs and encrypted narrative); fix before real patient data.
-type FirestoreReferrals struct{ firestoreREST }
+// FirestoreReferrals stores each referral as one document: the whole StoredReferral as one JSON string. With Key set
+// (DATA_ENC_KEY) that string is sealed with AES-256-GCM before it leaves the process, so the patient name and the
+// narrative are unreadable in the Firestore console and in exports; only the referral id stays plain.
+// Without a key the document is plaintext (Google's default encryption at rest only), which is acceptable for synthetic
+// data and nothing else. Documents written without a key still load after a key is added; the reverse fails loudly.
+type FirestoreReferrals struct {
+	firestoreREST
+	Key []byte
+}
 
 func NewFirestoreReferrals(project string, token func(context.Context) (string, error)) FirestoreReferrals {
-	return FirestoreReferrals{newFirestoreREST(project, token)}
+	return FirestoreReferrals{firestoreREST: newFirestoreREST(project, token)}
+}
+
+// Encrypted reports whether documents are sealed before saving.
+func (f FirestoreReferrals) Encrypted() bool { return f.Key != nil }
+
+// WithKey returns a copy that seals every document it saves.
+func (f FirestoreReferrals) WithKey(key []byte) FirestoreReferrals { f.Key = key; return f }
+
+// encode puts the referral JSON into the document fields, sealed when a key is set.
+func (f FirestoreReferrals) encode(id string, raw []byte) (map[string]fsString, error) {
+	if f.Key == nil {
+		return map[string]fsString{"id": {id}, "json": {string(raw)}}, nil
+	}
+	sealed, err := sealbox.Seal(f.Key, raw)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]fsString{"id": {id}, "json_enc": {base64.StdEncoding.EncodeToString(sealed)}}, nil
+}
+
+// decode is the reverse of encode. It accepts both forms so enabling encryption later does not orphan old documents.
+func (f FirestoreReferrals) decode(fields map[string]fsString) ([]byte, error) {
+	if enc, ok := fields["json_enc"]; ok {
+		if f.Key == nil {
+			return nil, errors.New("referral document is encrypted but DATA_ENC_KEY is not set")
+		}
+		sealed, err := base64.StdEncoding.DecodeString(enc.S)
+		if err != nil {
+			return nil, err
+		}
+		return sealbox.Open(f.Key, sealed)
+	}
+	return []byte(fields["json"].S), nil
 }
 
 // doc hashes the referral ID: IDs may contain "/" and must not shape the document path.
@@ -45,7 +86,11 @@ func (f FirestoreReferrals) Save(ctx context.Context, item domain.StoredReferral
 	if err != nil {
 		return err
 	}
-	body, _ := json.Marshal(fsDoc{Fields: map[string]fsString{"id": {item.Request.ReferralID}, "json": {string(raw)}}})
+	fields, err := f.encode(item.Request.ReferralID, raw)
+	if err != nil {
+		return err
+	}
+	body, _ := json.Marshal(fsDoc{Fields: fields})
 	resp, err := f.do(ctx, http.MethodPatch, f.doc(item.Request.ReferralID), body)
 	if err != nil {
 		return err
@@ -95,8 +140,12 @@ func (f FirestoreReferrals) loadPage(ctx context.Context, pageToken string) ([]d
 	}
 	items := make([]domain.StoredReferral, 0, len(body.Documents))
 	for _, d := range body.Documents {
+		raw, err := f.decode(d.Fields)
+		if err != nil {
+			return nil, "", fmt.Errorf("unreadable referral document: %w", err)
+		}
 		var item domain.StoredReferral
-		if err := json.Unmarshal([]byte(d.Fields["json"].S), &item); err != nil {
+		if err := json.Unmarshal(raw, &item); err != nil {
 			return nil, "", fmt.Errorf("corrupt referral document: %w", err)
 		}
 		items = append(items, item)

@@ -88,3 +88,11 @@ func TestFeaturesAsOfLeavesNearestUnknown(t *testing.T) {
 		t.Fatal("no distance data: nearest must stay unknown (nil), not true")
 	}
 }
+
+func TestMissingKNSListMeansNSUnknownNotACrash(t *testing.T) {
+	now := time.Now()
+	f := FeaturesAsOf(referrals("d1", 40, func(int) string { return "RS" }, "J06.9", now), "d1", "", nil, now)
+	if f.NS90 != nil || f.N90 != 40 {
+		t.Fatalf("with no list, NS must stay unknown while counts still work: %+v", f)
+	}
+}

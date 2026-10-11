@@ -79,6 +79,7 @@ Redis is optional in development. Without it the service still scores, but batch
 | `AUTH_SECRET` | frontend | Signs the session cookie. Login is refused without it. |
 | `REDIS_URL` / `REDIS_PASSWORD` | recommended | Cache, queue, idempotency, login limiter. |
 | `STREAM_ENC_KEY` | yes in production | 64 hex characters. Encrypts queued referrals (AES-256-GCM). |
+| `DATA_ENC_KEY` | recommended in production | 64 hex characters. Seals each referral document (patient name, narrative, scores) before it is written to Firestore. |
 | `FIRESTORE_PROJECT` | yes in production | Stores accounts, referrals, audits and clarifications. |
 | `ML_SERVICE_URL` | yes | Address of the ML service. |
 | `ML_AUTH` | Cloud Run | Set to `cloudrun` to call a private ML service with an ID token. |
@@ -116,7 +117,7 @@ go run ./cmd/useradd -project <PROJECT_ID> -disable a@agency.go.id
 go run ./cmd/useradd -project <PROJECT_ID> -demo
 ```
 
-Passwords for normal accounts must be at least 12 characters. The `-demo` command creates the four demo accounts with a random password printed once. It also accepts `-demo-password` for a password you choose. A published password on a production database is a real exposure, so delete or disable demo accounts after any demo.
+Passwords for normal accounts must be at least 12 characters. Demo accounts expire by themselves: `-demo` sets a seven day lifetime unless you pass `-expires-in` (for example `72h`, or `0` for no expiry), and an expired account can neither log in nor keep using an existing session. Any account can be given a lifetime the same way. The `-demo` command creates the four demo accounts with a random password printed once. It also accepts `-demo-password` for a password you choose. A published password on a production database is a real exposure, so delete or disable demo accounts after any demo.
 
 ## What each role can do
 
@@ -135,22 +136,27 @@ I ran these on 2026-10-10 on macOS with Go 1.26.0 and the ML service v2 trained 
 
 ### Automated tests
 
-All 65 test cases pass across the 8 packages that have tests. The run is clean with the race detector enabled, and `go vet` and `gofmt` report nothing.
+All 101 test cases pass across 11 packages. The run is clean with the race detector enabled, and `go vet` and `gofmt` report nothing. Compared with my first run (65 tests in 8 packages), the new ones cover the memory fallback when Redis is down, account expiry, region lookup on the server, the HTTP wiring, the auth and CORS middleware, the ML client, the doctor feature selection, encryption of stored referrals, and one crash that a new test uncovered (see below).
 
 | Package | Tests | Statement coverage |
 |---|---|---|
-| client (ML client) | 3 | 54.8% |
-| internal/client (Redis, queue, encryption) | 6 | 88.0% |
+| client (ML client) | 7 | 82.2% |
+| domain (account expiry) | 1 | 26.7% |
+| internal/client (Redis, memory fallback, queue encryption) | 11 | 90.0% |
 | internal/guideline (144 diagnosis list) | 4 | 96.4% |
-| internal/handler (HTTP handlers, validation, roles) | 23 | 82.5% |
-| internal/middleware (actor check, headers) | 3 | 49.3% |
-| internal/repository (store, Firestore) | 8 | 67.0% |
-| internal/seed (demo data) | 5 | 82.0% |
-| internal/service (engine, batch features, auth) | 13 | 51.7% |
+| internal/handler (HTTP handlers, validation, roles, redaction) | 24 | 82.6% |
+| internal/middleware (token, actor check, CORS, headers) | 8 | 84.0% |
+| internal/repository (store, Firestore, encryption at rest) | 11 | 69.2% |
+| internal/sealbox (AES-256-GCM) | 2 | 84.2% |
+| internal/seed (demo data) | 5 | 80.0% |
+| internal/service (engine, batch features, scoring flow, auth) | 21 | 65.3% |
+| router (route wiring and middleware order) | 7 | 100% |
 
-The packages `cmd`, `cmd/useradd`, `domain` and `router` have no tests of their own. The startup guards in `cmd` were checked by hand, described below.
+The packages `cmd` and `cmd/useradd` have no tests of their own, and `domain` is mostly plain types. The startup guards in `cmd` were checked by hand, described below.
 
-The tests cover the behaviors that are easiest to get wrong: fail-open scoring and the 202 path, idempotent replays, strict input validation (control characters, bidirectional overrides, unknown fields, oversized bodies), the red case role rule, role based redaction, doctor ownership of clarifications, disabled accounts, audits that are not acknowledged unless saved, state surviving a restart, encrypted queue messages with a tamper check, and point in time doctor features that never count the referral being scored.
+The tests cover the behaviors that are easiest to get wrong. Scoring fails open and answers 202 when the ML service is down. A repeated request with the same idempotency key returns the stored result. Input validation rejects control characters, bidirectional overrides, unknown fields and oversized bodies. A verifier cannot finalize a red case. Doctors only see and answer their own referrals. Disabled accounts and forged role headers are refused, and the service token is checked before any account lookup, so a caller without the token learns nothing about which accounts exist. An audit is not acknowledged unless it was saved, and state survives a restart. Queued referrals and Firestore documents are unreadable without the key, and a wrong or missing key is an error, not an empty list. Doctor features for a late score only use referrals issued before it, never the referral itself.
+
+One of the new tests found a real defect: re-scoring an old referral crashed with a nil pointer when the diagnosis list had not been supplied. The code now treats a missing list as "NS unknown". It could not happen with the current `main.go`, which always supplies the list, but the code should not depend on that.
 
 ### Dependency scan
 
@@ -179,14 +185,14 @@ These are the ones a reviewer should not have to discover on their own.
 2. The 144 diagnosis table comes from a secondary source and needs review by a clinician before anyone relies on it. The embedded copy in the backend is checked against the ML table by a test, so the two cannot drift silently.
 3. Precision and recall figures from the ML training report are measured on synthetic data. They show that the pipeline finds what was injected, not how it would perform on real referrals.
 4. Because the red and yellow cut-offs are percentiles, a fixed share of referrals will always be flagged for review, whatever the real fraud rate is. The proposal does not yet discuss that reviewer workload.
-5. Patient names and narratives are stored as plain text in Firestore, protected only by Google's default encryption at rest. Queued referrals in Redis are encrypted by the backend. Before real data, the names need pseudonymization and the narratives need application level encryption.
+5. Patient names and narratives can now be sealed before they reach Firestore, but only when `DATA_ENC_KEY` is set. In the current production deployment it is not set yet, so documents there are still protected only by Google's default encryption at rest. To turn it on, run `infra/gcp/setup.sh` once (it creates the `sirujuk-data-key` secret), uncomment the two `DATA_ENC_KEY` lines in `infra/gcp/cloudrun-go.yaml`, and deploy. Keep that key safe: documents saved with it cannot be read without it. `GET /ready` shows `data_encryption`. Names are still not pseudonymized, so a person who holds the key can read them.
 6. Access control relies on one shared service token plus the user headers set by the Next.js server. The backend trusts those headers only as far as it trusts that token. Per user tokens would be the next step.
-7. Redis in the current production deployment points at a local address, so Redis is effectively off there. Scoring and login work, but the queue, idempotency and shared login limiter do not. `GET /ready` shows this.
+7. Redis in the current production deployment points at a local address, so Redis is off there. Since the last change the backend no longer loses those functions silently: doctor features, idempotent replays, the retry queue and the login limiter fall back to memory on each instance. That fallback is not shared between instances and is lost on a restart, so it is a safety net, not a substitute. Fixing it takes a real Redis URL (for example from Upstash) stored with `gcloud secrets versions add sirujuk-redis-url`, followed by a new revision. `GET /ready` keeps reporting `redis: down` until then.
 8. The store reads from memory and writes through to Firestore. With more than one instance, each instance sees what it loaded at startup plus its own writes. Read from the database or add a change feed before scaling out.
 9. Whether red should require two independent layers (`MIN_RED_LAYERS=2`) is a team decision. I recommend 2 before any claim is really held. The default is 1, which trusts the model.
 
 ## Production notes
 
-Production runs on Cloud Run in the project's own region, with the ML service private and called with an ID token. Secrets are kept in Secret Manager: `sirujuk-api-token`, `sirujuk-redis-url` and `sirujuk-stream-key`. `infra/gcp/setup.sh` creates them, and `infra/gcp/cloudrun-go.yaml` references them. After every deploy, call `GET /ready` and confirm that `redis`, `firestore` and `kns` all say `ok`, then read the startup log for a `redis_unreachable` line.
+Production runs on Cloud Run in the project's own region, with the ML service private and called with an ID token. Secrets are kept in Secret Manager: `sirujuk-api-token`, `sirujuk-redis-url`, `sirujuk-stream-key` and `sirujuk-data-key`. `infra/gcp/setup.sh` creates them, and `infra/gcp/cloudrun-go.yaml` references them. After every deploy, call `GET /ready` and confirm that `redis`, `firestore`, `kns` and `data_encryption` all say `ok`, then read the startup log for a `redis_unreachable` line.
 
 Structured logs carry the actor, role, path, status and latency of each request, and never request bodies or narrative text. The path of a read on `/referrals/{id}` is the record of who opened a case.

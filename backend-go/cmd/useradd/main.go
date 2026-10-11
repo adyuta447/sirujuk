@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/sirujuk/backend-go/domain"
@@ -61,6 +62,7 @@ func main() {
 	disable := flag.String("disable", "", "email of an existing account to disable (blocks login and any live session within ~30s)")
 	enable := flag.String("enable", "", "email of a disabled account to enable again")
 	demoPassword := flag.String("demo-password", "", "with -demo: use this password instead of a random one (for throwaway demo accounts only)")
+	expiresIn := flag.Duration("expires-in", -1, "make the account(s) expire after this long, e.g. 72h. Default: 168h for -demo, never for others. 0 = never")
 	demo := flag.Bool("demo", false, "create the 4 demo accounts (one per role) with a random password shown once")
 	imp := flag.Bool("import", false, "read already-hashed accounts as a JSON array from stdin")
 	flag.Parse()
@@ -114,6 +116,13 @@ func main() {
 		users = []domain.User{{Email: *email, Nama: *nama, Role: *role, DoctorID: *doctorID, Hash: hash}}
 	}
 
+	if ttl := expiry(*expiresIn, *demo); ttl > 0 {
+		at := time.Now().Add(ttl).UTC().Format(time.RFC3339)
+		for i := range users {
+			users[i].ExpiresAt = at
+		}
+		fmt.Printf("Accounts expire at %s\n", at)
+	}
 	for _, u := range users {
 		if err := check(u); err != nil {
 			log.Fatal(err)
@@ -148,4 +157,15 @@ func setDisabled(project, email string, disabled bool) {
 		log.Fatalf("saving %s: %v", email, err)
 	}
 	fmt.Printf("%s disabled=%v\n", strings.ToLower(email), disabled)
+}
+
+// expiry picks the lifetime: an explicit -expires-in wins (0 = never); otherwise demo accounts get a week.
+func expiry(flagValue time.Duration, demo bool) time.Duration {
+	switch {
+	case flagValue >= 0:
+		return flagValue
+	case demo:
+		return 7 * 24 * time.Hour
+	}
+	return 0
 }

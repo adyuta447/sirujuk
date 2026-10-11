@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/sirujuk/backend-go/domain"
 	"github.com/sirujuk/backend-go/internal/repository"
@@ -74,5 +75,21 @@ func TestVerifyRejectsDisabledAccount(t *testing.T) {
 	a := newAuth(t, domain.User{Email: "off@uji.id", Nama: "Off", Role: "tkmkb", Hash: hash, Disabled: true})
 	if _, ok, err := a.Verify(context.Background(), "off@uji.id", "sandi-baru-67890"); ok || err != nil {
 		t.Fatalf("a disabled account must not log in even with the right password: ok=%v err=%v", ok, err)
+	}
+}
+
+func TestVerifyRejectsExpiredAccount(t *testing.T) {
+	hash, _ := HashPassword("sandi-baru-67890")
+	past := time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
+	future := time.Now().Add(time.Hour).UTC().Format(time.RFC3339)
+	a := newAuth(t,
+		domain.User{Email: "old@uji.id", Nama: "Old", Role: "tkmkb", Hash: hash, ExpiresAt: past},
+		domain.User{Email: "new@uji.id", Nama: "New", Role: "tkmkb", Hash: hash, ExpiresAt: future},
+	)
+	if _, ok, _ := a.Verify(context.Background(), "old@uji.id", "sandi-baru-67890"); ok {
+		t.Fatal("an expired account must not log in even with the right password")
+	}
+	if _, ok, _ := a.Verify(context.Background(), "new@uji.id", "sandi-baru-67890"); !ok {
+		t.Fatal("an account that has not expired yet must log in")
 	}
 }

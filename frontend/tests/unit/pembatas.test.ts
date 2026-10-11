@@ -25,15 +25,23 @@ describe("login limiter", () => {
 });
 
 describe("login limiter key", () => {
+  const vercel = { VERCEL: "1" };
+
   it("separates the same email from different trusted client addresses", () => {
     const dari = (ip: string) => new Headers({ "x-vercel-forwarded-for": ip });
-    expect(kunciPercobaan("A@B.id", dari("1.1.1.1"))).not.toBe(kunciPercobaan("a@b.id", dari("2.2.2.2")));
-    expect(kunciPercobaan("A@B.id", dari("1.1.1.1"))).toBe(kunciPercobaan("a@b.id", dari("1.1.1.1")));
+    expect(kunciPercobaan("A@B.id", dari("1.1.1.1"), vercel)).not.toBe(kunciPercobaan("a@b.id", dari("2.2.2.2"), vercel));
+    expect(kunciPercobaan("A@B.id", dari("1.1.1.1"), vercel)).toBe(kunciPercobaan("a@b.id", dari("1.1.1.1"), vercel));
+  });
+
+  it("does not trust x-vercel-forwarded-for outside Vercel, where a client can set it", () => {
+    const dari = (ip: string) => new Headers({ "x-vercel-forwarded-for": ip });
+    expect(kunciPercobaan("a@b.id", dari("1.1.1.1"), {})).toBe("a@b.id");
+    expect(kunciPercobaan("a@b.id", dari("2.2.2.2"), {})).toBe("a@b.id");
   });
 
   it("ignores x-forwarded-for, which a client can set freely", () => {
     const palsu = (ip: string) => new Headers({ "x-forwarded-for": ip });
-    expect(kunciPercobaan("a@b.id", palsu("9.9.9.9"))).toBe("a@b.id");
-    expect(kunciPercobaan("a@b.id", palsu("8.8.8.8"))).toBe("a@b.id");
+    expect(kunciPercobaan("a@b.id", palsu("9.9.9.9"), vercel)).toBe("a@b.id");
+    expect(kunciPercobaan("a@b.id", palsu("8.8.8.8"), vercel)).toBe("a@b.id");
   });
 });

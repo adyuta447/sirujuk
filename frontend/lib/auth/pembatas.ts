@@ -48,11 +48,13 @@ export function buatPembatas(batas: number, jendelaMs: number, maksKunci: number
 /**
  * Kunci percobaan login. Di Vercel, header x-vercel-forwarded-for diisi platform dan tidak bisa dipalsukan klien,
  * jadi kuncinya email + IP: orang lain tidak bisa mengunci akunmu dari alamat berbeda.
+ * Header itu hanya dipercaya saat berjalan di Vercel (env VERCEL): di tempat lain (compose, lokal) klien bisa
+ * mengisinya sendiri dan tiap nilai baru akan memberi kunci baru, jadi batas percobaan bisa dilewati.
  * Header x-forwarded-for sengaja tidak dipakai karena klien bisa mengisinya sendiri. Tanpa header tepercaya
- * (lokal, atau di luar Vercel) kuncinya email saja, dan batas yang berlaku lintas instance ada di backend.
+ * kuncinya email saja, dan batas yang berlaku lintas instance ada di backend.
  */
-export function kunciPercobaan(email: string, headers: Headers): string {
-  const ip = headers.get("x-vercel-forwarded-for")?.split(",")[0].trim();
+export function kunciPercobaan(email: string, headers: Headers, env: Record<string, string | undefined> = process.env): string {
+  const ip = env.VERCEL ? headers.get("x-vercel-forwarded-for")?.split(",")[0].trim() : undefined;
   const e = email.toLowerCase();
   return ip ? `${ip}|${e}` : e;
 }

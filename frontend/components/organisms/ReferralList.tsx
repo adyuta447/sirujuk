@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { DEFAULT_REGION } from "../../lib/constants";
 import { Illustration } from "../atoms/Illustration";
 import { PageHead } from "../atoms/PageHead";
 import { RiskBadge } from "../atoms/RiskBadge";
@@ -26,7 +27,7 @@ export const RujukanMasuk = ({
   }, [wilayah, query]);
   const list = referrals.filter(
     (c) =>
-      (wilayah === "Semua Wilayah" || c.wilayah === wilayah) && cocokCari(c, query),
+      (wilayah === DEFAULT_REGION || c.wilayah === wilayah) && cocokCari(c, query),
   );
   const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
   const halaman = Math.min(page, totalPages);

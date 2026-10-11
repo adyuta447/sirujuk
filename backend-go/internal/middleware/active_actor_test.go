@@ -27,6 +27,7 @@ func TestActiveActorRefusesDisabledUnknownAndMismatchedRole(t *testing.T) {
 	put := func(u domain.User) { _ = users.Put(context.Background(), u) }
 	put(domain.User{Email: "ok@x.id", Role: "tkmkb"})
 	put(domain.User{Email: "off@x.id", Role: "tkmkb", Disabled: true})
+	put(domain.User{Email: "exp@x.id", Role: "tkmkb", ExpiresAt: "2020-01-01T00:00:00Z"})
 
 	for name, c := range map[string]struct {
 		actor, role string
@@ -54,5 +55,27 @@ func (brokenUsers) Find(context.Context, string) (domain.User, bool, error) {
 func TestActiveActorFailsClosedWhenAccountStoreIsDown(t *testing.T) {
 	if got := serve(brokenUsers{}, "ok@x.id", "tkmkb"); got != http.StatusServiceUnavailable {
 		t.Fatalf("want 503, got %d", got)
+	}
+}
+
+func TestActorParsingRejectsMalformedHeaders(t *testing.T) {
+	for name, c := range map[string]struct{ sub, role string }{
+		"space in email": {"a b@x.id", "tkmkb"},
+		"injection":      {"a@x.id\"}", "tkmkb"},
+		"unknown role":   {"a@x.id", "admin"},
+		"empty":          {"", ""},
+	} {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("X-Actor", c.sub)
+		r.Header.Set("X-Actor-Role", c.role)
+		if sub, role := Actor(r); sub != "" || role != "" {
+			t.Errorf("%s: want empty actor, got %q %q", name, sub, role)
+		}
+	}
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("X-Actor", "ok+tag@x.id")
+	r.Header.Set("X-Actor-Role", "dokter")
+	if sub, role := Actor(r); sub != "ok+tag@x.id" || role != "dokter" {
+		t.Errorf("valid actor rejected: %q %q", sub, role)
 	}
 }

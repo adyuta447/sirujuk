@@ -3,29 +3,10 @@ import { asalSama } from "../../../../lib/auth/origin";
 import { RUMAH } from "../../../../lib/akses";
 import { COOKIE, TTL_DETIK, opsiCookie, rahasia } from "../../../../lib/auth/session";
 import { buatToken } from "../../../../lib/auth/token";
+import { buatPembatas } from "../../../../lib/auth/pembatas";
 import { TerlaluBanyak, verifikasi } from "../../../../lib/auth/users";
 
-// shortcut: pembatas percobaan di memori satu instance; pindahkan ke Redis bila server lebih dari satu.
-const percobaan = new Map<string, { n: number; reset: number }>();
-const BATAS = 5;
-const JENDELA_MS = 15 * 60 * 1000;
-
-function tertahan(kunci: string): boolean {
-  const p = percobaan.get(kunci);
-  if (!p || p.reset < Date.now()) return false;
-  return p.n >= BATAS;
-}
-function sisaDetik(kunci: string): number {
-  const p = percobaan.get(kunci);
-  if (!p) return 0;
-  return Math.max(1, Math.ceil((p.reset - Date.now()) / 1000));
-}
-function catatGagal(kunci: string) {
-  const p = percobaan.get(kunci);
-  if (!p || p.reset < Date.now()) percobaan.set(kunci, { n: 1, reset: Date.now() + JENDELA_MS });
-  else p.n += 1;
-  if (percobaan.size > 5000) percobaan.clear();
-}
+const pembatas = buatPembatas(5, 15 * 60 * 1000, 5000);
 
 const galat = (status: number, code: string, message: string, extra?: Record<string, string>) =>
   NextResponse.json({ code, message }, { status, headers: { "Cache-Control": "no-store", ...extra } });
@@ -51,7 +32,7 @@ export async function POST(request: Request) {
   // Kunci hanya email: header IP (x-forwarded-for) bisa dipalsukan klien di luar proxy tepercaya, sehingga kunci
   // berbasis IP bisa dilewati dengan mengganti nilainya. Batas yang berlaku lintas instance ada di backend (Redis).
   const kunci = email.toLowerCase();
-  if (tertahan(kunci)) return galat(429, "TOO_MANY_ATTEMPTS", "Terlalu banyak percobaan. Coba lagi 15 menit lagi.", { "Retry-After": String(sisaDetik(kunci)) });
+  if (pembatas.tertahan(kunci)) return galat(429, "TOO_MANY_ATTEMPTS", "Terlalu banyak percobaan. Coba lagi 15 menit lagi.", { "Retry-After": String(pembatas.sisaDetik(kunci)) });
 
   let user;
   try {
@@ -61,11 +42,11 @@ export async function POST(request: Request) {
     return galat(503, "AUTH_UNAVAILABLE", "Layanan login sedang tidak tersedia. Coba lagi sebentar.");
   }
   if (!user) {
-    catatGagal(kunci);
+    pembatas.catatGagal(kunci);
     // Pesan sama untuk email tak dikenal dan sandi salah.
     return galat(401, "INVALID_CREDENTIALS", "Email atau kata sandi salah.");
   }
-  percobaan.delete(kunci);
+  pembatas.hapus(kunci);
 
   const exp = Math.floor(Date.now() / 1000) + TTL_DETIK;
   const token = await buatToken({ sub: user.email, nama: user.nama, role: user.role, exp }, kunciRahasia);

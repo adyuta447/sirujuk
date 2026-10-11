@@ -109,3 +109,5 @@ Rujukan dalam antrean Redis dienkripsi AES-256-GCM dengan `STREAM_ENC_KEY`; entr
 Merah dapat ditahan bila `MIN_RED_LAYERS` lapis independen berkontribusi (default 1); kategori model tetap di `model_category`.
 Seed (`SEED_COUNT`) ditolak di produksi atau dengan Firestore; baris seed bertanda `synthetic: true`, dan `/stats` membawa `synthetic`.
 Redaksi per peran: TKMKB penuh; verifikator melihat nama pasien sebagai inisial; dokter hanya kategori, alasan, dan permintaan klarifikasi (tanpa fitur, riwayat skor, nama pasien, atau jejak audit orang lain). Ubah/hitung ulang rujukan merah hanya TKMKB.
+
+`GET /ready` also reports `data_encryption` (`ok` when `DATA_ENC_KEY` is set and referral documents are sealed in Firestore). Documents written before the key existed still load; an encrypted document with a missing or wrong key fails loudly instead of looking like missing data.

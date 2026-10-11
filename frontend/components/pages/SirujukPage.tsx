@@ -18,7 +18,9 @@ import { QueueView } from "../organisms/ReviewQueue";
 import { SkorBaru } from "../organisms/SkorBaru";
 import { useFilterStore } from "../../store/useFilterStore";
 import { useReferrals } from "../../hooks/useReferral";
-import { CASES, slugDokter } from "../../lib/sirujuk-data";
+import { DEFAULT_REGION } from "../../lib/constants";
+import { opsiWilayah } from "../../lib/formatters";
+import { slugDokter } from "../../lib/sirujuk-data";
 import type { RujukanCase, View } from "../../lib/sirujuk-data";
 
 const PATHS: Partial<Record<View, string>> = {
@@ -46,9 +48,9 @@ export default function SirujukPage({
   const { wilayah, setWilayah, query, setQuery } = useFilterStore();
   const [menuOpen, setMenuOpen] = useState(false);
   // Konteks halaman dibaca dari URL (initialId), jadi tombol back dan refresh tetap jalan.
-  // Detail/audit mencari di daftar API (data seed backend), bukan di CASES statis yang hanya berisi 6 contoh.
+  // Detail dan audit mencari di daftar dari backend. Tidak ada data cadangan.
   const { data: daftarRujukan, isPending: memuatRujukan } = useReferrals();
-  const kasus = (daftarRujukan ?? CASES).find((c) => c.id === initialId) ?? null;
+  const kasus = (daftarRujukan ?? []).find((c) => c.id === initialId) ?? null;
 
   if (initialView === "landing") {
     return <Landing onEnter={() => router.push("/login")} onDaftar={() => router.push("/daftar")} />;
@@ -86,9 +88,9 @@ export default function SirujukPage({
         <TopBar
           wilayah={wilayah}
           setWilayah={setWilayah}
+          opsi={opsiWilayah(daftarRujukan ?? [], wilayah, DEFAULT_REGION)}
           query={query}
           setQuery={setQuery}
-          onMenu={() => setMenuOpen(true)}
         />
         <main className="flex-1 flex flex-col overflow-hidden">
           {initialView === "dashboard" && <Dashboard go={go} onSelect={lihatDetail} />}

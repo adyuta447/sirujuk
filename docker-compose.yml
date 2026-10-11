@@ -41,6 +41,7 @@ services:
   redis:
     <<: *hardened
     image: redis:7-alpine
+    user: redis # with cap_drop ALL a root Redis cannot write its own data dir (the entrypoint only drops privileges for a bare redis-server command)
     command: ["sh", "-c", "exec redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\""]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}

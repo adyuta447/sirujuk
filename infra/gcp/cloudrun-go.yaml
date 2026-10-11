@@ -9,7 +9,11 @@ spec:
     metadata:
       annotations:
         autoscaling.knative.dev/minScale: "0"
-        autoscaling.knative.dev/maxScale: "3" # caps the bill under abuse
+        # One instance on purpose. Referral state (scores, audits, clarifications) is cached in memory per instance, so
+        # with more than one an audit saved on A is invisible on B and a later write on B can overwrite it. Raise this
+        # (it also caps the bill under abuse) only after the versioned writes and periodic Sync in MemoryStore are
+        # merged, deployed and re-tested with two instances. See docs/security.md, finding S12.
+        autoscaling.knative.dev/maxScale: "1"
         run.googleapis.com/startup-cpu-boost: "true"
     spec:
       serviceAccountName: sirujuk-backend@${PROJECT}.iam.gserviceaccount.com

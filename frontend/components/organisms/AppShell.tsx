@@ -28,7 +28,7 @@ const JALUR: Partial<Record<View, string>> = {
   dokter: "/dokter", klarifikasi: "/klarifikasi", dinkes: "/dinkes", skor: "/skor",
 };
 const boleh = (peran: Peran | undefined, id: View) => !!peran && bolehAkses(peran, JALUR[id] ?? "/");
-import { NAVY, WILAYAH } from "../../lib/sirujuk-data";
+import { NAVY } from "../../lib/sirujuk-data";
 
 const NAV: { id: View; label: string; Icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Beranda", Icon: LayoutDashboard },
@@ -155,15 +155,15 @@ export const Sidebar = ({
 export const TopBar = ({
   wilayah,
   setWilayah,
+  opsi,
   query,
   setQuery,
-  onMenu: _onMenu,
 }: {
   wilayah: string;
   setWilayah: (w: string) => void;
+  opsi: string[];
   query: string;
   setQuery: (q: string) => void;
-  onMenu: () => void;
 }) => (
   <div className="min-h-16 shrink-0 mx-3 sm:mx-4 mt-3 sm:mt-4 bg-white border border-[#DCE3EC] rounded-4xl flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 sticky top-3 sm:top-4 z-20">
     <SearchBar value={query} onChange={setQuery} />
@@ -176,7 +176,7 @@ export const TopBar = ({
           onChange={(e) => setWilayah(e.target.value)}
           className="appearance-none text-sm font-semibold text-[#0E1B2A] bg-[#F4F6F9] rounded-4xl pl-3 pr-8 py-2 min-h-11 border border-transparent hover:border-[#DCE3EC] focus:outline-none focus:border-[#1E3A5F] cursor-pointer"
         >
-          {WILAYAH.map((w) => (
+          {opsi.map((w) => (
             <option key={w}>{w}</option>
           ))}
         </select>

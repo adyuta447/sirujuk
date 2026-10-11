@@ -1,4 +1,5 @@
 "use client";
+import { DEFAULT_REGION } from "../../lib/constants";
 import { Illustration } from "../atoms/Illustration";
 import { PageHead } from "../atoms/PageHead";
 import { RiskBadge } from "../atoms/RiskBadge";
@@ -18,7 +19,7 @@ export const RujukanMasuk = ({
   const { data: referrals = [], isError, isLoading } = useReferrals();
   const list = referrals.filter(
     (c) =>
-      (wilayah === "Semua Wilayah" || c.wilayah === wilayah) && cocokCari(c, query),
+      (wilayah === DEFAULT_REGION || c.wilayah === wilayah) && cocokCari(c, query),
   );
   return (
     <div className="scroll-area flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">

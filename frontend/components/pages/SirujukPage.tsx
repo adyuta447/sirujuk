@@ -18,6 +18,8 @@ import { RujukanMasuk } from "../organisms/ReferralList";
 import { QueueView } from "../organisms/ReviewQueue";
 import { SkorBaru } from "../organisms/SkorBaru";
 import { useFilterStore } from "../../store/useFilterStore";
+import { DEFAULT_REGION } from "../../lib/constants";
+import { opsiWilayah } from "../../lib/formatters";
 import { slugDokter } from "../../lib/sirujuk-data";
 import type { RujukanCase, View } from "../../lib/sirujuk-data";
 
@@ -86,9 +88,9 @@ export default function SirujukPage({
         <TopBar
           wilayah={wilayah}
           setWilayah={setWilayah}
+          opsi={opsiWilayah(daftar, wilayah, DEFAULT_REGION)}
           query={query}
           setQuery={setQuery}
-          onMenu={() => setMenuOpen(true)}
         />
         <main className="flex-1 flex flex-col overflow-hidden">
           {initialView === "dashboard" && <Dashboard go={go} onSelect={lihatDetail} />}

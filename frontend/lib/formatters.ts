@@ -23,3 +23,10 @@ export function periodeSekarang(date = new Date()): string {
 export function tampilPasien(c: { pasien?: string; noRujukan: string }): string {
   return c.pasien?.trim() || maskPasien(c.noRujukan);
 }
+
+/** Pilihan filter wilayah dari data yang benar-benar ada, bukan daftar tetap. */
+export function opsiWilayah(daftar: { wilayah: string }[], terpilih: string, semua: string): string[] {
+  const ada = new Set(daftar.map((c) => c.wilayah).filter((w) => w && w !== "Belum tercatat"));
+  if (terpilih !== semua) ada.add(terpilih); // jangan hilangkan pilihan aktif saat data belum termuat
+  return [semua, ...[...ada].sort((a, b) => a.localeCompare(b, "id"))];
+}

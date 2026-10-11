@@ -72,7 +72,7 @@ export const RujukanMasuk = ({
             >
               <div className="min-w-0">
                 <div className="font-semibold text-sm text-[#0E1B2A]">
-                  {c.pasien}
+                  {tampilPasien(c)}
                 </div>
                 <div className="font-mono text-xs text-[#64748B]">
                   {c.noRujukan}

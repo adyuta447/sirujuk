@@ -124,7 +124,7 @@ The backend keeps referral state, including audits and clarifications, in memory
 
 Interim fix: `maxScale` in `infra/gcp/cloudrun-go.yaml` is now 1, with a comment that says why and when it may be raised. One instance means one copy, so neither failure can happen. The cost is no horizontal scaling and no spare instance during a deploy, which is acceptable for a proof of concept.
 
-Permanent fix: a separate change in the working tree makes every write read the newest document, apply the change on top, and save with a version check that Firestore enforces, retrying when another instance wrote first. It also refreshes the in memory copy every few seconds so reads converge. That change was not merged when I wrote this. Raise `maxScale` again only after it is merged, deployed, and tested with two instances running: save an audit through one, read it through the other, and write from both at once.
+Permanent fix: commit `85401e2` on the `feat/backend-resilience-and-encryption` branch makes every write read the newest document, apply the change on top, and save with a version check that Firestore enforces, retrying when another instance wrote first. It also refreshes the in memory copy every few seconds so reads converge. It is not on `main` yet, so it has not been deployed or tested with two instances. Raise `maxScale` again only after it is merged, deployed, and tested with two instances running: save an audit through one, read it through the other, and write from both at once.
 
 ### S13. Demo accounts that never expire (Medium, fixed in code)
 

@@ -9,6 +9,11 @@
    HHI_NEAREST_UNKNOWN): HHI alone cannot tell steering from a rural single-hospital doctor, and a z-only term
    fitted to a negative weight in testing. The cost is measured in the report (nearest_facility_unknown).
 7. Diagnoses outside the table get no NLP term (DIAGNOSIS_UNMAPPED) instead of a made-up template.
+8. SISRUTE has the same trap as the nearest facility: `sisrute_available` null = not connected (flag 0, reason code
+   SISRUTE_UNKNOWN on equipment/staff referrals), false = checked and the facility has no such equipment. Both give flag 0,
+   so the score is the same; only the verifier is told the layer did not run.
+9. The cuts are NOT re-cut for a deployment with fewer live layers: recutting to keep 5% red with only NS and narrative
+   cut red precision from 0.76 to 0.36 (MODEL_CARD.md). Fewer reds is the safe direction when evidence is thinner.
 """
 import numpy as np
 import pandas as pd
@@ -102,6 +107,8 @@ class Scorer:
         out["t_nlp"] = np.where(mapped, np.clip(_robust(res, *self.nlp_stats), -3, 3), 0.0)  # bounded like the proposal's 1-NLP: a vague narrative alone must not reach red
         out["t_p10"] = (mapped & (np.nan_to_num(nlp, nan=1.0) < self.p10)).astype(float)
         out["is_ns"], out["to_dom"], out["flag"], out["mapped"], out["near_known"] = is_ns, to_dom, flag, mapped, known
+        # training data always has a SISRUTE snapshot; only the API can say "not connected" (sis_avail is 0 then)
+        out["sis_known"] = df["sis_known"].values.astype(bool) if "sis_known" in df else np.ones(len(df), bool)
         return out
 
     def score(self, X: pd.DataFrame) -> np.ndarray:
@@ -117,7 +124,7 @@ class Scorer:
             "ns": {"value": nan_none(r.ns90), "peer_p95": float(x.ns_p95), "n": int(r.n90), "min_n": MIN_NS, "applies": bool(x.is_ns)},
             "hhi": {"value": nan_none(r.hhi180), "n": int(r.n180), "min_n": MIN_HHI, "observe_from": 1500, "high_from": 2500,
                     "to_dominant_destination": bool(x.to_dom), "nearest_known": bool(x.near_known)},
-            "sisrute": {"flag": bool(x.flag), "age_days": float(r.sis_age), "weight": float(x.w_f)},
+            "sisrute": {"flag": bool(x.flag), "age_days": float(r.sis_age), "weight": float(x.w_f), "known": bool(x.sis_known)},
             "narrative": {"similarity": nan_none(x.nlp), "p10": self.p10, "mapped": bool(x.mapped)},
         }
 
@@ -141,6 +148,8 @@ class Scorer:
             out.append({"code": "INSUFFICIENT_HISTORY", "detail": f"n90 = {int(r.n90)} (min {MIN_NS}), n180 = {int(r.n180)} (min {MIN_HHI})", "contribution": 0.0})
         if x.flag and x.w_f < 0.4:
             out.append({"code": "SISRUTE_STALE", "detail": f"umur data SISRUTE {r.sis_age:.0f} hari", "contribution": 0.0})
+        if not x.sis_known and r.reason != "clinical":  # a clinical referral never uses SISRUTE, so its absence is not news
+            out.append({"code": "SISRUTE_UNKNOWN", "detail": "data SISRUTE tidak ada (belum tersambung): ketersediaan alat/SDM tidak diperiksa", "contribution": 0.0})
         if x.to_dom and not x.near_known:
             out.append({"code": "HHI_NEAREST_UNKNOWN", "detail": f"HHI {hh:.0f}, n = {int(r.n180)}: data faskes terdekat tidak ada, konsentrasi tidak dinilai", "contribution": 0.0})
         if not x.mapped:

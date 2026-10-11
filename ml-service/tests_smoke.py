@@ -27,6 +27,14 @@ with TestClient(app) as c:
     assert bad["yellow_from"] == info["yellow_from"] and bad["indicators"]["ns"]["applies"] and bad["indicators"]["ns"]["peer_p95"] > 0
     assert "INSUFFICIENT_HISTORY" in codes(cold)
     assert "DIAGNOSIS_UNMAPPED" in codes(unk) and "HHI_NEAREST_UNKNOWN" in codes(unk) and unk["nlp_similarity"] == 0.0
+    # SISRUTE: null = not connected (layer off, and the verifier is told); false = checked, not available (no warning)
+    eq = dict(base, n90=60, ns90=0.6, n180=80, hhi180=6000, to_dominant_dest=True, dest_is_nearest=False)
+    s_null, s_false, s_true = (c.post("/v1/predict", json=dict(eq, **kw)).json() for kw in
+                               ({}, dict(sisrute_available=False, sisrute_age_days=2), dict(sisrute_available=True, sisrute_age_days=2)))
+    assert "SISRUTE_UNKNOWN" in codes(s_null) and "SISRUTE_UNKNOWN" not in codes(s_false) + codes(s_true)
+    assert s_null["indicators"]["sisrute"]["known"] is False and s_false["indicators"]["sisrute"]["known"] is True
+    assert s_null["score"] == s_false["score"] < s_true["score"]  # unknown never adds or removes risk
+    assert "SISRUTE_UNKNOWN" not in codes(c.post("/v1/predict", json=dict(eq, reason="clinical")).json())
     # narrative-only: with no doctor history, no SISRUTE signal, a vague or unmatched narrative may be yellow but never red
     rows = [l.split("|", 2) for l in open("tests/narrative_benchmark.tsv").read().splitlines()]
     cats = {1: [], 0: []}

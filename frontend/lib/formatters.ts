@@ -44,3 +44,10 @@ export function persenAtauStrip(v: number | null): string {
 export function lebarMeter(v: number): string {
   return `${Math.min(100, Math.max(0, v))}%`;
 }
+
+/** Pilihan filter wilayah dari data yang benar-benar ada, bukan daftar tetap. */
+export function opsiWilayah(daftar: { wilayah: string }[], terpilih: string, semua: string): string[] {
+  const ada = new Set(daftar.map((c) => c.wilayah).filter((w) => w && w !== "Belum tercatat"));
+  if (terpilih !== semua) ada.add(terpilih); // jangan hilangkan pilihan aktif saat data belum termuat
+  return [semua, ...[...ada].sort((a, b) => a.localeCompare(b, "id"))];
+}

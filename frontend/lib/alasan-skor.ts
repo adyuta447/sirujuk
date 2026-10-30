@@ -10,12 +10,9 @@ export const KODE_ALASAN: Record<string, string> = {
   NARRATIVE_GENERIC: "Narasi dokter terlalu umum",
   INSUFFICIENT_HISTORY: "Riwayat dokter belum cukup",
   SISRUTE_STALE: "Data SISRUTE sudah lama tidak diperbarui",
-  SISRUTE_UNKNOWN:
-    "Data SISRUTE belum tersambung, ketersediaan alat dan tenaga tidak diperiksa",
-  HHI_NEAREST_UNKNOWN:
-    "Faskes terdekat belum diketahui, konsentrasi belum bisa dinilai adil",
-  NARRATIVE_UNAVAILABLE:
-    "Narasi klinis tidak tercatat, kesesuaian narasi tidak dinilai",
+  SISRUTE_UNKNOWN: "Data SISRUTE belum tersambung, ketersediaan alat dan tenaga tidak diperiksa",
+  HHI_NEAREST_UNKNOWN: "Faskes terdekat belum diketahui, konsentrasi belum bisa dinilai adil",
+  NARRATIVE_UNAVAILABLE: "Narasi klinis tidak tercatat, kesesuaian narasi tidak dinilai",
   DIAGNOSIS_UNMAPPED: "Kode diagnosis belum terpetakan ke daftar diagnosis",
 };
 

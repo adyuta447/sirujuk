@@ -39,6 +39,5 @@ export const AUDIT_CHECKLIST = [
   'Rumah sakit tujuan sesuai kebutuhan pasien',
 ]
 
-export const WILAYAH = ['Semua Wilayah', 'Jakarta Utara', 'Jakarta Barat', 'Jakarta Timur', 'Jakarta Pusat', 'Jakarta Selatan']
 
 // Undraw-style flat illustrations

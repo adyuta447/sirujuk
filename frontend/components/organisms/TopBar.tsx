@@ -1,6 +1,5 @@
 import { MapPin } from "lucide-react";
 import { periodeSekarang } from "../../lib/formatters";
-import { WILAYAH } from "../../lib/sirujuk-data";
 import { SearchBar } from "../molecules/SearchBar";
 import { RegionSelect } from "./app-shell/RegionSelect";
 
@@ -9,7 +8,7 @@ interface TopBarProps {
   setWilayah: (w: string) => void;
   query: string;
   setQuery: (q: string) => void;
-  pilihan?: string[];
+  pilihan: string[];
 }
 
 export function TopBar({
@@ -17,7 +16,7 @@ export function TopBar({
   setWilayah,
   query,
   setQuery,
-  pilihan = WILAYAH,
+  pilihan,
 }: TopBarProps) {
   return (
     <div className="min-h-16 shrink-0 mx-3 sm:mx-4 mt-3 sm:mt-4 bg-white border border-[#DCE3EC] rounded-4xl flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 sticky top-3 sm:top-4 z-20">

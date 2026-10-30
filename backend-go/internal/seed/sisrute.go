@@ -23,3 +23,10 @@ func MockSisrute() repository.MockFacilities {
 	}
 	return m
 }
+
+// Regions returns the region of a facility from the FKTP directory shipped with the demo data. It is a stand-in for
+// an official facility register (Kemenkes), which production still needs.
+func Regions() func(facilityID string) string {
+	_, regions, _, _ := loadFacilities()
+	return func(id string) string { return regions[id] }
+}

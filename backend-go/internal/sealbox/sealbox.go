@@ -1,4 +1,5 @@
-package client
+// Package sealbox encrypts small payloads with AES-256-GCM. Used for queued referrals and for referral documents at rest.
+package sealbox
 
 import (
 	"crypto/aes"
@@ -7,8 +8,8 @@ import (
 	"errors"
 )
 
-// seal encrypts with AES-256-GCM; the random nonce is prepended. open reverses it and rejects tampering.
-func seal(key, plain []byte) ([]byte, error) {
+// Seal encrypts with AES-256-GCM; the random nonce is prepended. Open reverses it and rejects tampering.
+func Seal(key, plain []byte) ([]byte, error) {
 	gcm, err := newGCM(key)
 	if err != nil {
 		return nil, err
@@ -20,7 +21,7 @@ func seal(key, plain []byte) ([]byte, error) {
 	return gcm.Seal(nonce, nonce, plain, nil), nil
 }
 
-func open(key, sealed []byte) ([]byte, error) {
+func Open(key, sealed []byte) ([]byte, error) {
 	gcm, err := newGCM(key)
 	if err != nil {
 		return nil, err

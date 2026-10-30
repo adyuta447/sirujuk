@@ -1,12 +1,12 @@
 import { bacaLogin } from "../../../../lib/auth/baca-login";
 import { galatAuth } from "../../../../lib/auth/galat-auth";
 import { asalSama } from "../../../../lib/auth/origin";
-import { buatPembatas } from "../../../../lib/auth/pembatas";
+import { buatPembatas, kunciPercobaan } from "../../../../lib/auth/pembatas";
 import { TTL_DETIK, rahasia } from "../../../../lib/auth/session";
 import { terbitkanSesi } from "../../../../lib/auth/terbitkan-sesi";
 import { TerlaluBanyak, verifikasi } from "../../../../lib/auth/users";
 
-const pembatas = buatPembatas({ batas: 5, jendelaMs: 15 * 60 * 1000 });
+const pembatas = buatPembatas(5, 15 * 60 * 1000, 5000);
 const TERLALU_BANYAK = "Terlalu banyak percobaan. Coba lagi 15 menit lagi.";
 
 export async function POST(request: Request) {
@@ -21,9 +21,7 @@ export async function POST(request: Request) {
   const { email, sandi } = kredensial;
   if (!email || !sandi) return galatAuth(400, "INVALID_REQUEST", "Email dan kata sandi wajib diisi.");
 
-  // Kunci hanya email: header IP (x-forwarded-for) bisa dipalsukan klien di luar proxy tepercaya, sehingga kunci
-  // berbasis IP bisa dilewati dengan mengganti nilainya. Batas yang berlaku lintas instance ada di backend (Redis).
-  const kunci = email.toLowerCase();
+  const kunci = kunciPercobaan(email, request.headers);
   if (pembatas.tertahan(kunci)) {
     return galatAuth(429, "TOO_MANY_ATTEMPTS", TERLALU_BANYAK, { "Retry-After": String(pembatas.sisaDetik(kunci)) });
   }
@@ -40,7 +38,7 @@ export async function POST(request: Request) {
     // Pesan sama untuk email tak dikenal dan sandi salah.
     return galatAuth(401, "INVALID_CREDENTIALS", "Email atau kata sandi salah.");
   }
-  pembatas.bersihkan(kunci);
+  pembatas.hapus(kunci);
 
   return terbitkanSesi({ sub: user.email, nama: user.nama, role: user.role }, TTL_DETIK, kunciRahasia);
 }

@@ -44,14 +44,14 @@ func (f FirestoreUsers) Find(ctx context.Context, email string) (domain.User, bo
 		return domain.User{}, false, err
 	}
 	return domain.User{Email: d.Fields["email"].S, Nama: d.Fields["nama"].S, Role: d.Fields["role"].S, Hash: d.Fields["hash"].S,
-		DoctorID: d.Fields["doctor_id"].S, Disabled: d.Fields["disabled"].S == "true"}, true, nil
+		DoctorID: d.Fields["doctor_id"].S, Disabled: d.Fields["disabled"].S == "true", ExpiresAt: d.Fields["expires_at"].S}, true, nil
 }
 
 // Put creates or replaces the account (PATCH without an update mask replaces all fields).
 func (f FirestoreUsers) Put(ctx context.Context, u domain.User) error {
 	body, _ := json.Marshal(fsDoc{Fields: map[string]fsString{
 		"email": {normEmail(u.Email)}, "nama": {u.Nama}, "role": {u.Role}, "hash": {u.Hash},
-		"doctor_id": {u.DoctorID}, "disabled": {strconv.FormatBool(u.Disabled)},
+		"doctor_id": {u.DoctorID}, "disabled": {strconv.FormatBool(u.Disabled)}, "expires_at": {u.ExpiresAt},
 	}})
 	resp, err := f.do(ctx, http.MethodPatch, f.doc(u.Email), body)
 	if err != nil {

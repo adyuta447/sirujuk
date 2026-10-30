@@ -48,6 +48,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--yellow-share", type=float, default=0.20, help="share of referrals sent to review (yellow+red)")
     ap.add_argument("--red-share", type=float, default=0.05)
+    ap.add_argument("--peer", help="peer baseline from real data (models/bpjs_peer.json, written by bpjs.py); replaces the synthetic one before saving")
     a = ap.parse_args()
     df = doctor_history(generate())
     tr, te = df[df.day < SPLIT].copy(), df[df.day >= SPLIT].copy()
@@ -93,6 +94,10 @@ def main():
     rural = te.rural.values
     rep["by_stratum"] = {k: {"flag_rate": round(float(flag[mk].mean()), 3), "red_precision": round(float(y[mk & red].mean()) if (mk & red).any() else 0, 3)}
                          for k, mk in {"rural": rural, "urban": ~rural, **{f"ftype_{t}": (te.ftype == t).values for t in te.ftype.unique()}}.items()}
+    if a.peer:  # weights and cuts stay as fitted (no real labels exist); only "what is normal for peers" comes from real data
+        src = json.load(open(a.peer))
+        m.peer, m.version = src["peer"], m.version + "+peer-" + src["version"]
+        rep["peer_source"] = {"file": a.peer, "version": src["version"], "note": "metrics above use the synthetic peer; see bpjs_report.json for scoring on real referrals"}
     joblib.dump(m, OUT)
     with open(OUT + ".sha256", "w") as f:  # model_loader refuses to unpickle a file whose hash does not match
         f.write(hashlib.sha256(open(OUT, "rb").read()).hexdigest() + "\n")

@@ -1,6 +1,7 @@
+import type { IdParams } from "../../../../../../types/route";
 import { ID_AMAN, json, keBackendSebagai, wajibPetugas } from "../../../../../../lib/auth/guard";
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: IdParams) {
   const cek = await wajibPetugas(request, true);
   if ("galat" in cek) return cek.galat;
   const { id } = await params;

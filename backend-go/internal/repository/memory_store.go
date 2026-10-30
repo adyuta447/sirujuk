@@ -74,15 +74,20 @@ func (s *MemoryStore) save(item domain.StoredReferral) error {
 
 // Upsert stores a score. It is on the patient path, so a failed save is logged and the in-memory copy still serves.
 func (s *MemoryStore) Upsert(req domain.ReferralRequest, decision domain.RiskDecision) {
-	s.upsert(req, decision, false)
+	s.upsert(req, decision, false, "")
 }
 
 // UpsertSynthetic stores a demo row and marks it synthetic. Only the seed calls it.
 func (s *MemoryStore) UpsertSynthetic(req domain.ReferralRequest, decision domain.RiskDecision) {
-	s.upsert(req, decision, true)
+	s.upsert(req, decision, true, "")
 }
 
-func (s *MemoryStore) upsert(req domain.ReferralRequest, decision domain.RiskDecision, synthetic bool) {
+// UpsertSample stores a row imported from a historical data sample and records where it came from. Only the seed calls it.
+func (s *MemoryStore) UpsertSample(req domain.ReferralRequest, decision domain.RiskDecision, source string) {
+	s.upsert(req, decision, false, source)
+}
+
+func (s *MemoryStore) upsert(req domain.ReferralRequest, decision domain.RiskDecision, synthetic bool, source string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	item, exists := s.items[req.ReferralID]
@@ -101,6 +106,9 @@ func (s *MemoryStore) upsert(req domain.ReferralRequest, decision domain.RiskDec
 	}
 	item.Request, item.Decision = req, decision
 	item.Synthetic = item.Synthetic || synthetic
+	if source != "" {
+		item.Source = source
+	}
 	_ = s.save(*item)
 }
 

@@ -15,7 +15,7 @@ def predict(request: PredictionRequest) -> PredictionResponse:
         "narr": normalize_text(request.clinical_narrative),
         "n90": request.n90, "ns90": nan(request.ns90), "n180": request.n180, "hhi180": nan(request.hhi180),
         "dest": 1 if request.to_dominant_dest else 0, "dom_dest": 1, "near": np.nan if request.dest_is_nearest is None else int(request.dest_is_nearest),
-        "sis_avail": int(request.sisrute_available), "sis_age": request.sisrute_age_days,
+        "sis_avail": int(bool(request.sisrute_available)), "sis_known": request.sisrute_available is not None, "sis_age": request.sisrute_age_days,
     }])
     X = m.terms(row)
     x, s = X.iloc[0], float(m.score(X)[0])

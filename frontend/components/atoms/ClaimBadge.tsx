@@ -1,14 +1,12 @@
-import { Check, Lock, ShieldAlert } from "lucide-react";
+import { klaim } from "../../data/claim-styles";
 import type { RujukanCase } from "../../lib/sirujuk-data";
 
-const klaim = {
-  ditahan: { label: "Klaim ditahan sementara", bg: "#9A5A08", Icon: Lock },
-  dilepas: { label: "Klaim dilepas", bg: "#17803F", Icon: Check },
-  "temuan-terkonfirmasi": { label: "Temuan terkonfirmasi", bg: "#C42222", Icon: ShieldAlert },
-} as const;
+interface ClaimBadgeProps {
+  status: RujukanCase["claimStatus"];
+}
 
 /** Status klaim dari backend. "normal" tidak ditampilkan. Ikon + teks, bukan warna saja. */
-export function ClaimBadge({ status }: { status: RujukanCase["claimStatus"] }) {
+export function ClaimBadge({ status }: ClaimBadgeProps) {
   if (!status || status === "normal") return null;
   const { label, bg, Icon } = klaim[status];
   return (

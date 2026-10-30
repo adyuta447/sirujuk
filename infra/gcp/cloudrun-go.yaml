@@ -9,8 +9,15 @@ spec:
     metadata:
       annotations:
         autoscaling.knative.dev/minScale: "0"
-        autoscaling.knative.dev/maxScale: "3" # caps the bill under abuse
+        # One instance on purpose. Referral state (scores, audits, clarifications) is cached in memory per instance, so
+        # with more than one an audit saved on A is invisible on B and a later write on B can overwrite it. Raise this
+        # (it also caps the bill under abuse) only after the versioned writes and periodic Sync in MemoryStore are
+        # merged, deployed and re-tested with two instances. See docs/security.md, finding S12.
+        autoscaling.knative.dev/maxScale: "1"
         run.googleapis.com/startup-cpu-boost: "true"
+        # Direct VPC egress (no connector VM to pay for): reaches the private Redis VM from infra/gcp/redis-vm.sh.
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
     spec:
       serviceAccountName: sirujuk-backend@${PROJECT}.iam.gserviceaccount.com
       containerConcurrency: 80
@@ -29,5 +36,10 @@ spec:
               valueFrom: {secretKeyRef: {name: sirujuk-api-token, key: latest}}
             - name: STREAM_ENC_KEY # encrypts queued referrals (patient data) in Redis; the backend refuses to start without it
               valueFrom: {secretKeyRef: {name: sirujuk-stream-key, key: latest}}
+            # Turn on field encryption of patient data in Firestore: run infra/gcp/setup.sh once (it creates the
+            # sirujuk-data-key secret and grants access), then uncomment these two lines and deploy. Without the
+            # secret in place, a deploy that references it fails, so this stays commented until then.
+            # - name: DATA_ENC_KEY
+            #   valueFrom: {secretKeyRef: {name: sirujuk-data-key, key: latest}}
             - name: REDIS_URL
               valueFrom: {secretKeyRef: {name: sirujuk-redis-url, key: latest}}

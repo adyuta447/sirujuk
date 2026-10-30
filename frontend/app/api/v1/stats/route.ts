@@ -7,6 +7,6 @@ export async function GET(request: Request) {
   if ("galat" in cek) return cek.galat;
   const upstream = await keBackendSebagai(cek.sesi, "/api/v1/stats");
   if (cek.sesi.role !== "dinkes" || !upstream.ok) return upstream;
-  const { wilayah } = await upstream.json();
-  return Response.json({ wilayah, dokter: [] }, { headers: { "Cache-Control": "no-store" } });
+  const { wilayah, synthetic, source } = await upstream.json(); // penanda asal data ikut, supaya banner tetap tampil
+  return Response.json({ wilayah, dokter: [], synthetic, source },{ headers: { "Cache-Control": "no-store" } });
 }

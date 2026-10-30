@@ -73,4 +73,18 @@ describe("bangunIndikator", () => {
     expect(hhi.level).toBe("tinggi");
     expect(hhi.banding).toContain("Jarak faskes belum diketahui");
   });
+
+  it("does not crash when the narrative was not scored (similarity null)", () => {
+    const d = {
+      ...item("green", 1).decision,
+      reason_codes: ["NARRATIVE_UNAVAILABLE"],
+      indicators: {
+        ns: { value: null, peer_p95: 0.21, n: 3, min_n: 20, applies: false },
+        hhi: { value: null, n: 3, min_n: 30, observe_from: 1500, high_from: 2500, nearest_known: false },
+        sisrute: { flag: false, age_days: 0, weight: 1 },
+        narrative: { similarity: null, p10: 0.62, mapped: false },
+      },
+    };
+    expect(bangunIndikator(d)[3].nilai).toBe("Tidak dinilai");
+  });
 });

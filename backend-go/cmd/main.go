@@ -77,6 +77,12 @@ func main() {
 		// Fake patients must not enter the real database; archiving is a soft delete, so cleanup would be manual.
 		log.Fatal("SEED_COUNT adds synthetic referrals and is refused in production or with FIRESTORE_PROJECT set; use a separate demo environment")
 	}
+	// SEED_BPJS_FILE: referrals exported by ml-service/bpjs.py from the BPJS 2025 data sample. Same guard: sample rows
+	// must not mix with live referrals, and the data-use agreement does not cover putting them in a shared database.
+	bpjsFile := os.Getenv("SEED_BPJS_FILE")
+	if bpjsFile != "" && (prod || project != "") {
+		log.Fatal("SEED_BPJS_FILE loads BPJS sample referrals and is refused in production or with FIRESTORE_PROJECT set")
+	}
 	switch {
 	case project != "":
 		// Scores, audits and clarifications survive restarts. Load before seeding: seeding is skipped when data exists.
@@ -97,6 +103,11 @@ func main() {
 	var mlEval func(context.Context, domain.ReferralRequest) (domain.RiskDecision, error)
 	if !dummy {
 		mlEval = seedDecisions.Evaluate // seed rows are scored by the real ML service
+	}
+	if n, err := seed.RunBPJS(store, bpjsFile, mlEval); err != nil {
+		log.Fatalf("SEED_BPJS_FILE: %v", err)
+	} else if n > 0 {
+		log.Printf("loaded %d referrals from the BPJS data sample (%s)", n, seed.BPJSSource)
 	}
 	seed.Run(store, seedCount, mlEval, seed.Sources{KNS: os.Getenv("KNS_FILE"), Specialist: os.Getenv("SPECIALIST_FILE")})
 	// Login accounts: Firestore in production (add them with cmd/useradd); without FIRESTORE_PROJECT only the

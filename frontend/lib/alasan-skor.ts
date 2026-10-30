@@ -5,11 +5,17 @@ import type { Decision } from "../types/referral";
 export const KODE_ALASAN: Record<string, string> = {
   NS_ABOVE_PEER_P95: "Rujukan keluhan ringan di atas dokter sejenis",
   HHI_HIGH_CONCENTRATION: "Rujukan menumpuk di satu rumah sakit",
-  FACILITY_AVAILABLE_PER_SISRUTE: "Alat atau tenaga ternyata tersedia di faskes asal",
+  FACILITY_AVAILABLE_PER_SISRUTE:
+    "Alat atau tenaga ternyata tersedia di faskes asal",
   NARRATIVE_GENERIC: "Narasi dokter terlalu umum",
   INSUFFICIENT_HISTORY: "Riwayat dokter belum cukup",
   SISRUTE_STALE: "Data SISRUTE sudah lama tidak diperbarui",
-  HHI_NEAREST_UNKNOWN: "Faskes terdekat belum diketahui, konsentrasi belum bisa dinilai adil",
+  SISRUTE_UNKNOWN:
+    "Data SISRUTE belum tersambung, ketersediaan alat dan tenaga tidak diperiksa",
+  HHI_NEAREST_UNKNOWN:
+    "Faskes terdekat belum diketahui, konsentrasi belum bisa dinilai adil",
+  NARRATIVE_UNAVAILABLE:
+    "Narasi klinis tidak tercatat, kesesuaian narasi tidak dinilai",
   DIAGNOSIS_UNMAPPED: "Kode diagnosis belum terpetakan ke daftar diagnosis",
 };
 

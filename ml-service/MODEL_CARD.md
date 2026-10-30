@@ -44,3 +44,34 @@ so `E11.6` counts as `E11` (type 2 diabetes) even though complicated cases may l
 - Labels are not audit-biased in the simulation; real labels exist only for audited cases (keep a 0.5-1% random green audit).
 - Embedding is char n-gram TF-IDF (no external service, no narrative leaves the process). Benchmark a self-hosted
   Indonesian sentence model on hand-labelled narratives before the pilot.
+
+## Fewer live layers: the cuts stay, SISRUTE "unknown" is explicit
+With HHI off (no distance data) and SISRUTE not connected, only NS and the narrative score. On the synthetic test set that
+flags 41% of the fraud (all layers: 91%) and red falls to 1.6% of referrals (`train.py` reports it as
+`production_regime_no_hhi_no_sisrute` once the regime check is merged from main).
+- **Not re-cut.** Cuts re-derived on the train split under that regime and scored on the test split: keeping 5% red gives
+  red precision 0.36 (now 0.76) and total recall 0.44 (now 0.41); keeping 2% red gives 0.57 and 0.44. Holding claims with
+  a 64% false-hold rate to recover recall of 3 points is the wrong trade, so the full-regime cuts stay. Fewer reds is the
+  safe direction when evidence is thinner; the shortfall is a coverage gap to state in the proposal, not to tune away.
+- **`sisrute_available` is nullable.** null = not connected (flag 0, reason `SISRUTE_UNKNOWN` on equipment/staff referrals,
+  `indicators.sisrute.known = false`); false = checked and the facility has no such equipment (flag 0, no warning). The
+  score is identical for both. The ML service is ready; **the backend must send null instead of false while SISRUTE has
+  no data** (`ScoringInput.SisruteAvailable` is a plain bool today, so production still sends false).
+
+## Real data: BPJS Kesehatan 2025 sample (`bpjs.py`, `models/bpjs_report.json`)
+391,548 FKTP referrals (visits 2024, 21,093 facilities, 2,989 hospitals; 88% linked to an FKRTL visit via `FKP02`).
+The sample has **no fraud labels, doctor IDs, narratives, SISRUTE or distance**, so it cannot train or validate the
+fraud model. What it does give, and what the model now uses:
+- **Peer baseline from real data.** `train.py --peer models/bpjs_peer.json` (the Docker build does this) keeps the fitted
+  weights and cuts and replaces only the per-stratum NS/HHI median, MAD and NS P95. The synthetic HHI baseline was far
+  off: median 6,557 synthetic vs 2,098 real (urban puskesmas 1,499), so a real doctor at HHI 4,000 looked *below* peers.
+  NS was close overall (0.098 vs 0.091) but real strata differ (urban mandiri 0.18, rural mandiri 0.04).
+- **Diagnosis table coverage is the biggest gap.** Only 30.6% of real referral diagnoses are in the table (10.3% KNS).
+  The most common unmapped codes are I11, K04, M54, H52, H54, Z09, F20, K01: a physician should decide which belong.
+- **History is thin in a participant sample.** Only 6% of referrals meet n90 >= 20 (9% n180 >= 30): per-facility
+  counts are far below real volume (PSTV15 weights). The facility stands in for the doctor (a puskesmas has many).
+- **Shadow scoring** (no narrative, SISRUTE unknown, nearest unknown, cuts not re-cut): 99.7% green, 0.3% yellow,
+  0.02% red. Proxy check (does facility NS predict that the hospital also coded a simple KNS case?) AUC 0.49: no
+  signal. That proxy is weak, not a fraud label, but it means the NS layer alone is not shown to work on real data.
+- Empty narrative is now "not recorded" (`NARRATIVE_UNAVAILABLE`, no NLP term) instead of "generic", so imported
+  history is not punished for a missing field. The backend and frontend now require a narrative on new referrals.

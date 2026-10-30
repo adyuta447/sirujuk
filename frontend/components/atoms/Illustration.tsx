@@ -22,7 +22,12 @@ export type IllustrationName =
   | "selesai-terang";
 
 // File ada di public/illustrations, diunduh manual dari unDraw (lihat SOURCES.md).
-export function Illustration({ name, className = "" }: { name: IllustrationName; className?: string }) {
+interface IllustrationProps {
+  name: IllustrationName;
+  className?: string;
+}
+
+export function Illustration({ name, className = "" }: IllustrationProps) {
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={`/illustrations/${name}.svg`} alt="" aria-hidden="true" className={`object-contain ${className}`} />;
 }

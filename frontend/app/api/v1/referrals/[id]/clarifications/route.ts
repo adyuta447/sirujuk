@@ -1,7 +1,8 @@
+import type { IdParams } from "../../../../../../types/route";
 import { ID_AMAN, bacaBody, json, keBackendSebagai, wajibPeran } from "../../../../../../lib/auth/guard";
 
 // shortcut: semua dokter bisa menjawab rujukan mana pun; batasi ke dokter pemilik rujukan setelah akun terhubung ke doctor_id.
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: IdParams) {
   const cek = await wajibPeran(request, (peran) => peran !== "dinkes", true);
   if ("galat" in cek) return cek.galat;
   const { id } = await params;

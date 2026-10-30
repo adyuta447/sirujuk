@@ -5,16 +5,6 @@ import type { ReferralEdit, RiskDecision, StoredReferral } from "../types/referr
 import { bangunIndikator } from "../lib/indikator";
 import { validateReferral, type ReferralInput } from "../lib/validate";
 
-// Direktori ID dokter dummy milik seeder backend (d-001..d-006) ke nama tampilan.
-const DOKTER_SEED: Record<string, string> = {
-  "d-001": "dr. Andi Pratama",
-  "d-002": "dr. Rini Kusuma",
-  "d-003": "dr. Siti Aminah",
-  "d-004": "dr. Budi Santoso",
-  "d-005": "dr. Maya Putri",
-  "d-006": "dr. Agus Wijaya",
-};
-
 // Kategori sepenuhnya dari keputusan backend; frontend tidak punya ambang skor sendiri.
 const RISK_DARI_KEPUTUSAN: Record<string, RiskLevel> = { red: "tinggi", yellow: "sedang", green: "rendah" };
 
@@ -46,6 +36,8 @@ export function mapStored(item: StoredReferral): RujukanCase {
     status: item.final ? "selesai" : audits.length > 0 ? "sedang-diaudit" : "menunggu",
     claimStatus: item.claim_status,
     synthetic: item.synthetic,
+    sumber: item.source,
+    skorDummy: decision.signals_source === "backend-dummy",
     indikator: bangunIndikator(decision),
     kodeAlasan: decision.reason_codes?.join(", "),
     narasi: request.clinical_narrative,

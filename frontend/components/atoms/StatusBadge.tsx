@@ -1,12 +1,11 @@
-type Status = "menunggu" | "sedang-diaudit" | "selesai";
+import { statuses } from "../../data/status-styles";
+import type { Status } from "../../data/status-styles";
 
-const statuses = {
-  menunggu: { label: "Menunggu", bg: "#64748B" },
-  "sedang-diaudit": { label: "Sedang dicek", bg: "#1E3A5F" },
-  selesai: { label: "Selesai", bg: "#0E1B2A" },
-} as const;
+interface StatusBadgeProps {
+  status: Status;
+}
 
-export function StatusBadge({ status }: { status: Status }) {
+export function StatusBadge({ status }: StatusBadgeProps) {
   const config = statuses[status];
 
   return (

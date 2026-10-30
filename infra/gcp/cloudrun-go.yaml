@@ -15,6 +15,9 @@ spec:
         # merged, deployed and re-tested with two instances. See docs/security.md, finding S12.
         autoscaling.knative.dev/maxScale: "1"
         run.googleapis.com/startup-cpu-boost: "true"
+        # Direct VPC egress (no connector VM to pay for): reaches the private Redis VM from infra/gcp/redis-vm.sh.
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
     spec:
       serviceAccountName: sirujuk-backend@${PROJECT}.iam.gserviceaccount.com
       containerConcurrency: 80

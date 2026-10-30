@@ -27,6 +27,9 @@ with TestClient(app) as c:
     assert bad["yellow_from"] == info["yellow_from"] and bad["indicators"]["ns"]["applies"] and bad["indicators"]["ns"]["peer_p95"] > 0
     assert "INSUFFICIENT_HISTORY" in codes(cold)
     assert "DIAGNOSIS_UNMAPPED" in codes(unk) and "HHI_NEAREST_UNKNOWN" in codes(unk) and unk["nlp_similarity"] == 0.0
+    # empty narrative (historical import) = layer not run, never "generic"
+    blank = c.post("/v1/predict", json=dict(base, reason="clinical", clinical_narrative="")).json()
+    assert "NARRATIVE_UNAVAILABLE" in codes(blank) and "NARRATIVE_GENERIC" not in codes(blank) and blank["indicators"]["narrative"]["similarity"] is None
     # SISRUTE: null = not connected (layer off, and the verifier is told); false = checked, not available (no warning)
     eq = dict(base, n90=60, ns90=0.6, n180=80, hhi180=6000, to_dominant_dest=True, dest_is_nearest=False)
     s_null, s_false, s_true = (c.post("/v1/predict", json=dict(eq, **kw)).json() for kw in

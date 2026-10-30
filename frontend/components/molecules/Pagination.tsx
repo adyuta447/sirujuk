@@ -1,34 +1,18 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { halamanRingkas } from "../../lib/pagination";
 import { NAVY } from "../../lib/sirujuk-data";
 
-/** Nomor halaman ringkas: semua bila <= 7, else 1 … jendela … N. */
-export function halamanRingkas(halaman: number, total: number): (number | "…")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const jendela = new Set([1, 2, halaman - 1, halaman, halaman + 1, total - 1, total].filter((n) => n >= 1 && n <= total));
-  const urut = [...jendela].sort((a, b) => a - b);
-  const keluar: (number | "…")[] = [];
-  for (let i = 0; i < urut.length; i++) {
-    keluar.push(urut[i]);
-    if (i < urut.length - 1 && urut[i + 1] - urut[i] > 1) keluar.push("…");
-  }
-  return keluar;
-}
-
-export function Pagination({
-  page,
-  totalPages,
-  onChange,
-  totalItems,
-  pageSize,
-}: {
+interface PaginationProps {
   page: number;
   totalPages: number;
   onChange: (p: number) => void;
   totalItems?: number;
   pageSize?: number;
-}) {
+}
+
+export function Pagination({ page, totalPages, onChange, totalItems, pageSize }: PaginationProps) {
   if (totalPages <= 1) return null;
   const awal = totalItems === undefined || pageSize === undefined ? null : (page - 1) * pageSize + 1;
   const akhir = totalItems === undefined || pageSize === undefined || awal === null ? null : Math.min(page * pageSize, totalItems);

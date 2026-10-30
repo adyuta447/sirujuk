@@ -4,7 +4,7 @@ export interface Alasan { judul: string; penjelasan: string }
 export interface Indikator { label: string; nilai: string; banding: string; level: RiskLevel }
 export interface RiwayatSkor { skor: number; tanggal: string; versiModel: string }
 export interface Klarifikasi { penulis: string; teks: string; tanggal: string }
-export interface RujukanCase { id: string; noRujukan: string; pasien: string; usia?: number; jenisPeserta?: string; fasalOrigin: string; fasalTujuan: string; wilayah: string; diagnosa: string; dokter: string; tanggal: string; risk: RiskLevel; riskScore: number; alasan: Alasan[]; status: 'menunggu' | 'sedang-diaudit' | 'selesai'; synthetic?: boolean; claimStatus?: 'normal' | 'ditahan' | 'dilepas' | 'temuan-terkonfirmasi'; indikator?: Indikator[]; riwayatSkor?: RiwayatSkor[]; klarifikasi?: Klarifikasi[]; narasi?: string; alasanRujukan?: string; kodeAlasan?: string }
+export interface RujukanCase { id: string; noRujukan: string; pasien: string; usia?: number; jenisPeserta?: string; fasalOrigin: string; fasalTujuan: string; wilayah: string; diagnosa: string; dokter: string; tanggal: string; risk: RiskLevel; riskScore: number; alasan: Alasan[]; status: 'menunggu' | 'sedang-diaudit' | 'selesai'; synthetic?: boolean; sumber?: string; skorDummy?: boolean; claimStatus?: 'normal' | 'ditahan' | 'dilepas' | 'temuan-terkonfirmasi'; indikator?: Indikator[]; riwayatSkor?: RiwayatSkor[]; klarifikasi?: Klarifikasi[]; narasi?: string; alasanRujukan?: string; kodeAlasan?: string }
 export type Keputusan = 'valid' | 'tidak-valid' | 'perlu-klarifikasi'
 export const NAVY = '#1E3A5F'
 

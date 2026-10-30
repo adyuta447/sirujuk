@@ -38,6 +38,17 @@ def _stats(v):
     return float(m), float(np.median(np.abs(v - m)))
 
 
+def peer_stats(df: pd.DataFrame) -> dict:
+    """Peer baseline per stratum (median/MAD of NS and HHI, NS P95) over referrals with enough history."""
+    peer = {}
+    for s, g in [("__all__", df)] + list(df.groupby("stratum")):
+        ns, hh = g[g.n90 >= MIN_NS].ns90.values, g[g.n180 >= MIN_HHI].hhi180.values
+        if len(ns) < 20 or len(hh) < 20:
+            continue
+        peer[s] = dict(ns=_stats(ns), hhi=_stats(hh), ns_p95=float(np.percentile(ns, 95)))
+    return peer
+
+
 class Scorer:
     def fit(self, df: pd.DataFrame, terms=TERMS, yellow_share=0.20, red_share=0.05, seed=0):
         self.terms_used = list(terms)
@@ -53,12 +64,7 @@ class Scorer:
         self.nlp_stats = _stats(res)
         self.p10 = float(np.percentile(nlp[ok], 10))
         self.len_corr = (float(np.corrcoef(ll[ok], y[ok])[0, 1]), float(np.corrcoef(ll[ok], res)[0, 1]))
-        self.peer = {}
-        for s, g in [("__all__", df)] + list(df.groupby("stratum")):
-            ns, hh = g[g.n90 >= MIN_NS].ns90.values, g[g.n180 >= MIN_HHI].hhi180.values
-            if len(ns) < 20 or len(hh) < 20:
-                continue
-            self.peer[s] = dict(ns=_stats(ns), hhi=_stats(hh), ns_p95=float(np.percentile(ns, 95)))
+        self.peer = peer_stats(df)
         X = self.terms(df)
         self.lr = LogisticRegression(C=1.0, max_iter=1000).fit(X[self.terms_used], df.fraud)
         s = self.score(X)
@@ -99,7 +105,9 @@ class Scorer:
         flag = (df.reason != "clinical").values & (df.sis_avail.values == 1)
         out["w_f"] = 1 / (1 + df.sis_age.values / 30)
         out["t_flag"] = FLAG_EFFECT * out.w_f * flag
-        nlp = self.nlp(df.narr, diag)
+        # an empty narrative is "not recorded" (historical import), not "generic": the backend requires one on new referrals
+        has_narr = (df.narr.str.strip().str.len() > 0).values
+        nlp = np.where(has_narr, self.nlp(df.narr, diag), np.nan)
         mapped = ~np.isnan(nlp)
         ll = np.log1p(df.narr.str.split().str.len()).values
         res = (1 - np.nan_to_num(nlp)) - np.polyval(self.len_fit, ll)
@@ -107,6 +115,7 @@ class Scorer:
         out["t_nlp"] = np.where(mapped, np.clip(_robust(res, *self.nlp_stats), -3, 3), 0.0)  # bounded like the proposal's 1-NLP: a vague narrative alone must not reach red
         out["t_p10"] = (mapped & (np.nan_to_num(nlp, nan=1.0) < self.p10)).astype(float)
         out["is_ns"], out["to_dom"], out["flag"], out["mapped"], out["near_known"] = is_ns, to_dom, flag, mapped, known
+        out["has_narr"] = has_narr
         # training data always has a SISRUTE snapshot; only the API can say "not connected" (sis_avail is 0 then)
         out["sis_known"] = df["sis_known"].values.astype(bool) if "sis_known" in df else np.ones(len(df), bool)
         return out
@@ -152,6 +161,8 @@ class Scorer:
             out.append({"code": "SISRUTE_UNKNOWN", "detail": "data SISRUTE tidak ada (belum tersambung): ketersediaan alat/SDM tidak diperiksa", "contribution": 0.0})
         if x.to_dom and not x.near_known:
             out.append({"code": "HHI_NEAREST_UNKNOWN", "detail": f"HHI {hh:.0f}, n = {int(r.n180)}: data faskes terdekat tidak ada, konsentrasi tidak dinilai", "contribution": 0.0})
-        if not x.mapped:
+        if not x.has_narr:
+            out.append({"code": "NARRATIVE_UNAVAILABLE", "detail": "narasi klinis tidak tercatat di data sumber; kesesuaian narasi tidak dihitung", "contribution": 0.0})
+        elif not x.mapped:
             out.append({"code": "DIAGNOSIS_UNMAPPED", "detail": "kode diagnosis di luar tabel PPK/KNS; kesesuaian narasi tidak dihitung", "contribution": 0.0})
         return out

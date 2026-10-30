@@ -41,3 +41,6 @@ export function bolehAkses(peran: Peran, path: string): boolean {
 }
 
 export const bolehSkor = (peran: Peran) => PETUGAS.includes(peran);
+
+export const hanyaTkmkb = (risk: string, peran?: Peran) =>
+  risk === "tinggi" && peran === "verifikator";

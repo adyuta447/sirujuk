@@ -3,19 +3,15 @@ import { useEffect, useRef, useState } from "react";
 
 // Count-up ala bank: 0 ke target dengan easeOutExpo (cepat di awal,
 // mendarat tepat). Jalan saat `mulai` true; reduced-motion langsung final.
-export const CountUp = ({
-  target,
-  suffix = "",
-  mulai,
-  delay = 0,
-  durasi = 1400,
-}: {
+interface CountUpProps {
   target: number;
   suffix?: string;
   mulai: boolean;
   delay?: number;
   durasi?: number;
-}) => {
+}
+
+export function CountUp({ target, suffix = "", mulai, delay = 0, durasi = 1400 }: CountUpProps) {
   const [nilai, setNilai] = useState(0);
   const raf = useRef(0);
 
@@ -45,4 +41,4 @@ export const CountUp = ({
       {suffix}
     </>
   );
-};
+}

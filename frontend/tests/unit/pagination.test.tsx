@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { Pagination, halamanRingkas } from "../../components/molecules/Pagination";
+import { Pagination } from "../../components/molecules/Pagination";
+import { halamanRingkas } from "../../lib/pagination";
 
 describe("halamanRingkas", () => {
   it("menampilkan semua nomor bila total <= 7", () => {

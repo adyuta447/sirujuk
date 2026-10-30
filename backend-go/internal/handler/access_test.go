@@ -148,7 +148,7 @@ func TestRegionComesFromTheDirectoryNotFromTheIssuer(t *testing.T) {
 		return ""
 	}
 	body := func(origin, region string) string {
-		return fmt.Sprintf(`{"doctor_id":"d-1","origin_facility_id":%q,"destination_facility_id":"g","diagnosis_code":"I10","reason":"x","origin_wilayah":%q,"issued_at":%q}`, origin, region, time.Now().Format(time.RFC3339))
+		return fmt.Sprintf(`{"doctor_id":"d-1","origin_facility_id":%q,"destination_facility_id":"g","diagnosis_code":"I10","reason":"x","clinical_narrative":"nyeri kepala berulang","origin_wilayah":%q,"issued_at":%q}`, origin, region, time.Now().Format(time.RFC3339))
 	}
 	post := func(key, b string) {
 		r := requestFor("POST", "", b)

@@ -2,13 +2,12 @@ import Image from "next/image";
 
 // Merk SIRUJUK: perisai logo-only + teks HTML (tajam di semua ukuran).
 // Perisai tampil mentah tanpa lencana latar, di permukaan gelap maupun terang.
-export const BrandMark = ({
-  variant = "dark",
-  shield = 40,
-}: {
+interface BrandMarkProps {
   variant?: "dark" | "light";
   shield?: number;
-}) => {
+}
+
+export function BrandMark({ variant = "dark", shield = 40 }: BrandMarkProps) {
   const gelap = variant === "dark";
   return (
     <span className="flex items-center gap-2.5" role="img" aria-label="SIRUJUK Anti Fraud">
@@ -38,4 +37,4 @@ export const BrandMark = ({
       </span>
     </span>
   );
-};
+}

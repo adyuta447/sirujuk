@@ -35,6 +35,7 @@ type dokterStat struct {
 type statsResponse struct {
 	// Synthetic is true when any row is seed data, so Analytics and Dinkes can say so on screen.
 	Synthetic bool          `json:"synthetic"`
+	Source    string        `json:"source,omitempty"` // set when rows come from an imported sample (see StoredReferral.Source)
 	Wilayah   []wilayahStat `json:"wilayah"`
 	Dokter    []dokterStat  `json:"dokter"`
 }
@@ -59,9 +60,12 @@ func (h ReferralHandler) Stats(w http.ResponseWriter, r *http.Request) {
 func buildStats(items []domain.StoredReferral) statsResponse {
 	regions := map[string]*regionAgg{}
 	doctors := map[string]*doctorAgg{}
-	synthetic := false
+	synthetic, source := false, ""
 	for _, it := range items {
 		synthetic = synthetic || it.Synthetic
+		if it.Source != "" {
+			source = it.Source
+		}
 		region := it.Request.OriginWilayah
 		if region == "" {
 			region = unknownRegion
@@ -70,7 +74,7 @@ func buildStats(items []domain.StoredReferral) statsResponse {
 		get(doctors, it.Request.DoctorID, newDoctorAgg).add(it)
 	}
 
-	out := statsResponse{Synthetic: synthetic, Wilayah: []wilayahStat{}, Dokter: []dokterStat{}}
+	out := statsResponse{Synthetic: synthetic, Source: source, Wilayah: []wilayahStat{}, Dokter: []dokterStat{}}
 	for name, a := range regions {
 		out.Wilayah = append(out.Wilayah, a.stat(name))
 	}

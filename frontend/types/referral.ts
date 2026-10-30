@@ -27,7 +27,7 @@ export type RiskDecision = {
     ns?: { value: number | null; peer_p95: number | null; n: number; min_n: number; applies: boolean };
     hhi?: { value: number | null; n: number; min_n?: number; observe_from: number; high_from: number; to_dominant_destination?: boolean; nearest_known?: boolean };
     sisrute?: { flag: boolean; age_days: number; weight: number };
-    narrative?: { similarity: number; p10: number | null; mapped?: boolean };
+    narrative?: { similarity: number | null; p10: number | null; mapped?: boolean };
   };
 };
 
@@ -52,6 +52,7 @@ export type StoredReferral = {
   claim_status?: ClaimStatus;
   final?: boolean;
   synthetic?: boolean; // true bila baris berasal dari seed demo
+  source?: string; // mis. "bpjs-sampel-2025": sampel historis nyata yang sudah de-identifikasi
   history?: { score: number; decision: Decision; model_version: string; scored_at: string }[];
   clarifications?: { author: string; text: string; at: string }[];
 };
@@ -63,6 +64,7 @@ export type ReferralEdit = Pick<
 
 export type Stats = {
   synthetic?: boolean;
+  source?: string;
   wilayah: {
     wilayah: string;
     faskes: number;

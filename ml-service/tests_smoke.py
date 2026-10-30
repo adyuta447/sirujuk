@@ -45,4 +45,30 @@ with TestClient(app) as c:
     share = lambda v: round(sum(x != "green" for x in v) / len(v), 2)
     print("narrative-only flagged: specific", share(cats[1]), "generic", share(cats[0]))
     assert share(cats[0]) > share(cats[1])
+
+    # gRPC (what the backend calls in production) returns what HTTP returns, unknowns included
+    import json
+    from concurrent import futures
+    import grpc
+    from google.protobuf.timestamp_pb2 import Timestamp
+    from app.grpc_server import Inference
+    from sirujuk.ml.v1 import inference_pb2 as pb, inference_pb2_grpc as pb_grpc
+    srv = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
+    pb_grpc.add_InferenceServicer_to_server(Inference(), srv)
+    port = srv.add_insecure_port("127.0.0.1:0")
+    srv.start()
+    stub = pb_grpc.InferenceStub(grpc.insecure_channel(f"127.0.0.1:{port}"))
+    ts = Timestamp(seconds=1767225600)  # 2026-01-01T00:00:00Z
+    rpc_base = dict(referral_id="r1", diagnosis_code="I10", reason="equipment", clinical_narrative=base["clinical_narrative"], issued_at=ts)
+    for http, kw in [(bad, dict(sisrute_available=True, sisrute_age_days=2, n90=60, ns90=0.6, n180=80, hhi180=6000, to_dominant_dest=True, dest_is_nearest=False)),
+                     (s_null, dict(n90=60, ns90=0.6, n180=80, hhi180=6000, to_dominant_dest=True, dest_is_nearest=False))]:
+        g = stub.Predict(pb.PredictRequest(**rpc_base, **kw))
+        assert (g.score, g.category, [x.code for x in g.reasons]) == (http["score"], http["category"], codes(http)), g
+        assert json.loads(g.indicators_json) == http["indicators"]
+    try:
+        stub.Predict(pb.PredictRequest(**dict(rpc_base, reason="bribe")))
+        raise AssertionError("invalid reason accepted")
+    except grpc.RpcError as e:
+        assert e.code() == grpc.StatusCode.INVALID_ARGUMENT and base["clinical_narrative"] not in e.details(), e.details()
+    srv.stop(0)
     print("ok")

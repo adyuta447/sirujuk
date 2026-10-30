@@ -1,53 +1,64 @@
 package client
 
 import (
-	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/sirujuk/backend-go/domain"
+	"github.com/sirujuk/backend-go/gen/mlv1"
 	"github.com/sirujuk/backend-go/internal/service"
 )
 
+// MLClient calls the ML service over gRPC (proto/sirujuk/ml/v1). One HTTP/2 connection is dialled lazily and reused
+// by every score; Cloud Run's front end spreads the calls across ML instances.
 type MLClient struct {
 	BaseURL string
-	HTTP    *http.Client
 	IDToken func(context.Context) (string, error) // set when ml-service is a private Cloud Run service
+	Timeout time.Duration
+	rpc     mlv1.InferenceClient
 }
 
-func NewMLClient(baseURL string) MLClient {
-	return MLClient{BaseURL: strings.TrimRight(baseURL, "/"), HTTP: &http.Client{Timeout: 300 * time.Millisecond}}
+// NewMLClient takes the service URL: https:// (Cloud Run) is TLS, on 443 unless a port is given; http://host:port
+// (compose, local) is plaintext.
+func NewMLClient(baseURL string) (MLClient, error) {
+	u, err := url.Parse(strings.TrimRight(baseURL, "/"))
+	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return MLClient{}, fmt.Errorf("ML_SERVICE_URL %q: want http(s)://host[:port]", baseURL)
+	}
+	target, creds := u.Host, insecure.NewCredentials()
+	if u.Scheme == "https" {
+		creds = credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12})
+		if u.Port() == "" {
+			target += ":443"
+		}
+	}
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(creds))
+	if err != nil {
+		return MLClient{}, err
+	}
+	return MLClient{BaseURL: u.String(), Timeout: 300 * time.Millisecond, rpc: mlv1.NewInferenceClient(conn)}, nil
 }
 
-// mlRequest is the /v1/predict body. Nullable fields stay null when unknown: a made-up default (nearest = true,
-// a guessed stratum) would be read by the model as data.
-type mlRequest struct {
-	ReferralID        string    `json:"referral_id"`
-	DiagnosisCode     string    `json:"diagnosis_code"`
-	Reason            string    `json:"reason"`
-	ClinicalNarrative string    `json:"clinical_narrative"`
-	IssuedAt          time.Time `json:"issued_at"`
-	Stratum           *string   `json:"stratum"`
-	N90               int       `json:"n90"`
-	NS90              *float64  `json:"ns90"`
-	N180              int       `json:"n180"`
-	HHI180            *float64  `json:"hhi180"`
-	ToDominantDest    bool      `json:"to_dominant_dest"`
-	DestIsNearest     *bool     `json:"dest_is_nearest"`
-	SisruteAvailable  bool      `json:"sisrute_available"`
-	SisruteAgeDays    float64   `json:"sisrute_age_days"`
-}
-
-func newMLRequest(in domain.ScoringInput) mlRequest {
+// newPredictRequest leaves unknown values unset: a made-up default (nearest = true, a guessed stratum) would be read
+// by the model as data.
+func newPredictRequest(in domain.ScoringInput) *mlv1.PredictRequest {
 	r, d := in.Referral, in.Doctor
-	req := mlRequest{
-		ReferralID: r.ReferralID, DiagnosisCode: r.DiagnosisCode, Reason: reasonKind(r), ClinicalNarrative: r.ClinicalNarrative, IssuedAt: r.IssuedAt,
-		N90: d.N90, NS90: d.NS90, N180: d.N180, HHI180: d.HHI180, ToDominantDest: d.ToDominantDest, DestIsNearest: d.DestIsNearest,
-		SisruteAvailable: in.SisruteAvailable, SisruteAgeDays: in.SisruteAgeDays,
+	req := &mlv1.PredictRequest{
+		ReferralId: r.ReferralID, DiagnosisCode: r.DiagnosisCode, Reason: reasonKind(r), ClinicalNarrative: r.ClinicalNarrative,
+		IssuedAt: timestamppb.New(r.IssuedAt), N90: int64(d.N90), Ns90: d.NS90, N180: int64(d.N180), Hhi180: d.HHI180,
+		ToDominantDest: d.ToDominantDest, DestIsNearest: d.DestIsNearest,
+		SisruteAvailable: &in.SisruteAvailable, SisruteAgeDays: in.SisruteAgeDays,
 	}
 	if d.Stratum != "" {
 		req.Stratum = &d.Stratum
@@ -72,30 +83,26 @@ func reasonKind(q domain.ReferralRequest) string {
 }
 
 func (c MLClient) Predict(ctx context.Context, in domain.ScoringInput) (domain.MLScores, error) {
-	body, _ := json.Marshal(newMLRequest(in))
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/v1/predict", bytes.NewReader(body))
-	if err != nil {
-		return domain.MLScores{}, err
-	}
-	req.Header.Set("Content-Type", "application/json")
 	if c.IDToken != nil {
 		tok, err := c.IDToken(ctx)
 		if err != nil {
 			return domain.MLScores{}, err
 		}
-		req.Header.Set("Authorization", "Bearer "+tok)
+		ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+tok)
 	}
-	resp, err := c.HTTP.Do(req)
+	ctx, cancel := context.WithTimeout(ctx, c.Timeout)
+	defer cancel()
+	r, err := c.rpc.Predict(ctx, newPredictRequest(in))
 	if err != nil {
 		return domain.MLScores{}, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return domain.MLScores{}, fmt.Errorf("ml-service status %d", resp.StatusCode)
+	out := domain.MLScores{
+		NLPSimilarity: r.NlpSimilarity, AnomalyScore: r.AnomalyScore, FraudScore: r.FraudScore, Score: r.Score,
+		Category: r.Category, YellowFrom: r.YellowFrom, RedFrom: r.RedFrom, Indicators: json.RawMessage(r.IndicatorsJson),
+		DiagnosisVersion: r.DiagnosisVersion, ModelVersion: r.ModelVersion, Reasons: make([]domain.Reason, len(r.Reasons)),
 	}
-	var out domain.MLScores
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return domain.MLScores{}, err
+	for i, x := range r.Reasons {
+		out.Reasons[i] = domain.Reason{Code: x.Code, Detail: x.Detail, Contribution: x.Contribution}
 	}
 	return out, nil
 }

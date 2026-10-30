@@ -17,5 +17,5 @@ spec:
       timeoutSeconds: 10
       containers:
         - image: ${IMAGE}
-          ports: [{containerPort: 8000}]
+          ports: [{name: h2c, containerPort: 8000}] # h2c = HTTP/2 end to end, required for gRPC
           resources: {limits: {cpu: "1", memory: 1Gi}}

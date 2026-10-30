@@ -45,7 +45,10 @@ func main() {
 	}
 	cancelPing()
 
-	ml := client.NewMLClient(env("ML_SERVICE_URL", "http://localhost:8000"))
+	ml, err := client.NewMLClient(env("ML_SERVICE_URL", "http://localhost:8000"))
+	if err != nil {
+		log.Fatal(err)
+	}
 	if os.Getenv("ML_AUTH") == "cloudrun" {
 		ml.IDToken = client.CloudRunIDToken(ml.BaseURL)
 	}

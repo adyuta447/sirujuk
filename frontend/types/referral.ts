@@ -27,7 +27,7 @@ export type RiskDecision = {
     ns?: { value: number | null; peer_p95: number | null; n: number; min_n: number; applies: boolean };
     hhi?: { value: number | null; n: number; min_n?: number; observe_from: number; high_from: number; to_dominant_destination?: boolean; nearest_known?: boolean };
     sisrute?: { flag: boolean; age_days: number; weight: number };
-    narrative?: { similarity: number; p10: number | null; mapped?: boolean };
+    narrative?: { similarity: number | null; p10: number | null; mapped?: boolean };
   };
 };
 

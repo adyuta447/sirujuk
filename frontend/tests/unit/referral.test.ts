@@ -73,6 +73,19 @@ describe("bangunIndikator", () => {
     expect(hhi.level).toBe("tinggi");
     expect(hhi.banding).toContain("Jarak faskes belum diketahui");
   });
+
+  it("does not crash when the narrative was not scored (similarity null)", () => {
+    const d = {
+      ...item("red", 80).decision,
+      indicators: {
+        ns: { value: 0.9, peer_p95: 0.21, n: 40, min_n: 20, applies: false },
+        hhi: { value: 6000, n: 80, min_n: 30, observe_from: 1500, high_from: 2500, nearest_known: false },
+        sisrute: { flag: true, age_days: 1, weight: 0.97 },
+        narrative: { similarity: null, p10: 0.13, mapped: false },
+      },
+    };
+    expect(bangunIndikator(d).find((i) => i.label.includes("narasi"))?.nilai).toBe("Tidak dinilai");
+  });
 });
 
 import { opsiWilayah } from "../../lib/formatters";

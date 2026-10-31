@@ -43,11 +43,12 @@ func main() {
 		log.Fatal(err)
 	}
 	redis = withStreamKey(redis, env("APP_ENV", "development") == "production")
+	cache := rc.NewResilient(redis) // Redis with a per-instance memory fallback
 	pingCtx, cancelPing := context.WithTimeout(context.Background(), 2*time.Second)
 	if err := redis.Ping(pingCtx); err != nil {
 		// Not fatal (scoring still works), but batch features, idempotency, the async queue and the login limiter are
 		// all off until it answers. /ready reports it.
-		log.Printf(`{"event":"redis_unreachable","effect":"cold-start features, no idempotent replay, no async queue, no shared login limiter"}`)
+		log.Printf(`{"event":"redis_unreachable","effect":"running on per-instance memory fallback: features, idempotent replay, queue and login limiter work on this instance only"}`)
 	}
 	cancelPing()
 
@@ -71,7 +72,7 @@ func main() {
 	decisions := service.DecisionService{
 		ML:         ml,
 		Engine:     service.DecisionEngine{MinRedLayers: minRedLayers()},
-		Cache:      redis,
+		Cache:      cache,
 		Facilities: facilities,
 		Dummy:      dummy,
 	}
@@ -84,6 +85,7 @@ func main() {
 	// Demo list/detail/audit store. SEED_COUNT>0 fills it with fake referrals (local demo only; unset = empty).
 	store := repository.NewMemoryStore()
 	project := os.Getenv("FIRESTORE_PROJECT")
+	dataEncrypted := false
 	seedCount, _ := strconv.Atoi(os.Getenv("SEED_COUNT"))
 	if seedCount > 0 && (prod || project != "") {
 		// Fake patients must not enter the real database; archiving is a soft delete, so cleanup would be manual.
@@ -95,13 +97,14 @@ func main() {
 	if bpjsFile != "" && (prod || project != "") {
 		log.Fatal("SEED_BPJS_FILE loads BPJS sample referrals and is refused in production or with FIRESTORE_PROJECT set")
 	}
-	dataEncrypted := false
 	switch {
 	case project != "":
 		// Scores, audits and clarifications survive restarts. Load before seeding: seeding is skipped when data exists.
-		dataKey := encKey("DATA_ENC_KEY", "referrals in Firestore", prod)
-		dataEncrypted = dataKey != nil
-		persister := repository.NewFirestoreReferrals(project, client.MetadataAccessToken, dataKey)
+		persister := repository.NewFirestoreReferrals(project, client.MetadataAccessToken)
+		if key := encKey("DATA_ENC_KEY", "referrals in Firestore", prod); key != nil {
+			persister = persister.WithKey(key)
+			dataEncrypted = true
+		}
 		if err := store.UsePersister(context.Background(), persister); err != nil {
 			log.Fatalf("cannot load referrals from Firestore: %v", err)
 		}
@@ -152,15 +155,16 @@ func main() {
 			"data_encryption": status(dataEncrypted),
 		}
 	}
-	h := handler.ReferralHandler{Ready: ready, Decisions: decisions, Queue: redis, Results: redis, Store: store, Users: users, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
-	auth := handler.AuthHandler{Auth: service.Authenticator{Users: users}, Limiter: redis, Sessions: redis}
+	h := handler.ReferralHandler{Regions: seed.Regions(), Ready: ready, Decisions: decisions, Queue: cache, Results: cache, Store: store, Users: users, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
+	// Revocation goes straight to Redis: the per-instance fallback would forget a logout another instance recorded.
+	auth := handler.AuthHandler{Auth: service.Authenticator{Users: users}, Limiter: cache, Sessions: redis}
 	port := env("GO_PORT", "8080")
 	log.Printf("sirujuk backend listening on :%s", port)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	go service.RunFeatureJob(ctx, store, redis, kns, 6*time.Hour)
-	go store.RunSync(ctx, 15*time.Second) // other instances' scores and audits reach this one's lists
-	go redis.Consume(ctx, "go-"+port, func(c context.Context, r domain.ReferralRequest) (domain.RiskDecision, error) {
+	go store.Sync(ctx, storeSyncInterval()) // pick up changes made by other instances
+	go service.RunFeatureJob(ctx, store, cache, kns, 6*time.Hour)
+	go cache.Consume(ctx, "go-"+port, func(c context.Context, r domain.ReferralRequest) (domain.RiskDecision, error) {
 		d, err := decisions.Evaluate(c, r)
 		if err == nil {
 			_, _ = store.Insert(r, d) // async result becomes visible in list/detail; never overwrites an existing referral
@@ -230,7 +234,8 @@ func withStreamKey(r rc.Redis, prod bool) rc.Redis {
 	return r
 }
 
-// encKey reads a 32-byte key given as 64 hex characters. Unset is fatal in production and nil (plaintext) otherwise.
+// encKey reads a 32-byte key given as 64 hex characters. Unset is fatal in production and nil (plaintext) otherwise;
+// malformed is always fatal, because a typo that silently disables encryption is worse than a refusal to start.
 func encKey(name, what string, prod bool) []byte {
 	raw := os.Getenv(name)
 	if raw == "" {
@@ -245,4 +250,14 @@ func encKey(name, what string, prod bool) []byte {
 		log.Fatalf("%s must be 64 hex characters (32 bytes); generate with: openssl rand -hex 32", name)
 	}
 	return key
+}
+
+// storeSyncInterval reads STORE_SYNC_SECONDS (default 30; 0 turns it off). Each sync reads every referral document,
+// which Firestore bills per read, so keep it in the tens of seconds.
+func storeSyncInterval() time.Duration {
+	n, err := strconv.Atoi(os.Getenv("STORE_SYNC_SECONDS"))
+	if err != nil || n < 0 {
+		return 30 * time.Second
+	}
+	return time.Duration(n) * time.Second
 }

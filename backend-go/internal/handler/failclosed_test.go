@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/sirujuk/backend-go/domain"
 )
@@ -13,16 +12,13 @@ import (
 // downFirestore loads fine at startup and then refuses every write, like Firestore going away mid-run.
 type downFirestore struct{}
 
-func (downFirestore) Load(context.Context, string) (domain.StoredReferral, error) {
-	return domain.StoredReferral{}, errors.New("firestore down")
+func (downFirestore) Load(context.Context, string) (domain.StoredReferral, string, bool, error) {
+	return domain.StoredReferral{}, "", false, errors.New("firestore down")
 }
-func (downFirestore) Save(context.Context, domain.StoredReferral) (string, error) {
-	return "", errors.New("firestore down")
+func (downFirestore) Save(context.Context, domain.StoredReferral, string) error {
+	return errors.New("firestore down")
 }
 func (downFirestore) LoadAll(context.Context) ([]domain.StoredReferral, error) { return nil, nil }
-func (downFirestore) ChangedSince(context.Context, time.Time) ([]domain.StoredReferral, error) {
-	return nil, errors.New("firestore down")
-}
 
 // Firestore fail-closed (QA 30 Oct, cyber security P1): while the database refuses writes, no human decision may be
 // acknowledged, and nothing may look saved on this instance either.

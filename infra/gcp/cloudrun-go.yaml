@@ -10,7 +10,8 @@ spec:
       annotations:
         autoscaling.knative.dev/minScale: "0"
         # Cloud Run balances requests across instances. Safe since MemoryStore writes are versioned (a stale write is
-        # retried, never overwrites) and RunSync brings other instances' changes in every 15 s. Also caps the bill.
+        # retried, never overwrites) and Sync brings other instances' changes in every STORE_SYNC_SECONDS (default 30 s).
+        # Also caps the bill.
         autoscaling.knative.dev/maxScale: "3"
         run.googleapis.com/startup-cpu-boost: "true"
         # Direct VPC egress (no connector VM to pay for): reaches the private Redis VM from infra/gcp/redis-vm.sh.

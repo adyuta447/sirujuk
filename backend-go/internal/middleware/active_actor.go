@@ -35,7 +35,7 @@ func ActiveActor(users repository.UserRepository) func(http.Handler) http.Handle
 		if err != nil {
 			return activeEntry{}, err
 		}
-		e = activeEntry{role: u.Role, active: found && !u.Disabled, checkedAt: time.Now()}
+		e = activeEntry{role: u.Role, active: found && !u.Disabled && !u.Expired(time.Now()), checkedAt: time.Now()}
 		mu.Lock()
 		if len(cache) > 1000 {
 			clear(cache)

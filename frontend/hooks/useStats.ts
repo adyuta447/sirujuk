@@ -9,7 +9,6 @@ const useStatsQuery = <T,>(select: (s: Stats) => T, enabled = true) =>
   useQuery({ queryKey: ["stats"], queryFn: getStats, staleTime: 60 * 1000, select, enabled });
 
 /** Nama wilayah yang benar-benar ada di data, untuk pilihan filter. Hanya peran yang boleh membaca statistik. */
-export const useNamaWilayah = (enabled: boolean) => useStatsQuery((s) => s.wilayah.map((w) => w.wilayah).sort(), enabled);
 
 /** Asal data statistik bila bukan rujukan berjalan: sumber sampel (mis. "bpjs-sampel-2025"), "sintetis", atau null. */
 export const useStatsSumber = () => useStatsQuery((s) => s.source ?? (s.synthetic ? "sintetis" : null));

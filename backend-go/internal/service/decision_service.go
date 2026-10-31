@@ -20,8 +20,8 @@ type DecisionService struct {
 	Cache      Cache                         // doctor features from the nightly batch; nil = cold start
 	Facilities repository.FacilityRepository // SISRUTE availability of the origin faskes
 	History    ReferralSource                // enables point-in-time features for retrospective scoring; nil = batch cache only
-	KNS        KNSList                     
-	Dummy      bool                 
+	KNS        KNSList
+	Dummy      bool
 }
 
 func (s DecisionService) Evaluate(ctx context.Context, request domain.ReferralRequest) (domain.RiskDecision, error) {

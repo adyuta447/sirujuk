@@ -7,7 +7,7 @@ import { TTL_DETIK, rahasia } from "../../../../lib/auth/session";
 import { terbitkanSesi } from "../../../../lib/auth/terbitkan-sesi";
 import { TerlaluBanyak, verifikasi } from "../../../../lib/auth/users";
 
-const pembatas = buatPembatas({ batas: 5, jendelaMs: 15 * 60 * 1000 });
+const pembatas = buatPembatas(5, 15 * 60 * 1000, 5000);
 const TERLALU_BANYAK = "Terlalu banyak percobaan. Coba lagi 15 menit lagi.";
 
 export async function POST(request: Request) {
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     // Pesan sama untuk email tak dikenal dan sandi salah.
     return galatAuth(401, "INVALID_CREDENTIALS", "Email atau kata sandi salah.");
   }
-  pembatas.bersihkan(kunci);
+  pembatas.hapus(kunci);
 
   return terbitkanSesi({ sub: user.email, nama: user.nama, role: user.role }, TTL_DETIK, kunciRahasia);
 }

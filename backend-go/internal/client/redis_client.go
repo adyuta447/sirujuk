@@ -12,7 +12,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirujuk/backend-go/domain"
-	"github.com/sirujuk/backend-go/internal/aead"
+	"github.com/sirujuk/backend-go/internal/sealbox"
 	"github.com/sirujuk/backend-go/internal/service"
 )
 
@@ -46,6 +46,11 @@ func NewRedis(url, caPEM string) (Redis, error) {
 		}
 		opt.TLSConfig.RootCAs = pool
 	}
+	// Fail fast: the defaults retry with growing pauses, which would push every request past the 300 ms scoring budget
+	// while Redis is down. One quick retry is enough; Resilient handles the rest.
+	opt.MaxRetries = 1
+	opt.MinRetryBackoff, opt.MaxRetryBackoff = time.Millisecond, 20*time.Millisecond
+	opt.DialTimeout, opt.ReadTimeout, opt.WriteTimeout = 500*time.Millisecond, 500*time.Millisecond, 500*time.Millisecond
 	return Redis{C: redis.NewClient(opt)}, nil
 }
 
@@ -95,7 +100,7 @@ func (r Redis) Enqueue(ctx context.Context, req domain.ReferralRequest, reason s
 	b, _ := json.Marshal(req)
 	field := "referral"
 	if r.Key != nil {
-		sealed, err := aead.Seal(r.Key, b)
+		sealed, err := sealbox.Seal(r.Key, b)
 		if err != nil {
 			return err
 		}
@@ -110,7 +115,7 @@ func (r Redis) Save(ctx context.Context, d domain.RiskDecision) error {
 	b, _ := json.Marshal(d)
 	if r.Key != nil {
 		var err error
-		if b, err = aead.Seal(r.Key, b); err != nil {
+		if b, err = sealbox.Seal(r.Key, b); err != nil {
 			return err
 		}
 	}
@@ -123,7 +128,7 @@ func (r Redis) Load(ctx context.Context, id string) (*domain.RiskDecision, error
 		return nil, err
 	}
 	if r.Key != nil {
-		if b, err = aead.Open(r.Key, b); err != nil {
+		if b, err = sealbox.Open(r.Key, b); err != nil {
 			return nil, err // e.g. a plaintext entry from before the key: a miss, never trusted
 		}
 	}
@@ -134,15 +139,15 @@ func (r Redis) Load(ctx context.Context, id string) (*domain.RiskDecision, error
 // Consume scores queued referrals until ctx ends: up to 3 attempts with backoff+jitter, then the DLQ.
 // shortcut: messages left pending by a crashed consumer are not reclaimed (XAUTOCLAIM) yet.
 func (r Redis) Consume(ctx context.Context, name string, eval func(context.Context, domain.ReferralRequest) (domain.RiskDecision, error)) {
-	if err := r.C.XGroupCreateMkStream(ctx, retryStream, group, "0").Err(); err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
-		log.Printf("consumer disabled: %v", err)
-		return
+	// Redis may be down at startup (or come and go): keep trying instead of giving up for the life of the process.
+	for ctx.Err() == nil && !r.ensureGroup(ctx) {
+		sleep(ctx, 15*time.Second)
 	}
 	for ctx.Err() == nil {
 		res, err := r.C.XReadGroup(ctx, &redis.XReadGroupArgs{Group: group, Consumer: name, Streams: []string{retryStream, ">"}, Count: 10, Block: 5 * time.Second}).Result()
 		if err != nil {
 			if !errors.Is(err, redis.Nil) && ctx.Err() == nil {
-				time.Sleep(2 * time.Second)
+				sleep(ctx, 2*time.Second)
 			}
 			continue
 		}
@@ -152,30 +157,52 @@ func (r Redis) Consume(ctx context.Context, name string, eval func(context.Conte
 	}
 }
 
+func (r Redis) ensureGroup(ctx context.Context) bool {
+	err := r.C.XGroupCreateMkStream(ctx, retryStream, group, "0").Err()
+	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
+		log.Printf(`{"event":"queue_consumer_waiting","reason":"redis unavailable"}`)
+		return false
+	}
+	return true
+}
+
+func sleep(ctx context.Context, d time.Duration) {
+	select {
+	case <-ctx.Done():
+	case <-time.After(d):
+	}
+}
+
+// scoreWithRetry tries up to 3 times with backoff and jitter. save runs on success; false means give up (DLQ).
+func scoreWithRetry(ctx context.Context, req domain.ReferralRequest, eval func(context.Context, domain.ReferralRequest) (domain.RiskDecision, error), save func(context.Context, domain.RiskDecision) error) bool {
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			sleep(ctx, time.Duration(1<<attempt)*time.Second+time.Duration(rand.Intn(500))*time.Millisecond)
+		}
+		actx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		d, err := eval(actx, req)
+		cancel()
+		if err == nil && save(ctx, d) == nil {
+			return true
+		}
+	}
+	return false
+}
+
 func (r Redis) handle(ctx context.Context, m redis.XMessage, eval func(context.Context, domain.ReferralRequest) (domain.RiskDecision, error)) {
 	var req domain.ReferralRequest
 	raw, _ := m.Values["referral"].(string)
 	if r.Key != nil { // with a key, only sealed messages count: a plaintext one was not written by this backend
 		raw = ""
 		if enc, ok := m.Values["referral_enc"].(string); ok {
-			if plain, err := aead.Open(r.Key, []byte(enc)); err == nil {
+			if plain, err := sealbox.Open(r.Key, []byte(enc)); err == nil {
 				raw = string(plain)
 			}
 		}
 	}
-	if json.Unmarshal([]byte(raw), &req) == nil {
-		for attempt := 0; attempt < 3; attempt++ {
-			if attempt > 0 {
-				time.Sleep(time.Duration(1<<attempt)*time.Second + time.Duration(rand.Intn(500))*time.Millisecond)
-			}
-			actx, cancel := context.WithTimeout(ctx, 2*time.Second)
-			d, err := eval(actx, req)
-			cancel()
-			if err == nil && r.Save(ctx, d) == nil {
-				r.C.XAck(ctx, retryStream, group, m.ID)
-				return
-			}
-		}
+	if json.Unmarshal([]byte(raw), &req) == nil && scoreWithRetry(ctx, req, eval, r.Save) {
+		r.C.XAck(ctx, retryStream, group, m.ID)
+		return
 	}
 	log.Printf(`{"event":"score_dlq","referral_id":%q,"msg_id":%q}`, req.ReferralID, m.ID)
 	// Keep the payload for replay exactly as it was queued (encrypted when a key is set), never decrypted into the DLQ.

@@ -21,7 +21,7 @@ type DecisionEngine struct {
 	YellowFrom, RedFrom float64
 	MinRedLayers        int
 	RandomAuditPermille int
-	RandomAuditSalt string
+	RandomAuditSalt     string
 }
 
 func (e DecisionEngine) randomAudit(referralID string) bool {

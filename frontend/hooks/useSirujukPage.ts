@@ -1,18 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { bolehSkor } from "../lib/akses";
-import { WILAYAH } from "../lib/sirujuk-data";
+import { DEFAULT_REGION } from "../lib/constants";
+import { opsiWilayah } from "../lib/formatters";
 import { useFilterStore } from "../store/useFilterStore";
 import { useAppNavigation } from "./useAppNavigation";
 import { useReferrals } from "./useReferral";
 import { useSession } from "./useSession";
-import { useNamaWilayah } from "./useStats";
 
 export function useSirujukPage(initialId?: string) {
   const nav = useAppNavigation();
   const { data: sesi } = useSession();
-  const { data: namaWilayah = [] } = useNamaWilayah(!!sesi && (bolehSkor(sesi.role) || sesi.role === "dinkes"));
   const filter = useFilterStore();
   const [menuOpen, setMenuOpen] = useState(false);
   // Konteks halaman dibaca dari URL (initialId), jadi tombol back dan refresh tetap jalan.
@@ -28,6 +26,6 @@ export function useSirujukPage(initialId?: string) {
     memuatRujukan,
     menuOpen,
     setMenuOpen,
-    pilihanWilayah: namaWilayah.length ? [WILAYAH[0], ...namaWilayah] : WILAYAH,
+    pilihanWilayah: opsiWilayah(daftarRujukan ?? [], filter.wilayah, DEFAULT_REGION),
   };
 }

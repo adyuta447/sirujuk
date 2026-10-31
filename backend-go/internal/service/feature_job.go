@@ -55,6 +55,7 @@ func FeaturesAsOf(items []domain.StoredReferral, doctorID, excludeID string, kns
 }
 
 func featuresFor(refs []domain.ReferralRequest, excludeID string, kns KNSList, asOf time.Time) (domain.DoctorFeatures, bool) {
+	knsKnown := kns != nil && kns.Known() // a missing list means NS stays unknown, never a crash
 	var n90, nonSpecialist, n180 int
 	byDest := map[string]int{}
 	for _, q := range refs {
@@ -66,7 +67,7 @@ func featuresFor(refs []domain.ReferralRequest, excludeID string, kns KNSList, a
 		byDest[q.DestinationFacilityID]++
 		if age <= nsWindow {
 			n90++
-			if kns.Known() && kns.IsNonSpecialist(q.DiagnosisCode) {
+			if knsKnown && kns.IsNonSpecialist(q.DiagnosisCode) {
 				nonSpecialist++
 			}
 		}
@@ -75,7 +76,7 @@ func featuresFor(refs []domain.ReferralRequest, excludeID string, kns KNSList, a
 		return domain.DoctorFeatures{}, false
 	}
 	f := domain.DoctorFeatures{N90: n90, N180: n180}
-	if kns.Known() && n90 >= nsMinN {
+	if knsKnown && n90 >= nsMinN {
 		ns := float64(nonSpecialist) / float64(n90)
 		f.NS90 = &ns
 	}
@@ -105,7 +106,7 @@ func RunFeatureJob(ctx context.Context, src ReferralSource, cache Cache, kns KNS
 				return
 			}
 		}
-		log.Printf("feature job: refreshed %d doctors (KNS list loaded: %v)", len(features), kns.Known())
+		log.Printf("feature job: refreshed %d doctors (KNS list loaded: %v)", len(features), kns != nil && kns.Known())
 	}
 	refresh()
 	tick := time.NewTicker(every)

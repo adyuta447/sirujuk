@@ -10,7 +10,7 @@ import (
 
 type kns map[string]bool
 
-func (k kns) Known() bool { return len(k) > 0 }
+func (k kns) Known() bool                   { return len(k) > 0 }
 func (k kns) IsNonSpecialist(c string) bool { return k[c] }
 
 func referrals(doctor string, n int, dest func(i int) string, dx string, now time.Time) []domain.StoredReferral {
@@ -18,7 +18,7 @@ func referrals(doctor string, n int, dest func(i int) string, dx string, now tim
 	for i := range out {
 		out[i].Request = domain.ReferralRequest{
 			ReferralID: fmt.Sprint(doctor, i), DoctorID: doctor, DestinationFacilityID: dest(i),
-			DiagnosisCode: dx, IssuedAt: now.AddDate(0, 0, -1-(i%60)), 
+			DiagnosisCode: dx, IssuedAt: now.AddDate(0, 0, -1-(i%60)),
 		}
 	}
 	return out
@@ -86,5 +86,13 @@ func TestFeaturesAsOfLeavesNearestUnknown(t *testing.T) {
 	f := FeaturesAsOf(referrals("d1", 40, func(int) string { return "RS" }, "I10", now.AddDate(0, 0, -5)), "d1", "", kns{}, now)
 	if f.DestIsNearest != nil {
 		t.Fatal("no distance data: nearest must stay unknown (nil), not true")
+	}
+}
+
+func TestMissingKNSListMeansNSUnknownNotACrash(t *testing.T) {
+	now := time.Now()
+	f := FeaturesAsOf(referrals("d1", 40, func(int) string { return "RS" }, "J06.9", now), "d1", "", nil, now)
+	if f.NS90 != nil || f.N90 != 40 {
+		t.Fatalf("with no list, NS must stay unknown while counts still work: %+v", f)
 	}
 }

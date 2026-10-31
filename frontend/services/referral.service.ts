@@ -10,13 +10,6 @@ import { KODE_ALASAN } from "../lib/alasan-skor";
 import { bangunIndikator } from "../lib/indikator";
 import { validateReferral, type ReferralInput } from "../lib/validate";
 
-const WILAYAH_OF: Record<string, string> = {
-  "fktp-cilincing": "Jakarta Utara",
-  "fktp-penjaringan": "Jakarta Utara",
-  "fktp-tambora": "Jakarta Barat",
-  "klinik-mitra-sehat": "Jakarta Barat",
-};
-
 // Kategori sepenuhnya dari keputusan backend; frontend tidak punya ambang skor sendiri.
 const RISK_DARI_KEPUTUSAN: Record<string, RiskLevel> = {
   red: "tinggi",
@@ -42,10 +35,7 @@ export function mapStored(item: StoredReferral): RujukanCase {
     // Usia dan jenis peserta belum ada di backend; tidak dikarang.
     fasalOrigin: request.origin_facility_name || request.origin_facility_id,
     fasalTujuan: request.destination_facility_name || request.destination_facility_id,
-    wilayah:
-      request.origin_wilayah ||
-      WILAYAH_OF[request.origin_facility_id] ||
-      "Tidak diketahui",
+    wilayah: request.origin_wilayah || "Tidak diketahui", // sama dengan label backend /stats
     diagnosa: request.diagnosis_code,
     dokter: namaDokter(request.doctor_id),
     tanggal: new Date(request.issued_at).toLocaleDateString("id-ID", {

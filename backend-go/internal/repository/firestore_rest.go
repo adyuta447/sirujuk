@@ -9,7 +9,7 @@ import (
 )
 
 type firestoreREST struct {
-	BaseURL string 
+	BaseURL string
 	Project string
 	Token   func(context.Context) (string, error)
 	HTTP    *http.Client
@@ -29,7 +29,7 @@ type fsString struct {
 
 type fsDoc struct {
 	Fields     map[string]fsString `json:"fields"`
-	UpdateTime string              `json:"updateTime,omitempty"` // set by Firestore, never sent
+	UpdateTime string              `json:"updateTime,omitempty"` // set by Firestore on every write; used as the document version
 }
 
 func (f firestoreREST) do(ctx context.Context, method, url string, body []byte) (*http.Response, error) {

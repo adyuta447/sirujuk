@@ -18,7 +18,7 @@ For installation and environment variables, read [install.md](install.md). The s
 
 A request takes this path: browser, then the Next.js server on Vercel, then the Go backend, then the ML service. The Next.js server holds the API token and adds it to every call, so the browser never sees it. The backend calls the private ML service with a Google ID token that it fetches from the Cloud Run metadata server, so there is no ML password to leak.
 
-Cloud Run limits are set in `infra/gcp/*.yaml`. The backend scales from 0 to 3 instances with 256 MiB each. The ML service scales from 0 to 2 instances with 1 GiB each. Those caps are also the cost guard if someone hammers the public URL.
+Cloud Run limits are set in `infra/gcp/*.yaml`. The backend scales from 0 to 1 instance with 256 MiB for now, because referral state is cached per instance (see S12 in [security.md](security.md)). Raise it once the versioned writes are deployed and tested with two instances. The ML service scales from 0 to 2 instances with 1 GiB each. Those caps are also the cost guard if someone hammers the public URL.
 
 ## How a change reaches production
 

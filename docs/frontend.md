@@ -107,16 +107,17 @@ All of this was run on 10 October 2026, from the `frontend` folder, on the curre
 
 Type check. `npx tsc --noEmit` finished with no errors.
 
-Unit tests. `npm test` ran 6 suites and 36 tests. All passed in about 1.1 seconds.
+Unit tests. `npm test` ran 11 suites and 67 tests. All passed. The extra suites cover pagination, the regional view, the audit queue hook and the loading, empty and error states.
 
 The suites cover these areas:
 
 1. `RiskBadge`: the risk label and score are exposed to assistive technology, not only color.
-2. `referral`: the risk category comes only from the backend decision and never from a score threshold, age, participant type and region are not invented, a case is marked finished only when the backend says it is final, the claim status is passed through, and the indicator numbers are read exactly from the ML response, including the warning when facility distance is unknown.
+2. `referral`: the risk category comes only from the backend decision and never from a score threshold, age, participant type and region are not invented, a case is marked finished only when the backend says it is final, the claim status is passed through, and the indicator numbers are read exactly from the ML response, including the warning when facility distance is unknown. The region filter is also checked: it is built from the regions that really exist in the data, sorted, and without the unknown bucket.
 3. `auth`: session tokens round trip, a tampered payload that tries to change the role is rejected, wrong secrets and expired or malformed tokens are rejected, doctors are kept out of officer pages, and only officers can call scoring. The sign in client treats 401 as wrong credentials, throws on a backend failure instead of claiming the password is wrong, and refuses a response that contains an unknown role.
 4. `csp`: the Content Security Policy uses a fresh nonce on each request, has no `unsafe-inline` or `unsafe-eval` for scripts, blocks objects and framing, and leaves static images outside the login gate while keeping pages inside it.
 5. `hardening`: demo mode is off by default and in any production deployment, a verifier is blocked on red referrals while yellow ones pass, TKMKB passes without an extra backend lookup, the check fails closed when a referral cannot be read, the signed in user is forwarded as the actor, and oversized request bodies are rejected before they are read.
-6. `security`: a source scan that fails if the code ever contains `eval`, `new Function`, `child_process`, `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `document.write`, `insertAdjacentHTML`, string timers, or a secret placed behind a `NEXT_PUBLIC_` name.
+6. `pembatas`: the in memory login limiter blocks a key after repeated failures, keeps an existing block when an attacker floods it with thousands of other emails, forgets a key after a successful login, and builds the key from the email plus the platform supplied client address, never from a header the client can set.
+7. `security`: a source scan that fails if the code ever contains `eval`, `new Function`, `child_process`, `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `document.write`, `insertAdjacentHTML`, string timers, or a secret placed behind a `NEXT_PUBLIC_` name.
 
 Production build. `npm run build` compiled successfully and produced 28 routes, all server rendered on demand because the nonce based CSP needs a fresh render per request. The routes include the landing page, login, dashboard, queue, referral detail, audit, clarification, doctor profiles, regional view, analytics, the score form, and the API routes for auth, referrals, audits, scoring and stats.
 

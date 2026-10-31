@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -156,5 +157,36 @@ func TestServiceTokenAloneOpensNoPatientRecord(t *testing.T) {
 	h.Score(w, requestFor("POST", "", valid("")))
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("score without an actor must be 403, got %d", w.Code)
+	}
+}
+
+func TestRegionComesFromTheDirectoryNotFromTheIssuer(t *testing.T) {
+	h, store := crudHandler(fixedML{})
+	h.Regions = func(id string) string {
+		if id == "f-known" {
+			return "Jakarta Pusat"
+		}
+		return ""
+	}
+	body := func(origin, region string) string {
+		return fmt.Sprintf(`{"doctor_id":"d-1","origin_facility_id":%q,"destination_facility_id":"g","diagnosis_code":"I10","reason":"x","clinical_narrative":"nyeri kepala berulang","origin_wilayah":%q,"issued_at":%q}`, origin, region, time.Now().Format(time.RFC3339))
+	}
+	post := func(key, b string) {
+		r := requestFor("POST", "", b)
+		r.Header.Set("Idempotency-Key", key)
+		r.Header.Set("X-Actor", "uji@demo.id") // scoring needs a verifier or TKMKB actor
+		r.Header.Set("X-Actor-Role", "verifikator")
+		w := httptest.NewRecorder()
+		if h.Score(w, r); w.Code >= 300 {
+			t.Fatalf("score %s: %d %s", key, w.Code, w.Body)
+		}
+	}
+	post("R-known", body("f-known", "Papua")) // forged region for a known facility
+	post("R-other", body("f-unlisted", "Bali"))
+	if it, _ := store.Get("R-known"); it.Request.OriginWilayah != "Jakarta Pusat" {
+		t.Fatalf("a known facility's region must come from the directory: %q", it.Request.OriginWilayah)
+	}
+	if it, _ := store.Get("R-other"); it.Request.OriginWilayah != "Bali" {
+		t.Fatalf("an unlisted facility keeps the issuer's value: %q", it.Request.OriginWilayah)
 	}
 }

@@ -2,6 +2,7 @@ package seed
 
 import (
 	"context"
+	"time"
 
 	"github.com/sirujuk/backend-go/domain"
 	"github.com/sirujuk/backend-go/internal/repository"
@@ -40,7 +41,9 @@ func DemoUsers(ctx context.Context, repo repository.UserRepository) ([]string, e
 		return nil, err
 	}
 	emails := make([]string, 0, len(users))
+	expires := time.Now().Add(7 * 24 * time.Hour).UTC().Format(time.RFC3339) // same lifetime as useradd -demo
 	for _, u := range users {
+		u.ExpiresAt = expires
 		if err := repo.Put(ctx, u); err != nil {
 			return nil, err
 		}

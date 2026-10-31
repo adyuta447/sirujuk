@@ -72,5 +72,5 @@ func ActiveActor(users repository.UserRepository) func(http.Handler) http.Handle
 func deny(w http.ResponseWriter, status int, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_, _ = w.Write([]byte(`{"code":"` + code + `","message":"Account is not active for this role","correlation_id":""}`))
+	_, _ = w.Write([]byte(`{"code":"` + code + `","message":"Session or account is not active","correlation_id":""}`))
 }

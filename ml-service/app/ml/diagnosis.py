@@ -26,6 +26,15 @@ N_DIAG = len(ENTRIES)
 _STOP = set("dan atau yang dengan pada di ke dari untuk bila saat setelah karena tidak ada sebagai oleh dalam".split())
 
 
+# ICD-10 shape: letter, two digits, optional subcode. shortcut: checks the shape, not that the code exists (no full
+# ICD-10 list in the repo); load the official list here once it is licensed.
+_ICD10 = re.compile(r"^[A-Z][0-9]{2}(\.?[0-9A-Z]{1,4})?$")
+
+
+def valid_icd10(code: str) -> bool:
+    return bool(_ICD10.match(code.strip().upper()))
+
+
 def resolve(code: str) -> int:
     """ICD-10 -> entry index by longest prefix; -1 = not in the table (neither KNS nor a known specialist diagnosis)."""
     c = re.sub(r"[^A-Z0-9]", "", code.upper())

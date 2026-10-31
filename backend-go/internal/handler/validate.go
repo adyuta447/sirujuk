@@ -13,8 +13,10 @@ import (
 
 // Strict ASCII allow-lists for identifiers; free text is checked rune by rune.
 var (
-	idRe        = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$`)
-	diagnosisRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9.]{0,9}$`)
+	idRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$`)
+	// ICD-10 shape: letter, two digits, optional subcategory (I10, J06.9, E11.65).
+	// shortcut: shape only, not the full WHO code list (none is bundled); ZZZ.99 fails, an unused but well-formed code passes.
+	diagnosisRe = regexp.MustCompile(`^[A-Za-z][0-9]{2}(\.[0-9A-Za-z]{1,2})?$`)
 	stratumRe   = regexp.MustCompile(`^[a-z]{1,16}\|[a-z]{1,16}$`)
 )
 
@@ -42,17 +44,12 @@ func text(s string, max int, required, multiline bool) error {
 	return nil
 }
 
-func validate(r domain.ReferralRequest, allowContext bool) error {
-	for _, id := range []string{r.DoctorID, r.OriginFacilityID, r.DestinationFacilityID} {
-		if !idRe.MatchString(id) {
-			return errors.New("invalid identifier")
-		}
-	}
+// validateEditable checks the fields an edit may change: diagnosis, reason and narrative. Identity (doctor, facilities,
+// patient, issue time) cannot change on an edit, so it is not checked again; it was checked when the referral came in
+// (seed rows use facility names with spaces, and old referrals are past the issue-time window).
+func validateEditable(r domain.ReferralRequest) error {
 	if !diagnosisRe.MatchString(r.DiagnosisCode) {
 		return errors.New("invalid diagnosis_code")
-	}
-	if text(r.PatientName, maxName, false, false) != nil || text(r.OriginWilayah, 64, false, false) != nil {
-		return errors.New("invalid patient_name or origin_wilayah")
 	}
 	if !reasonCategories[r.ReasonCategory] {
 		return errors.New("invalid reason_category")
@@ -62,6 +59,28 @@ func validate(r domain.ReferralRequest, allowContext bool) error {
 	}
 	if err := text(r.ClinicalNarrative, maxNarrative, true, true); err != nil {
 		return errors.New("invalid clinical_narrative")
+	}
+	return nil
+}
+
+// validate checks a new referral in full.
+func validate(r domain.ReferralRequest, allowContext bool) error {
+	for _, id := range []string{r.DoctorID, r.OriginFacilityID, r.DestinationFacilityID} {
+		if !idRe.MatchString(id) {
+			return errors.New("invalid identifier")
+		}
+	}
+	if strings.EqualFold(r.OriginFacilityID, r.DestinationFacilityID) { // "FKTP-001" and "fktp-001" are the same place
+		return errors.New("origin equals destination")
+	}
+	if text(r.OriginFacilityName, maxName, false, false) != nil || text(r.DestinationFacilityName, maxName, false, false) != nil {
+		return errors.New("invalid facility name")
+	}
+	if text(r.PatientName, maxName, false, false) != nil || text(r.OriginWilayah, 64, false, false) != nil {
+		return errors.New("invalid patient_name or origin_wilayah")
+	}
+	if err := validateEditable(r); err != nil {
+		return err
 	}
 	if r.IssuedAt.IsZero() || r.IssuedAt.After(time.Now().Add(5*time.Minute)) || r.IssuedAt.Before(time.Now().AddDate(-1, 0, 0)) {
 		return errors.New("invalid issued_at")

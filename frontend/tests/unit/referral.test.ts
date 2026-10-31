@@ -36,7 +36,7 @@ describe("mapStored", () => {
     const c = mapStored(item("yellow", 14));
     expect(c.usia).toBeUndefined();
     expect(c.jenisPeserta).toBeUndefined();
-    expect(c.wilayah).toBe("Belum tercatat");
+    expect(c.wilayah).toBe("Tidak diketahui");
   });
 });
 

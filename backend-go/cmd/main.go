@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,7 +32,13 @@ func env(k, d string) string {
 }
 
 func main() {
-	redis, err := rc.NewRedis(env("REDIS_URL", "redis://localhost:6379/0"))
+	redisURL := env("REDIS_URL", "redis://localhost:6379/0")
+	// Redis carries the password, login counters and sealed patient data, so production needs TLS on the wire.
+	// ALLOW_PLAINTEXT_REDIS is for a Redis on the same private Docker network only (docker-compose.yml).
+	if env("APP_ENV", "development") == "production" && !strings.HasPrefix(redisURL, "rediss://") && os.Getenv("ALLOW_PLAINTEXT_REDIS") != "true" {
+		log.Fatal("REDIS_URL must be rediss:// (TLS) in production; run infra/gcp/redis-vm.sh to enable TLS on the Redis VM")
+	}
+	redis, err := rc.NewRedis(redisURL, os.Getenv("REDIS_CA_CERT"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,7 +51,10 @@ func main() {
 	}
 	cancelPing()
 
-	ml := client.NewMLClient(env("ML_SERVICE_URL", "http://localhost:8000"))
+	ml, err := client.NewMLClient(env("ML_SERVICE_URL", "http://localhost:8000"))
+	if err != nil {
+		log.Fatal(err)
+	}
 	if os.Getenv("ML_AUTH") == "cloudrun" {
 		ml.IDToken = client.CloudRunIDToken(ml.BaseURL)
 	}
@@ -69,6 +79,8 @@ func main() {
 	if prod && len(token) < 32 {
 		log.Fatal("API_TOKEN (>=32 chars) is required in production")
 	}
+	// The secret token salts the random-audit draw, so nobody can work out from the public code which IDs get sampled.
+	decisions.Engine.RandomAuditPermille, decisions.Engine.RandomAuditSalt = randomAuditPermille(), token
 	// Demo list/detail/audit store. SEED_COUNT>0 fills it with fake referrals (local demo only; unset = empty).
 	store := repository.NewMemoryStore()
 	project := os.Getenv("FIRESTORE_PROJECT")
@@ -83,10 +95,13 @@ func main() {
 	if bpjsFile != "" && (prod || project != "") {
 		log.Fatal("SEED_BPJS_FILE loads BPJS sample referrals and is refused in production or with FIRESTORE_PROJECT set")
 	}
+	dataEncrypted := false
 	switch {
 	case project != "":
 		// Scores, audits and clarifications survive restarts. Load before seeding: seeding is skipped when data exists.
-		persister := repository.NewFirestoreReferrals(project, client.MetadataAccessToken)
+		dataKey := encKey("DATA_ENC_KEY", "referrals in Firestore", prod)
+		dataEncrypted = dataKey != nil
+		persister := repository.NewFirestoreReferrals(project, client.MetadataAccessToken, dataKey)
 		if err := store.UsePersister(context.Background(), persister); err != nil {
 			log.Fatalf("cannot load referrals from Firestore: %v", err)
 		}
@@ -103,6 +118,9 @@ func main() {
 	var mlEval func(context.Context, domain.ReferralRequest) (domain.RiskDecision, error)
 	if !dummy {
 		mlEval = seedDecisions.Evaluate // seed rows are scored by the real ML service
+	}
+	if (seedCount > 0 || bpjsFile != "") && !seed.WaitForML(mlEval, time.Minute) {
+		log.Print("ML service did not answer within a minute: seed rows will carry the dummy score")
 	}
 	if n, err := seed.RunBPJS(store, bpjsFile, mlEval); err != nil {
 		log.Fatalf("SEED_BPJS_FILE: %v", err)
@@ -128,22 +146,24 @@ func main() {
 	}
 	ready := func(ctx context.Context) map[string]string {
 		return map[string]string{
-			"redis":     status(redis.Ping(ctx) == nil),
-			"firestore": status(project != ""),
-			"kns":       status(kns.Known()),
+			"redis":           status(redis.Ping(ctx) == nil),
+			"firestore":       status(project != ""),
+			"kns":             status(kns.Known()),
+			"data_encryption": status(dataEncrypted),
 		}
 	}
 	h := handler.ReferralHandler{Ready: ready, Decisions: decisions, Queue: redis, Results: redis, Store: store, Users: users, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
-	auth := handler.AuthHandler{Auth: service.Authenticator{Users: users}, Limiter: redis}
+	auth := handler.AuthHandler{Auth: service.Authenticator{Users: users}, Limiter: redis, Sessions: redis}
 	port := env("GO_PORT", "8080")
 	log.Printf("sirujuk backend listening on :%s", port)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go service.RunFeatureJob(ctx, store, redis, kns, 6*time.Hour)
+	go store.RunSync(ctx, 15*time.Second) // other instances' scores and audits reach this one's lists
 	go redis.Consume(ctx, "go-"+port, func(c context.Context, r domain.ReferralRequest) (domain.RiskDecision, error) {
 		d, err := decisions.Evaluate(c, r)
 		if err == nil {
-			store.Upsert(r, d) // async result becomes visible in list/detail
+			_, _ = store.Insert(r, d) // async result becomes visible in list/detail; never overwrites an existing referral
 		}
 		return d, err
 	})
@@ -186,6 +206,15 @@ func minRedLayers() int {
 	return n
 }
 
+// randomAuditPermille defaults to 30 (3% of green referrals); RANDOM_AUDIT_PERMILLE=0 turns the sample off.
+func randomAuditPermille() int {
+	n, err := strconv.Atoi(os.Getenv("RANDOM_AUDIT_PERMILLE"))
+	if err != nil || n < 0 || n > 1000 {
+		return 30
+	}
+	return n
+}
+
 func status(ok bool) string {
 	if ok {
 		return "ok"
@@ -193,19 +222,27 @@ func status(ok bool) string {
 	return "down"
 }
 
-// withStreamKey encrypts queued referrals with STREAM_ENC_KEY (64 hex chars). Production refuses to run without it.
+// withStreamKey encrypts queued referrals and cached scores with STREAM_ENC_KEY. Production refuses to run without it.
 func withStreamKey(r rc.Redis, prod bool) rc.Redis {
-	raw := os.Getenv("STREAM_ENC_KEY")
+	if key := encKey("STREAM_ENC_KEY", "queued referrals and cached scores", prod); key != nil {
+		return r.WithKey(key)
+	}
+	return r
+}
+
+// encKey reads a 32-byte key given as 64 hex characters. Unset is fatal in production and nil (plaintext) otherwise.
+func encKey(name, what string, prod bool) []byte {
+	raw := os.Getenv(name)
 	if raw == "" {
 		if prod {
-			log.Fatal("STREAM_ENC_KEY is required in production: queued referrals contain patient data")
+			log.Fatalf("%s is required in production: %s contain patient data", name, what)
 		}
-		log.Print("STREAM_ENC_KEY not set: queued referrals are stored in plaintext (development only)")
-		return r
+		log.Printf("%s not set: %s are stored in plaintext (development only)", name, what)
+		return nil
 	}
 	key, err := hex.DecodeString(raw)
 	if err != nil || len(key) != 32 {
-		log.Fatal("STREAM_ENC_KEY must be 64 hex characters (32 bytes); generate with: openssl rand -hex 32")
+		log.Fatalf("%s must be 64 hex characters (32 bytes); generate with: openssl rand -hex 32", name)
 	}
-	return r.WithKey(key)
+	return key
 }

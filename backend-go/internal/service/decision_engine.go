@@ -1,8 +1,12 @@
 package service
 
-import "github.com/sirujuk/backend-go/domain"
+import (
+	"crypto/sha256"
+	"encoding/binary"
 
-// Categories are the wire values; the DB stores them upper-case.
+	"github.com/sirujuk/backend-go/domain"
+)
+
 const (
 	CategoryGreen  = "green"
 	CategoryYellow = "yellow"
@@ -13,19 +17,21 @@ func validCategory(c string) bool {
 	return c == CategoryGreen || c == CategoryYellow || c == CategoryRed
 }
 
-// DecisionEngine turns ML signals into a recommendation. The category comes from the ML model, whose p80/p95
-// cut-offs are fitted to its own score distribution, so the backend keeps no cut-off for it (one source of truth).
-// YellowFrom/RedFrom exist only for the dummy heuristic, which has no model and so no category.
-// Output is a recommendation only; final decisions are written by TKMKB/verifier users.
 type DecisionEngine struct {
 	YellowFrom, RedFrom float64
-	// MinRedLayers > 1 holds red back unless that many independent layers (NS, HHI, SISRUTE, narrative) contribute, so
-	// one weak layer alone cannot hold a claim. A downgraded referral becomes yellow; the model's own category stays
-	// in ModelCategory for appeals. 0 or 1 = trust the model. A team decision, see docs/proposal-gaps.md.
-	MinRedLayers int
+	MinRedLayers        int
+	RandomAuditPermille int
+	RandomAuditSalt string
 }
 
-// layerOf maps a reason code to the scoring layer it belongs to; codes without a layer (e.g. INSUFFICIENT_HISTORY) are ignored.
+func (e DecisionEngine) randomAudit(referralID string) bool {
+	if e.RandomAuditPermille <= 0 {
+		return false
+	}
+	h := sha256.Sum256([]byte(e.RandomAuditSalt + "|" + referralID))
+	return binary.BigEndian.Uint64(h[:8])%1000 < uint64(e.RandomAuditPermille)
+}
+
 var layerOf = map[string]string{
 	"NS_ABOVE_PEER_P95":              "ns",
 	"HHI_HIGH_CONCENTRATION":         "hhi",
@@ -61,6 +67,7 @@ func (e DecisionEngine) Decide(referralID string, signals domain.MLScores) domai
 	if category == CategoryRed && e.MinRedLayers > 1 && contributingLayers(signals.Reasons) < e.MinRedLayers {
 		category = CategoryYellow
 	}
+	random := category == CategoryGreen && e.randomAudit(referralID)
 	codes := make([]string, len(signals.Reasons))
 	for i, r := range signals.Reasons {
 		codes[i] = r.Code
@@ -69,6 +76,6 @@ func (e DecisionEngine) Decide(referralID string, signals domain.MLScores) domai
 		ReferralID: referralID, Score: signals.Score, Decision: category, Signals: signals,
 		ModelVersion: signals.ModelVersion, ModelCategory: modelCategory, ReasonCodes: codes,
 		YellowFrom: signals.YellowFrom, RedFrom: signals.RedFrom, Indicators: signals.Indicators, DiagnosisVersion: signals.DiagnosisVersion, Reasons: signals.Reasons,
-		RequiresHumanReview: category != CategoryGreen, Status: "SCORED",
+		RequiresHumanReview: category != CategoryGreen || random, RandomAudit: random, Status: "SCORED",
 	}
 }

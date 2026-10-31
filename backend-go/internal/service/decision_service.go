@@ -20,8 +20,8 @@ type DecisionService struct {
 	Cache      Cache                         // doctor features from the nightly batch; nil = cold start
 	Facilities repository.FacilityRepository // SISRUTE availability of the origin faskes
 	History    ReferralSource                // enables point-in-time features for retrospective scoring; nil = batch cache only
-	KNS        KNSList                       // 144-diagnosis list used with History
-	Dummy      bool                          // DUMMY_SCORING: heuristic scores, no ML call; demo only (main.go refuses it in production)
+	KNS        KNSList                     
+	Dummy      bool                 
 }
 
 func (s DecisionService) Evaluate(ctx context.Context, request domain.ReferralRequest) (domain.RiskDecision, error) {
@@ -64,6 +64,6 @@ func (s DecisionService) Evaluate(ctx context.Context, request domain.ReferralRe
 	}
 	d := s.Engine.Decide(request.ReferralID, signals)
 	d.Features = &domain.FeatureSnapshot{Doctor: in.Doctor, SisruteAvailable: in.SisruteAvailable, SisruteAgeDays: in.SisruteAgeDays}
-	d.ScoredAt = time.Now().UTC().Format(time.RFC3339)
+	d.ScoredAt = time.Now().UTC().Format(domain.OrderedTime)
 	return d, nil
 }

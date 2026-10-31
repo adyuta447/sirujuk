@@ -9,6 +9,7 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/sirujuk/backend-go/domain"
@@ -41,6 +42,9 @@ type apiError struct {
 }
 
 func (h ReferralHandler) Score(w http.ResponseWriter, r *http.Request) {
+	if _, _, ok := actorIn(w, r, roleVerifikator, roleTKMKB); !ok { // same roles as the Next proxy's bolehSkor
+		return
+	}
 	cid := r.Header.Get("X-Correlation-ID")
 	if !idRe.MatchString(cid) { // client-controlled and logged: allow-list, else generate
 		b := make([]byte, 8)
@@ -83,6 +87,15 @@ func (h ReferralHandler) Score(w http.ResponseWriter, r *http.Request) {
 		request.Context = domain.ReferralContext{}
 	}
 
+	// An existing referral is never re-scored here, or a reused key would overwrite a red or archived one and skip
+	// the TKMKB-only rule; edits go through Update/Rescore. Get also loads from Firestore, so other instances count.
+	// The same content is a retry and gets the stored result; different content under the same key is a conflict.
+	if h.Store != nil {
+		if item, found := h.Store.Get(key); found {
+			replayOrConflict(w, item, request, cid)
+			return
+		}
+	}
 	if h.Results != nil { // same Idempotency-Key => same stored result, never re-scored
 		if d, err := h.Results.Load(r.Context(), key); err == nil && d != nil {
 			writeJSON(w, http.StatusOK, d)
@@ -102,7 +115,10 @@ func (h ReferralHandler) Score(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.Store != nil {
-		h.Store.Upsert(request, result)
+		if existing, err := h.Store.Insert(request, result); errors.Is(err, repository.ErrExists) {
+			replayOrConflict(w, existing, request, cid) // another request got here first
+			return
+		}
 	}
 	if h.Results != nil {
 		if err := h.Results.Save(context.WithoutCancel(r.Context()), result); err != nil {
@@ -130,16 +146,32 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
+// List answers GET /referrals. Without limit or cursor it is the plain array older clients expect; with ?limit=N
+// (and ?cursor= from the previous page's next) it is {items, next, total, summary}; see page.
 func (h ReferralHandler) List(w http.ResponseWriter, r *http.Request) {
-	items := []domain.StoredReferral{}
+	var visible []domain.StoredReferral
+	_, role := middleware.Actor(r)
 	if h.Store != nil {
 		view := h.visibilityOf(r)
-		_, role := middleware.Actor(r)
 		for _, it := range h.Store.List() {
 			if view.allows(it) {
-				items = append(items, redact(it, role))
+				visible = append(visible, it)
 			}
 		}
+	}
+	// Query() silently drops a pair it cannot decode (a broken cursor would become "first page"), so parse it ourselves.
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		badRequest(w)
+		return
+	}
+	if q.Has("limit") || q.Has("cursor") {
+		page(w, q, visible, role)
+		return
+	}
+	items := make([]any, 0, len(visible))
+	for _, it := range visible {
+		items = append(items, shown(it, role))
 	}
 	writeJSON(w, http.StatusOK, items)
 }
@@ -148,7 +180,7 @@ func (h ReferralHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if id := r.PathValue("id"); h.Store != nil && idRe.MatchString(id) {
 		if item, ok := h.Store.Get(id); ok && h.visibilityOf(r).allows(item) {
 			_, role := middleware.Actor(r)
-			writeJSON(w, http.StatusOK, redact(item, role))
+			writeJSON(w, http.StatusOK, shown(item, role))
 			return
 		}
 	}
@@ -198,7 +230,7 @@ func (h ReferralHandler) Audit(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusForbidden, apiError{"FORBIDDEN_ROLE", "Only TKMKB may make the final decision on a red referral", ""})
 		return
 	}
-	audit := domain.AuditReview{Reviewer: body.Reviewer, Actor: actor, Role: role, Outcome: body.Outcome, Note: body.Note, ReviewedAt: time.Now().UTC().Format(time.RFC3339)}
+	audit := domain.AuditReview{Reviewer: body.Reviewer, Actor: actor, Role: role, Outcome: body.Outcome, Note: body.Note, ReviewedAt: time.Now().UTC().Format(domain.OrderedTime)}
 	if h.Store == nil {
 		notFound(w)
 		return
@@ -221,4 +253,20 @@ func (h ReferralHandler) ReadyCheck(w http.ResponseWriter, r *http.Request) {
 		status = h.Ready(ctx)
 	}
 	writeJSON(w, http.StatusOK, status)
+}
+
+// replayOrConflict answers a score request for a referral number that is already stored.
+func replayOrConflict(w http.ResponseWriter, existing domain.StoredReferral, request domain.ReferralRequest, cid string) {
+	if sameReferral(existing.Request, request) {
+		writeJSON(w, http.StatusOK, existing.Decision)
+		return
+	}
+	writeJSON(w, http.StatusConflict, apiError{"IDEMPOTENCY_CONFLICT", "A different referral already uses this Idempotency-Key", cid})
+}
+
+// sameReferral compares what the issuer wrote. issued_at is left out on purpose: a client retry stamps a new time.
+func sameReferral(a, b domain.ReferralRequest) bool {
+	return a.DoctorID == b.DoctorID && a.OriginFacilityID == b.OriginFacilityID && a.DestinationFacilityID == b.DestinationFacilityID &&
+		a.DiagnosisCode == b.DiagnosisCode && a.Reason == b.Reason && a.ReasonCategory == b.ReasonCategory &&
+		a.ClinicalNarrative == b.ClinicalNarrative && a.PatientName == b.PatientName && a.IsEmergency == b.IsEmergency
 }

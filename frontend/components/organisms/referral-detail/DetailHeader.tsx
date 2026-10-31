@@ -1,3 +1,4 @@
+import { tampilPasien } from "../../../lib/formatters";
 import { NAVY } from "../../../lib/sirujuk-data";
 import type { RujukanCase } from "../../../lib/sirujuk-data";
 import { DetailFacts } from "./DetailFacts";
@@ -16,7 +17,7 @@ export function DetailHeader({ kasus, onDokter }: DetailHeaderProps) {
         <div className="min-w-0">
           <div className="text-[11px] font-bold uppercase tracking-wider text-[#C9D6E6]">Detail rujukan</div>
           <div className="font-mono text-xs text-[#C9D6E6] mt-1">{kasus.noRujukan}</div>
-          <div className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{kasus.pasien}</div>
+          <div className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{tampilPasien(kasus)}</div>
         </div>
         <ScoreBadgeLarge level={kasus.risk} score={kasus.riskScore} dummy={kasus.skorDummy} />
       </div>

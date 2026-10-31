@@ -37,7 +37,7 @@ func TestAuditValidationAndStore(t *testing.T) {
 		{"unknown field", strings.Replace(good, "}", `,"x":1}`, 1), http.StatusBadRequest},
 		{"control character in note", strings.Replace(good, `"ok"`, `"a\u0000b"`, 1), http.StatusBadRequest},
 		{"note over 2000 chars", strings.Replace(good, `"ok"`, `"`+strings.Repeat("a", 2001)+`"`, 1), http.StatusBadRequest},
-		{"note of 2000 chars", strings.Replace(good, `"ok"`, `"`+strings.Repeat("a", 2000)+`"`, 1), http.StatusCreated},
+		{"note of 2000 chars", strings.Replace(good, `"ok"`, `"`+strings.Repeat("a", 2000)+`"`, 1), http.StatusConflict}, // passes validation, but r-001 is already final
 		{"body too large", strings.Replace(good, `"ok"`, `"`+strings.Repeat("a", 9000)+`"`, 1), http.StatusRequestEntityTooLarge},
 	}
 	for _, c := range cases {
@@ -45,8 +45,8 @@ func TestAuditValidationAndStore(t *testing.T) {
 			t.Errorf("%s: got %d, want %d", c.name, got, c.want)
 		}
 	}
-	if item, _ := store.Get("r-001"); len(item.Audits) != 2 {
-		t.Fatalf("only the two valid audits may be stored, got %d", len(item.Audits))
+	if item, _ := store.Get("r-001"); len(item.Audits) != 1 {
+		t.Fatalf("only the first valid audit may be stored, got %d", len(item.Audits))
 	}
 }
 

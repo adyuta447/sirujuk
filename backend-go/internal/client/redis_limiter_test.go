@@ -24,7 +24,25 @@ func TestHitCountsWithinWindowThenResets(t *testing.T) {
 }
 
 func TestNewRedisRejectsBadURLWithoutPanic(t *testing.T) {
-	if _, err := NewRedis("not a url"); err == nil {
+	if _, err := NewRedis("not a url", ""); err == nil {
 		t.Fatal("want error")
+	}
+}
+
+func TestRevokedSessionExpiresWithItsLifetime(t *testing.T) {
+	r, mr := newTestRedis(t)
+	ctx := context.Background()
+	if gone, err := r.Revoked(ctx, "s1"); err != nil || gone {
+		t.Fatalf("fresh session must not be revoked: %v %v", gone, err)
+	}
+	if err := r.Revoke(ctx, "s1", time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	if gone, _ := r.Revoked(ctx, "s1"); !gone {
+		t.Fatal("logged-out session must be revoked")
+	}
+	mr.FastForward(time.Hour + time.Second)
+	if gone, _ := r.Revoked(ctx, "s1"); gone {
+		t.Fatal("revocation must expire once the token itself could no longer be valid")
 	}
 }

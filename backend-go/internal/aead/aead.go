@@ -1,4 +1,5 @@
-package client
+// Package aead seals small blobs (queued referrals, cached scores, stored referrals) with AES-256-GCM.
+package aead
 
 import (
 	"crypto/aes"
@@ -7,8 +8,8 @@ import (
 	"errors"
 )
 
-// seal encrypts with AES-256-GCM; the random nonce is prepended. open reverses it and rejects tampering.
-func seal(key, plain []byte) ([]byte, error) {
+// Seal encrypts plain with AES-256-GCM; the random nonce is prepended to the result.
+func Seal(key, plain []byte) ([]byte, error) {
 	gcm, err := newGCM(key)
 	if err != nil {
 		return nil, err
@@ -20,7 +21,8 @@ func seal(key, plain []byte) ([]byte, error) {
 	return gcm.Seal(nonce, nonce, plain, nil), nil
 }
 
-func open(key, sealed []byte) ([]byte, error) {
+// Open reverses Seal and fails if the data was altered or the key is wrong.
+func Open(key, sealed []byte) ([]byte, error) {
 	gcm, err := newGCM(key)
 	if err != nil {
 		return nil, err
@@ -33,7 +35,7 @@ func open(key, sealed []byte) ([]byte, error) {
 
 func newGCM(key []byte) (cipher.AEAD, error) {
 	if len(key) != 32 {
-		return nil, errors.New("stream key must be 32 bytes")
+		return nil, errors.New("encryption key must be 32 bytes")
 	}
 	block, err := aes.NewCipher(key)
 	if err != nil {

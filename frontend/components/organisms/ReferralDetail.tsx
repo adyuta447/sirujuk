@@ -52,7 +52,7 @@ export function ReferralDetail({ kasus, onBack, onAudit, onDokter, onKlarifikasi
       {kasus.status !== "selesai" && (
         <DetailActionBar
           kasus={kasus}
-          hanyaTkmkb={hanyaTkmkb(kasus.risk, sesi?.role)}
+          hanyaTkmkb={hanyaTkmkb(kasus.risk, sesi?.role, kasus.claimStatus)}
           onAudit={onAudit}
           onKlarifikasi={onKlarifikasi}
         />

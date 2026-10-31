@@ -9,11 +9,12 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/sirujuk/backend-go/domain"
+	"github.com/sirujuk/backend-go/internal/aead"
 )
 
 func newTestRedis(t *testing.T) (Redis, *miniredis.Miniredis) {
 	mr := miniredis.RunT(t)
-	r, err := NewRedis("redis://" + mr.Addr())
+	r, err := NewRedis("redis://"+mr.Addr(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,12 +99,12 @@ func TestQueuedReferralIsEncryptedAtRestAndStillScored(t *testing.T) {
 
 func TestSealRejectsTamperingAndWrongKey(t *testing.T) {
 	key := []byte("0123456789abcdef0123456789abcdef")
-	sealed, _ := seal(key, []byte("data"))
+	sealed, _ := aead.Seal(key, []byte("data"))
 	sealed[len(sealed)-1] ^= 1
-	if _, err := open(key, sealed); err == nil {
+	if _, err := aead.Open(key, sealed); err == nil {
 		t.Fatal("a modified message must not open")
 	}
-	if _, err := seal([]byte("short"), []byte("x")); err == nil {
+	if _, err := aead.Seal([]byte("short"), []byte("x")); err == nil {
 		t.Fatal("a key that is not 32 bytes must be refused")
 	}
 }

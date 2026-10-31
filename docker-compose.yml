@@ -18,13 +18,14 @@ services:
       ML_SERVICE_URL: http://ml-service:8000
       STREAM_ENC_KEY: ${STREAM_ENC_KEY:?set STREAM_ENC_KEY in .env (openssl rand -hex 32)}
       REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379/0
+      ALLOW_PLAINTEXT_REDIS: "true" # Redis is on this compose network only, never on a shared one; Cloud Run uses rediss://
       ALLOW_CLIENT_CONTEXT: ${ALLOW_CLIENT_CONTEXT:-false}
       SPECIALIST_FILE: /data/specialist.tsv # only read by the demo seed
       KNS_FILE: /data/kns144.tsv # the ML service's own 144-diagnosis table, so both read one list
       AUTH_USERS: ${AUTH_USERS:-[]} # local login accounts (JSON, see frontend/scripts/buat-pengguna.mjs); production uses Firestore
       FIRESTORE_PROJECT: ${FIRESTORE_PROJECT:-} # set = accounts come from Firestore (needs GCP credentials, i.e. Cloud Run); empty = in-memory
       DEMO_ACCOUNTS: ${DEMO_ACCOUNTS:-false} # true = 4 demo accounts, one per role (docs/demo.md); refused when APP_ENV=production
-      SEED_COUNT: ${SEED_COUNT:-0} # e.g. 200 for a local demo; fills the in-memory list with fake referrals
+      SEED_COUNT: ${SEED_COUNT:-0} # e.g. 500 for a local demo; fills the in-memory list with fake referrals
       SEED_BPJS_FILE: ${SEED_BPJS_FILE:-} # /data/bpjs/seed.json = referrals from the BPJS 2025 sample (ml-service/bpjs.py); local demo only
     volumes:
       - ./ml-service/app/ml/data/kns144.tsv:/data/kns144.tsv:ro

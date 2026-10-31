@@ -19,9 +19,12 @@ export async function POST(request: Request) {
   if (typeof b.referral_id !== "string" || !SAFE_ID.test(b.referral_id) || typeof b.outcome !== "string" || !OUTCOME.includes(b.outcome) || !note || note.length > 2000) {
     return json(400, "INVALID_REQUEST", "Permintaan tidak valid");
   }
-  // Merah hanya untuk TKMKB (dicek dari skor tersimpan di backend, bukan dari klien).
-  const ditolak = await wajibTingkat(cek.sesi, b.referral_id);
-  if (ditolak) return ditolak;
+  // Merah hanya untuk TKMKB (dicek dari skor tersimpan di backend, bukan dari klien). Meminta klarifikasi dokter
+  // boleh untuk verifikator di semua tingkat: sesuai kontrak dan backend, dan tidak memutuskan klaim.
+  if (b.outcome !== "perlu-klarifikasi") {
+    const ditolak = await wajibTingkat(cek.sesi, b.referral_id);
+    if (ditolak) return ditolak;
+  }
   // Pemeriksa diambil dari sesi, bukan dari body, supaya tidak bisa dipalsukan.
   return keBackendSebagai(cek.sesi, "/api/v1/audits", {
     method: "POST",

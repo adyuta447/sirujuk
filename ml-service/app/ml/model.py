@@ -49,6 +49,9 @@ def peer_stats(df: pd.DataFrame) -> dict:
     return peer
 
 
+DISPLAY_YELLOW, DISPLAY_RED = 50.0, 80.0  # where the wire score puts the model's own yellow/red cuts
+
+
 class Scorer:
     def fit(self, df: pd.DataFrame, terms=TERMS, yellow_share=0.20, red_share=0.05, seed=0):
         self.terms_used = list(terms)
@@ -123,6 +126,12 @@ class Scorer:
     def score(self, X: pd.DataFrame) -> np.ndarray:
         return 100 * self.lr.predict_proba(X[self.terms_used])[:, 1]
 
+    def display(self, s: float) -> float:
+        """Wire scale. The raw score is P(abuse) x 100 fitted on synthetic data, and the cuts are a capacity budget,
+        so a raw 17 is already red. Callers get an index instead: 0-50 green, 50-80 yellow, 80-100 red. Same order and
+        categories; fraud_score keeps the raw value."""
+        return float(np.interp(s, [0, self.cut[0], self.cut[1], 100], [0, DISPLAY_YELLOW, DISPLAY_RED, 100]))
+
     def category(self, s):
         return np.where(s > self.cut[1], "red", np.where(s >= self.cut[0], "yellow", "green"))
 
@@ -144,7 +153,8 @@ class Scorer:
         ns = r.ns90 if r.ns90 == r.ns90 else 0.0
         hh = r.hhi180 if r.hhi180 == r.hhi180 else 0.0
         spec = {
-            "NS_ABOVE_PEER_P95": (c.get("t_ns", 0), f"NS {ns:.2f} vs peer P95 {x.ns_p95:.2f}, n = {int(r.n90)}"),
+            "NS_ABOVE_PEER_P95": (c.get("t_ns", 0), f"NS {ns:.2f} vs peer P95 {x.ns_p95:.2f}, n = {int(r.n90)}" if ns > x.ns_p95 else
+                                  f"NS {ns:.2f} di atas median sejenis {self.peer_for(r.stratum)['ns'][0]:.2f} (P95 {x.ns_p95:.2f}), n = {int(r.n90)}"),
             "HHI_HIGH_CONCENTRATION": (c.get("t_hhi", 0),
                                        f"HHI {hh:.0f} (observasi 1.500, tinggi 2.500), n = {int(r.n180)}, tujuan dominan"
 ),

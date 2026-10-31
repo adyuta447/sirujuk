@@ -31,4 +31,10 @@ describe("CSP proxy", () => {
       expect(guarded(page)).toBe(true);
     }
   });
+
+  it("does not let a prefetch header skip the login gate", async () => {
+    expect(config.matcher[0]).not.toHaveProperty("missing");
+    const res = await proxy(new NextRequest("http://localhost/dashboard", { headers: { purpose: "prefetch", "next-router-prefetch": "1" } }));
+    expect(res.headers.get("location")).toBe("http://localhost/login");
+  });
 });

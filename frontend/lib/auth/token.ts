@@ -2,7 +2,8 @@ import { PERAN } from "../akses";
 import type { Peran } from "../akses";
 
 // Token sesi: base64url(payload).base64url(HMAC-SHA256). Web Crypto, jadi jalan di proxy maupun route handler.
-export type Sesi = { sub: string; nama: string; role: Peran; exp: number };
+// sid: id acak per login, supaya backend bisa mencabut satu sesi saat logout (token tetap stateless).
+export type Sesi = { sub: string; nama: string; role: Peran; exp: number; sid: string };
 
 const enc = new TextEncoder();
 const kunci = (rahasia: string) =>
@@ -23,7 +24,7 @@ export async function bacaToken(token: string, rahasia: string): Promise<Sesi | 
     const sah = await crypto.subtle.verify("HMAC", await kunci(rahasia), new Uint8Array(Buffer.from(tanda, "base64url")), enc.encode(isi));
     if (!sah) return null;
     const s = JSON.parse(Buffer.from(isi, "base64url").toString("utf8")) as Partial<Sesi>;
-    if (typeof s.sub !== "string" || typeof s.nama !== "string" || typeof s.exp !== "number") return null;
+    if (typeof s.sub !== "string" || typeof s.nama !== "string" || typeof s.exp !== "number" || typeof s.sid !== "string") return null;
     if (!PERAN.includes(s.role as Peran) || s.exp * 1000 < Date.now()) return null;
     return s as Sesi;
   } catch {

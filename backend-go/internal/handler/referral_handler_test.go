@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sirujuk/backend-go/domain"
+	"github.com/sirujuk/backend-go/internal/repository"
 	"github.com/sirujuk/backend-go/internal/service"
 )
 
@@ -25,6 +26,8 @@ const ok = `{"doctor_id":"d-1","origin_facility_id":"f-1","destination_facility_
 func call(h ReferralHandler, key, body string) int {
 	req := httptest.NewRequest("POST", "/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Actor", "verif@demo.id")
+	req.Header.Set("X-Actor-Role", "verifikator")
 	if key != "" {
 		req.Header.Set("Idempotency-Key", key)
 	}
@@ -45,6 +48,21 @@ func TestFailOpenAndEmergency(t *testing.T) {
 	}
 	if c := call(h, "R2", valid(`,"is_emergency":true`)); c != http.StatusAccepted {
 		t.Fatalf("emergency must be 202, got %d", c)
+	}
+}
+
+func TestScoreNeverOverwritesExistingReferral(t *testing.T) {
+	store := repository.NewMemoryStore()
+	store.Upsert(domain.ReferralRequest{ReferralID: "R-RED", DoctorID: "d-9"}, domain.RiskDecision{ReferralID: "R-RED", Decision: "red", Status: "SCORED"})
+	h := ReferralHandler{Decisions: service.DecisionService{Dummy: true}, Store: store}
+	for _, body := range []string{valid(""), valid(`,"is_emergency":true`)} {
+		if c := call(h, "R-RED", body); c != http.StatusConflict {
+			t.Fatalf("other content under an existing referral's key must be a 409 conflict, got %d", c)
+		}
+	}
+	item, _ := store.Get("R-RED")
+	if item.Decision.Decision != "red" || item.Request.DoctorID != "d-9" || len(item.History) != 0 {
+		t.Fatalf("score with a reused key overwrote the referral: %+v", item)
 	}
 }
 

@@ -6,6 +6,7 @@ interface UsedFiguresProps {
 }
 
 export function UsedFigures({ indikator }: UsedFiguresProps) {
+  if (indikator.length === 0) return null; // dokter tidak menerima angka dari backend; kartu kosong tidak berguna
   return (
     <TitledCard title="Angka yang dipakai">
       <ul className="mt-3 divide-y divide-[#EEF1F5]">

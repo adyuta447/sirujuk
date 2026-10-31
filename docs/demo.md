@@ -11,7 +11,7 @@ Cara tercepat: `sh infra/local-env.sh && docker compose up --build` (membuat `.e
 ```
 APP_ENV=development
 DEMO_ACCOUNTS=true
-SEED_COUNT=200
+SEED_COUNT=500
 ALLOW_CLIENT_CONTEXT=true
 ```
 
@@ -54,7 +54,11 @@ Akun `dokter` wajib punya `-doctor-id`; tanpa itu ia tidak melihat rujukan apa p
 
 ## Data contoh (sintetis)
 
-`SEED_COUNT=200` mengisi memori dengan rujukan **sintetis**, tiap baris bertanda `synthetic: true` dan `/stats` membawa `synthetic: true` supaya UI bisa memberi label. Enam dokter dengan perilaku tetap: d-001 pola mencurigakan (semua ke satu RS, narasi umum), d-002 borderline, d-003 sampai d-006 biasa. Riwayat dokter (NS/HHI) adalah pengganti sintetis untuk job batch; skor, kategori, dan alasan tiap baris tetap dari ML. Komposisi hijau/kuning/merah **tidak diatur seed**: itu hasil model (contoh: 84/10/6).
+`SEED_COUNT=500` mengisi memori dengan rujukan **sintetis**, tiap baris bertanda `synthetic: true` dan `/stats` membawa `synthetic: true` supaya UI bisa memberi label. Enam dokter dengan perilaku tetap: d-001 pola mencurigakan (semua ke satu RS, narasi umum), d-002 borderline, d-003 sampai d-006 biasa. Riwayat dokter (NS/HHI) adalah pengganti sintetis untuk job batch; skor, kategori, dan alasan tiap baris tetap dari ML. Komposisi hijau/kuning/merah **tidak diatur seed**: itu hasil model.
+
+Mengapa 500 baris, dan mengapa d-001 hanya 8%: rujukan baru dinilai dari riwayat dokter yang tersimpan, dan NS butuh minimal 20 rujukan dalam 90 hari, HHI minimal 30 dalam 180 hari. Dengan 500 baris d-001 menyimpan sekitar 32, jadi rujukan baru darinya ikut kena kedua lapisan. Bobot yang lebih besar (16% dengan 200 baris) memenuhi syarat yang sama tetapi membuat 21% daftar berwarna merah, hampir semuanya milik satu dokter. Dengan 500 baris hasilnya kira-kira 10% merah, 6% kuning, 84% hijau; d-001 sengaja satu-satunya dokter mencurigakan, dan d-002 sengaja di atas ambang peer (NS sekitar 0,25) sebagai kasus yang perlu dipantau.
+
+Dokter d-003 sampai d-006 sengaja berprofil biasa: sekitar 8% rujukannya KNS, jadi NS tersimpannya sekitar 0,08, di bawah P95 peer (sekitar 0,2). Kode diagnosis seed harus sama dengan tabel 144 KNS milik ML; kalau tidak, dokter biasa tampak seperti pencilan dan rujukan barunya merah (dijaga `TestSeedDoctorsKeepTheirNS`). Skor baris seed dihitung dari konteks profil, sedangkan rujukan baru dan penilaian ulang memakai riwayat tersimpan, jadi skor satu rujukan bisa berubah sedikit setelah dinilai ulang.
 
 Seed ditolak (backend tidak mau start) bila `APP_ENV=production` atau `FIRESTORE_PROJECT` terisi, supaya pasien fiktif tidak masuk database asli. Untuk demo di URL publik pakai lingkungan terpisah (Cloud Run + database Firestore tersendiri), bukan yang produksi.
 
@@ -78,5 +82,5 @@ lapisan NS yang bisa menyala. Penjagaan sama seperti `SEED_COUNT`: ditolak di pr
 Jalankan lokal tanpa Docker:
 ```
 KNS_FILE=ml-service/app/ml/data/kns144.tsv SPECIALIST_FILE=ml-service/app/ml/data/specialist.tsv \
-SEED_COUNT=200 DEMO_ACCOUNTS=true API_TOKEN=devtoken go run ./cmd   # dari backend-go
+SEED_COUNT=500 DEMO_ACCOUNTS=true API_TOKEN=devtoken go run ./cmd   # dari backend-go
 ```

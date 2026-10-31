@@ -1,3 +1,4 @@
+import { tampilPasien } from "../../../lib/formatters";
 import { RISK } from "../../../lib/sirujuk-data";
 import type { RujukanCase } from "../../../lib/sirujuk-data";
 import { Card } from "../../atoms/Card";
@@ -24,7 +25,7 @@ export function QueueCard({ kasus: c, onSelect }: QueueCardProps) {
           <StatusBadge status={c.status} />
           <ClaimBadge status={c.claimStatus} />
         </div>
-        <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0E1B2A] mt-3">{c.pasien}</h3>
+        <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0E1B2A] mt-3">{tampilPasien(c)}</h3>
         <p className="text-sm text-[#56657A] mt-1.5 leading-relaxed">
           {c.usia ? `${c.usia} tahun, ` : ""}dari {c.wilayah}, dirujuk ke{" "}
           <span className="font-semibold text-[#0E1B2A]">{c.fasalTujuan}</span>

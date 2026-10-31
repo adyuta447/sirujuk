@@ -1,8 +1,9 @@
 /** @jest-environment node */
 import { bacaBody, keBackendSebagai, wajibTingkat } from "../../lib/auth/guard";
 import { cookieAman, demoAktif } from "../../lib/auth/session";
+import { ipKlien } from "../../lib/auth/ip-klien";
 
-const sesi = (role: "verifikator" | "tkmkb") => ({ sub: "a@b.id", nama: "A", role, exp: 9999999999 });
+const sesi = (role: "verifikator" | "tkmkb") => ({ sub: "a@b.id", nama: "A", role, exp: 9999999999, sid: "s-1" });
 const backend = (status: number, body: unknown) =>
   jest.spyOn(global, "fetch").mockResolvedValue(new Response(JSON.stringify(body), { status }));
 
@@ -94,5 +95,15 @@ describe("cookieAman", () => {
 
   it("uses plain cookies outside production builds", () => {
     expect(cookieAman({ NODE_ENV: "development" })).toBe(false);
+  });
+});
+
+describe("ipKlien", () => {
+  const req = new Request("http://localhost/api/auth/login", {
+    headers: { "x-forwarded-for": "203.0.113.9, 10.0.0.1", "x-real-ip": "198.51.100.66" },
+  });
+  it("takes the leftmost X-Forwarded-For only on Vercel, which overwrites that header", () => {
+    expect(ipKlien(req, { VERCEL: "1" })).toBe("203.0.113.9");
+    expect(ipKlien(req, {})).toBe("");
   });
 });

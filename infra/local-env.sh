@@ -15,6 +15,6 @@ REDIS_PASSWORD=$(r 24)
 AUTH_SECRET=$(r 32)
 STREAM_ENC_KEY=$(r 32)
 DEMO_ACCOUNTS=true
-SEED_COUNT=200
+SEED_COUNT=500
 ENV
 echo ".env dibuat. Jalankan: docker compose up --build   lalu buka http://localhost:3000/login"

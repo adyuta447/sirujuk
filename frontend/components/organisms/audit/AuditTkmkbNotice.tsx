@@ -9,7 +9,7 @@ interface AuditTkmkbNoticeProps {
   onKlarifikasi: (c: RujukanCase) => void;
 }
 
-// Kasus risiko tinggi hanya diputuskan TKMKB. Server tetap menegakkan; ini hanya menghindari jalan buntu.
+// Kasus risiko tinggi atau klaim ditahan hanya diputuskan TKMKB. Server tetap menegakkan; ini hanya menghindari jalan buntu.
 export function AuditTkmkbNotice({
   kasus,
   onKlarifikasi,
@@ -24,7 +24,7 @@ export function AuditTkmkbNotice({
         role="note"
         className="rounded-4xl px-4 py-3 text-sm bg-[#1E3A5F] text-white"
       >
-        Kasus risiko tinggi diputuskan oleh anggota TKMKB. Kamu bisa
+        Kasus risiko tinggi atau klaim yang ditahan diputuskan oleh anggota TKMKB. Kamu bisa
         meneruskannya atau meminta klarifikasi dokter.
       </p>
       <SecondaryButton onClick={() => onKlarifikasi(kasus)} className="px-6 py-3">

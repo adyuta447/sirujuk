@@ -137,3 +137,24 @@ func TestVerifierCannotEditOrRescoreRed(t *testing.T) {
 		t.Fatalf("TKMKB may: %d", w.Code)
 	}
 }
+
+func TestServiceTokenAloneOpensNoPatientRecord(t *testing.T) {
+	h := twoDoctorsHandler()
+	for _, tc := range []struct {
+		name    string
+		handler http.HandlerFunc
+		method  string
+		id      string
+	}{{"list", h.List, "GET", ""}, {"get", h.Get, "GET", "r-1"}} {
+		w := httptest.NewRecorder()
+		tc.handler(w, requestFor(tc.method, tc.id, ""))
+		if strings.Contains(w.Body.String(), "r-1") {
+			t.Fatalf("%s without an actor leaked a referral: %d %s", tc.name, w.Code, w.Body)
+		}
+	}
+	w := httptest.NewRecorder()
+	h.Score(w, requestFor("POST", "", valid("")))
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("score without an actor must be 403, got %d", w.Code)
+	}
+}

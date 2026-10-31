@@ -51,7 +51,7 @@ REDIS_PASSWORD=...     # openssl rand -hex 24
 AUTH_SECRET=...        # openssl rand -hex 32
 STREAM_ENC_KEY=...     # openssl rand -hex 32
 DEMO_ACCOUNTS=true
-SEED_COUNT=200
+SEED_COUNT=500
 ```
 
 `APP_ENV=development` is required for a demo. Compose defaults to `production`, and in that mode the backend refuses demo accounts and sample data and exits at startup. Do not reuse production secrets in this file.
@@ -64,7 +64,7 @@ Start the ML service first (from `ml-service`, after `python train.py`), then th
 cd backend-go
 KNS_FILE=../ml-service/app/ml/data/kns144.tsv \
 SPECIALIST_FILE=../ml-service/app/ml/data/specialist.tsv \
-APP_ENV=development DEMO_ACCOUNTS=true SEED_COUNT=200 \
+APP_ENV=development DEMO_ACCOUNTS=true SEED_COUNT=500 \
 API_TOKEN=devtoken GO_PORT=18080 go run ./cmd
 ```
 

@@ -28,7 +28,7 @@ export function AuditCase({ kasus, onDone, onKlarifikasi }: AuditCaseProps) {
       />
     );
   }
-  if (hanyaTkmkb(kasus.risk, sesi?.role)) {
+  if (hanyaTkmkb(kasus.risk, sesi?.role, kasus.claimStatus)) {
     return <AuditTkmkbNotice kasus={kasus} onKlarifikasi={onKlarifikasi} />;
   }
   return (

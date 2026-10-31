@@ -40,7 +40,8 @@ export function bangunIndikator(decision: RiskDecision): Indikator[] {
       },
       {
         label: "Kesesuaian narasi dokter (NLP)",
-        nilai: angka(narrative.similarity, 2),
+        // null: tidak dinilai (narasi tidak tercatat, atau diagnosis di luar tabel PPK)
+        nilai: narrative.similarity === null ? "Tidak dinilai" : angka(narrative.similarity, 2),
         banding: narrative.p10 === null ? "Dibanding panduan klinis." : `Batas bawah wajar (P10): ${angka(narrative.p10, 2)}.`,
         level: dipicu(decision, "NARRATIVE_GENERIC") ? "sedang" : "rendah",
       },

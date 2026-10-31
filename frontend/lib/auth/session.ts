@@ -26,12 +26,12 @@ export async function sesiDariCookie(nilai?: string): Promise<Sesi | null> {
 }
 
 /**
- * Login tanpa kata sandi hanya untuk demo. Dua syarat: DEMO_MODE=true DAN bukan deployment produksi (Vercel Production
- * atau APP_ENV=production). Salah set di production tidak membuka pintu; backend menolak DEMO_ACCOUNTS dengan cara sama.
+ * Login tanpa kata sandi hanya untuk demo: DEMO_MODE=true dan bukan APP_ENV=production. Vercel Production boleh, karena
+ * sirujuk.vercel.app sengaja dipakai untuk demo hackathon dengan backend demo (data contoh). Matikan DEMO_MODE di sana
+ * sebelum dipakai dengan data asli.
  */
 export function demoAktif(): boolean {
-  if (process.env.DEMO_MODE !== "true") return false;
-  return process.env.VERCEL_ENV !== "production" && process.env.APP_ENV !== "production";
+  return process.env.DEMO_MODE === "true" && process.env.APP_ENV !== "production";
 }
 
 export const opsiCookie = {

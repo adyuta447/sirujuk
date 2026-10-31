@@ -1,0 +1,52 @@
+// Backend -> ML contract. Regenerate with proto/gen.sh after any change; both sides commit the generated code.
+syntax = "proto3";
+
+package sirujuk.ml.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/sirujuk/backend-go/gen/mlv1;mlv1";
+
+// Inference scores one referral. Score, category and cut-offs are owned by the model; the backend adds no threshold.
+service Inference {
+  rpc Predict(PredictRequest) returns (PredictResponse);
+}
+
+// Point-in-time doctor history comes from the backend. Unknown values stay unset: a made-up default
+// (nearest = true, a guessed stratum) would be read by the model as data.
+message PredictRequest {
+  string referral_id = 1;
+  string diagnosis_code = 2;
+  string reason = 3; // clinical | equipment | staff
+  string clinical_narrative = 4;
+  google.protobuf.Timestamp issued_at = 5;
+  optional string stratum = 6; // "<urban|rural>|<puskesmas|klinik|mandiri>"
+  int64 n90 = 7;
+  optional double ns90 = 8;
+  int64 n180 = 9;
+  optional double hhi180 = 10;
+  bool to_dominant_dest = 11;
+  optional bool dest_is_nearest = 12;
+  optional bool sisrute_available = 13; // unset = no SISRUTE data; false = checked, not available
+  double sisrute_age_days = 14;
+}
+
+message Reason {
+  string code = 1;
+  string detail = 2;
+  double contribution = 3;
+}
+
+message PredictResponse {
+  double nlp_similarity = 1;
+  double anomaly_score = 2;
+  double fraud_score = 3; // = score / 100; a prioritisation signal, never proof of fraud
+  double score = 4;
+  string category = 5; // green | yellow | red
+  double yellow_from = 6;
+  double red_from = 7;
+  repeated Reason reasons = 8;
+  bytes indicators_json = 9; // passed through untouched: the UI shows what the model used
+  string model_version = 10;
+  string diagnosis_version = 11;
+}

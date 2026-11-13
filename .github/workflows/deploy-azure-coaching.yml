@@ -57,7 +57,7 @@ jobs:
             az containerapp create --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
               --environment sirujuk-azure-env --image "$REGISTRY/ml:${GITHUB_SHA}" \
               --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
-              --ingress internal --target-port 8000 --transport http --allow-insecure \
+              --ingress internal --target-port 8000 --transport http \
               --min-replicas 1 --max-replicas 1
           fi
 
@@ -68,16 +68,16 @@ jobs:
               --image "$REGISTRY/backend:${GITHUB_SHA}" \
               --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
               --set-env-vars "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
-                "ML_SERVICE_URL=http://$ML_FQDN" "REDIS_URL=$REDIS_URL" \
+                "ML_SERVICE_URL=https://$ML_FQDN" "REDIS_URL=$REDIS_URL" \
                 "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
           else
             az containerapp create --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \
               --environment sirujuk-azure-env --image "$REGISTRY/backend:${GITHUB_SHA}" \
               --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
-              --ingress external --target-port 8080 --transport http --allow-insecure \
+              --ingress external --target-port 8080 --transport http \
               --min-replicas 1 --max-replicas 1 \
               --env-vars "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
-                "ML_SERVICE_URL=http://$ML_FQDN" "REDIS_URL=$REDIS_URL" \
+                "ML_SERVICE_URL=https://$ML_FQDN" "REDIS_URL=$REDIS_URL" \
                 "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
           fi
 

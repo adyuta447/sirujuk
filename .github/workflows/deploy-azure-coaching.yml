@@ -55,8 +55,7 @@ jobs:
 
           if az containerapp show --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
             az containerapp update --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
-              --image "$REGISTRY/ml:${GITHUB_SHA}" \
-              --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD"
+              --image "$REGISTRY/ml:${GITHUB_SHA}"
           else
             az containerapp create --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
               --environment sirujuk-azure-env --image "$REGISTRY/ml:${GITHUB_SHA}" \
@@ -70,7 +69,6 @@ jobs:
           if az containerapp show --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
             az containerapp update --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \
               --image "$REGISTRY/backend:${GITHUB_SHA}" \
-              --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
               --set-env-vars "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
                 "ML_SERVICE_URL=https://$ML_FQDN" "REDIS_URL=$REDIS_URL" \
                 "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
@@ -90,7 +88,6 @@ jobs:
           if az containerapp show --name sirujuk-frontend --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
             az containerapp update --name sirujuk-frontend --resource-group "$AZURE_RESOURCE_GROUP" \
               --image "$REGISTRY/frontend:${GITHUB_SHA}" \
-              --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
               --set-env-vars "BACKEND_URL=https://$URL" "API_TOKEN=$API_TOKEN" \
                 "AUTH_SECRET=$AUTH_SECRET" "ALLOW_INSECURE_COOKIE=false"
           else

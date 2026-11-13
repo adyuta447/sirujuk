@@ -35,12 +35,16 @@ jobs:
           docker push "$AZURE_CONTAINER_REGISTRY.azurecr.io/backend:${GITHUB_SHA}"
           docker build --tag "$AZURE_CONTAINER_REGISTRY.azurecr.io/ml:${GITHUB_SHA}" ml-service
           docker push "$AZURE_CONTAINER_REGISTRY.azurecr.io/ml:${GITHUB_SHA}"
+          docker build --tag "$AZURE_CONTAINER_REGISTRY.azurecr.io/frontend:${GITHUB_SHA}" \
+            --file infra/docker/frontend.Dockerfile .
+          docker push "$AZURE_CONTAINER_REGISTRY.azurecr.io/frontend:${GITHUB_SHA}"
 
       - name: Create or update coaching services
         shell: bash
         env:
           STREAM_ENC_KEY: ${{ secrets.SIRUJUK_STREAM_ENC_KEY }}
           REDIS_URL: ${{ secrets.SIRUJUK_REDIS_URL }}
+          AUTH_SECRET: ${{ secrets.SIRUJUK_AUTH_SECRET }}
         run: |
           set -euo pipefail
           REGISTRY="$AZURE_CONTAINER_REGISTRY.azurecr.io"
@@ -83,10 +87,28 @@ jobs:
 
           URL=$(az containerapp show --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \
             --query properties.configuration.ingress.fqdn -o tsv)
+          if az containerapp show --name sirujuk-frontend --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
+            az containerapp update --name sirujuk-frontend --resource-group "$AZURE_RESOURCE_GROUP" \
+              --image "$REGISTRY/frontend:${GITHUB_SHA}" \
+              --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
+              --set-env-vars "BACKEND_URL=https://$URL" "API_TOKEN=$API_TOKEN" \
+                "AUTH_SECRET=$AUTH_SECRET" "ALLOW_INSECURE_COOKIE=false"
+          else
+            az containerapp create --name sirujuk-frontend --resource-group "$AZURE_RESOURCE_GROUP" \
+              --environment sirujuk-azure-env --image "$REGISTRY/frontend:${GITHUB_SHA}" \
+              --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
+              --ingress external --target-port 3000 --transport http \
+              --min-replicas 1 --max-replicas 1 \
+              --env-vars "BACKEND_URL=https://$URL" "API_TOKEN=$API_TOKEN" \
+                "AUTH_SECRET=$AUTH_SECRET" "ALLOW_INSECURE_COOKIE=false"
+          fi
+          FRONTEND_URL=$(az containerapp show --name sirujuk-frontend --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query properties.configuration.ingress.fqdn -o tsv)
           for attempt in {1..30}; do
-            if curl --fail --silent --show-error --retry 0 "https://$URL/health"; then
+            if curl --fail --silent --show-error --retry 0 "https://$FRONTEND_URL/login" >/dev/null; then
               echo
               echo "Azure backend: https://$URL"
+              echo "Azure frontend: https://$FRONTEND_URL"
               exit 0
             fi
             sleep 10

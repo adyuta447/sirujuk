@@ -40,7 +40,7 @@ jobs:
         shell: bash
         env:
           STREAM_ENC_KEY: ${{ secrets.SIRUJUK_STREAM_ENC_KEY }}
-          REDIS_PASSWORD: ${{ secrets.SIRUJUK_REDIS_PASSWORD }}
+          REDIS_URL: ${{ secrets.SIRUJUK_REDIS_URL }}
         run: |
           set -euo pipefail
           REGISTRY="$AZURE_CONTAINER_REGISTRY.azurecr.io"
@@ -48,17 +48,6 @@ jobs:
           REGISTRY_PASSWORD=$(az acr credential show --name "$AZURE_CONTAINER_REGISTRY" --query passwords[0].value -o tsv)
           az containerapp env show --name sirujuk-azure-env --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1 ||
             az containerapp env create --name sirujuk-azure-env --resource-group "$AZURE_RESOURCE_GROUP" --location "$AZURE_LOCATION"
-
-          if az containerapp show --name sirujuk-redis --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
-            az containerapp update --name sirujuk-redis --resource-group "$AZURE_RESOURCE_GROUP" \
-              --image redis:7-alpine --set-env-vars "REDIS_PASSWORD=$REDIS_PASSWORD"
-          else
-            az containerapp create --name sirujuk-redis --resource-group "$AZURE_RESOURCE_GROUP" \
-              --environment sirujuk-azure-env --image redis:7-alpine \
-              --ingress internal --target-port 6379 --transport tcp \
-              --min-replicas 1 --max-replicas 1 \
-              --env-vars "REDIS_PASSWORD=$REDIS_PASSWORD"
-          fi
 
           if az containerapp show --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
             az containerapp update --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -74,15 +63,12 @@ jobs:
 
           ML_FQDN=$(az containerapp show --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
             --query properties.configuration.ingress.fqdn -o tsv)
-          REDIS_FQDN=$(az containerapp show --name sirujuk-redis --resource-group "$AZURE_RESOURCE_GROUP" \
-            --query properties.configuration.ingress.fqdn -o tsv)
-
           if az containerapp show --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
             az containerapp update --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \
               --image "$REGISTRY/backend:${GITHUB_SHA}" \
               --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
               --set-env-vars "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
-                "ML_SERVICE_URL=http://$ML_FQDN" "REDIS_URL=redis://$REDIS_FQDN:6379/0" \
+                "ML_SERVICE_URL=http://$ML_FQDN" "REDIS_URL=$REDIS_URL" \
                 "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
           else
             az containerapp create --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -91,7 +77,7 @@ jobs:
               --ingress external --target-port 8080 --transport http --allow-insecure \
               --min-replicas 1 --max-replicas 1 \
               --env-vars "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
-                "ML_SERVICE_URL=http://$ML_FQDN" "REDIS_URL=redis://$REDIS_FQDN:6379/0" \
+                "ML_SERVICE_URL=http://$ML_FQDN" "REDIS_URL=$REDIS_URL" \
                 "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
           fi
 

@@ -2,86 +2,116 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"strings"
+	"net"
 	"testing"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"github.com/sirujuk/backend-go/domain"
+	"github.com/sirujuk/backend-go/gen/mlv1"
 )
 
-func TestUnknownValuesAreSentAsNullNotGuessed(t *testing.T) {
-	b, _ := json.Marshal(newMLRequest(domain.ScoringInput{Referral: domain.ReferralRequest{ReferralID: "r", DiagnosisCode: "I10", Reason: "x"}}))
-	var m map[string]any
-	_ = json.Unmarshal(b, &m)
-	if v, present := m["dest_is_nearest"]; !present || v != nil {
-		t.Fatalf("dest_is_nearest must be null: %v", v)
+func TestUnknownValuesAreSentAsUnsetNotGuessed(t *testing.T) {
+	r := newPredictRequest(domain.ScoringInput{Referral: domain.ReferralRequest{ReferralID: "r", DiagnosisCode: "I10", Reason: "x"}})
+	if r.DestIsNearest != nil {
+		t.Fatalf("dest_is_nearest must be unset: %v", *r.DestIsNearest)
 	}
-	if v, present := m["stratum"]; !present || v != nil {
-		t.Fatalf("stratum must be null, not a made-up default: %v", v)
+	if r.Stratum != nil {
+		t.Fatalf("stratum must be unset, not a made-up default: %q", *r.Stratum)
 	}
 }
 
-func mlServer(t *testing.T, status int, body string, seen *http.Request, seenBody *[]byte) MLClient {
+type fakeML struct {
+	mlv1.UnimplementedInferenceServer
+	auth  chan string
+	delay time.Duration
+	fail  error
+}
+
+func (f fakeML) Predict(ctx context.Context, r *mlv1.PredictRequest) (*mlv1.PredictResponse, error) {
+	md, _ := metadata.FromIncomingContext(ctx)
+	if a := md.Get("authorization"); len(a) > 0 {
+		f.auth <- a[0]
+	}
+	time.Sleep(f.delay)
+	if f.fail != nil {
+		return nil, f.fail
+	}
+	return &mlv1.PredictResponse{Score: 21.5, Category: "red", RedFrom: 16, DiagnosisVersion: "d1", IndicatorsJson: []byte(`{"ns":{"value":0.9}}`),
+		Reasons: []*mlv1.Reason{{Code: "NS_ABOVE_PEER_P95", Contribution: 2}}, ModelVersion: "v2"}, nil
+}
+
+func startFake(t *testing.T, f fakeML) MLClient {
 	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if seen != nil {
-			*seen = *r
-		}
-		if seenBody != nil {
-			*seenBody, _ = io.ReadAll(r.Body)
-		}
-		w.WriteHeader(status)
-		w.Write([]byte(body))
-	}))
-	t.Cleanup(srv.Close)
-	return MLClient{BaseURL: srv.URL, HTTP: srv.Client()}
-}
-
-func TestPredictForwardsTheModelAnswerUntouched(t *testing.T) {
-	var sent []byte
-	c := mlServer(t, 200, `{"score":21.5,"category":"red","yellow_from":2.5,"red_from":16,"model_version":"v2","diagnosis_version":"d1",
-		"reasons":[{"code":"NS_ABOVE_PEER_P95","detail":"x","contribution":2}],"indicators":{"ns":{"value":0.9}}}`, nil, &sent)
-	got, err := c.Predict(context.Background(), domain.ScoringInput{Referral: domain.ReferralRequest{ReferralID: "r", DiagnosisCode: "I10", Reason: "x"}})
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Category != "red" || got.RedFrom != 16 || got.DiagnosisVersion != "d1" || len(got.Reasons) != 1 || string(got.Indicators) != `{"ns":{"value":0.9}}` {
-		t.Fatalf("answer changed in transit: %+v", got)
+	srv := grpc.NewServer()
+	mlv1.RegisterInferenceServer(srv, f)
+	go srv.Serve(lis)
+	t.Cleanup(srv.Stop)
+	c, err := NewMLClient("http://" + lis.Addr().String())
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(string(sent), `"dest_is_nearest":null`) {
-		t.Fatalf("unknown nearest must be sent as null: %s", sent)
+	return c
+}
+
+func TestPredictForwardsTheModelAnswerUntouched(t *testing.T) {
+	got, err := startFake(t, fakeML{auth: make(chan string, 1)}).Predict(context.Background(), domain.ScoringInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Category != "red" || got.RedFrom != 16 || got.DiagnosisVersion != "d1" || string(got.Indicators) != `{"ns":{"value":0.9}}` ||
+		len(got.Reasons) != 1 || got.Reasons[0].Code != "NS_ABOVE_PEER_P95" || got.Reasons[0].Contribution != 2 {
+		t.Fatalf("answer changed in transit: %+v", got)
 	}
 }
 
 func TestPredictTurnsMLFailuresIntoErrors(t *testing.T) {
-	for name, c := range map[string]MLClient{
-		"server error": mlServer(t, 500, "boom", nil, nil),
-		"bad input":    mlServer(t, 422, `{"detail":"x"}`, nil, nil),
-		"not json":     mlServer(t, 200, "<html>", nil, nil),
+	for name, fail := range map[string]error{
+		"server error": status.Error(codes.Internal, "boom"),
+		"bad input":    status.Error(codes.InvalidArgument, "invalid fields: reason"),
 	} {
-		if _, err := c.Predict(context.Background(), domain.ScoringInput{}); err == nil {
+		if _, err := startFake(t, fakeML{auth: make(chan string, 1), fail: fail}).Predict(context.Background(), domain.ScoringInput{}); err == nil {
 			t.Errorf("%s: want an error so the referral proceeds and is scored later", name)
 		}
 	}
 }
 
 func TestPredictAttachesTheCloudRunIDToken(t *testing.T) {
-	var seen http.Request
-	c := mlServer(t, 200, `{"category":"green"}`, &seen, nil)
+	f := fakeML{auth: make(chan string, 1)}
+	c := startFake(t, f)
 	c.IDToken = func(context.Context) (string, error) { return "tok123", nil }
 	if _, err := c.Predict(context.Background(), domain.ScoringInput{}); err != nil {
 		t.Fatal(err)
 	}
-	if seen.Header.Get("Authorization") != "Bearer tok123" {
-		t.Fatalf("private ML service needs the ID token, got %q", seen.Header.Get("Authorization"))
+	if a := <-f.auth; a != "Bearer tok123" {
+		t.Fatalf("private ML service needs the ID token, got %q", a)
 	}
 	c.IDToken = func(context.Context) (string, error) { return "", errors.New("no metadata") }
 	if _, err := c.Predict(context.Background(), domain.ScoringInput{}); err == nil {
 		t.Fatal("a failed token fetch must be an error, not an unauthenticated call")
+	}
+}
+
+func TestPredictGivesUpAtTimeout(t *testing.T) {
+	c := startFake(t, fakeML{auth: make(chan string, 1), delay: 200 * time.Millisecond})
+	c.Timeout = 50 * time.Millisecond
+	if _, err := c.Predict(context.Background(), domain.ScoringInput{}); status.Code(err) != codes.DeadlineExceeded {
+		t.Fatalf("want DeadlineExceeded (caller fails open to async), got %v", err)
+	}
+}
+
+func TestNewMLClientRejectsURLWithoutScheme(t *testing.T) {
+	if _, err := NewMLClient("ml-service:8000"); err == nil {
+		t.Fatal("want error")
 	}
 }
 

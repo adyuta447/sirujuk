@@ -4,3 +4,5 @@ pydantic==2.10.5
 numpy==2.2.1
 scikit-learn==1.6.1
 joblib==1.4.2
+grpcio==1.85.0
+protobuf==7.36.2 # >= the version proto/gen.sh generated with (see sirujuk/ml/v1/inference_pb2.py)

@@ -15,16 +15,16 @@ describe("demoAktif", () => {
     for (const k of ["DEMO_MODE", "VERCEL_ENV", "APP_ENV"]) delete process.env[k];
     Object.assign(process.env, env);
   };
-  it("is off by default and off in any production deployment", () => {
+  it("is off by default and off when APP_ENV=production", () => {
     set({});
-    expect(demoAktif()).toBe(false);
-    set({ DEMO_MODE: "true", VERCEL_ENV: "production" });
     expect(demoAktif()).toBe(false);
     set({ DEMO_MODE: "true", APP_ENV: "production" });
     expect(demoAktif()).toBe(false);
   });
-  it("is on only with DEMO_MODE=true outside production", () => {
+  it("is on with DEMO_MODE=true, also on Vercel Production (hackathon demo)", () => {
     set({ DEMO_MODE: "true", VERCEL_ENV: "preview" });
+    expect(demoAktif()).toBe(true);
+    set({ DEMO_MODE: "true", VERCEL_ENV: "production" });
     expect(demoAktif()).toBe(true);
     set({ DEMO_MODE: "yes" });
     expect(demoAktif()).toBe(false);

@@ -50,7 +50,7 @@ go run ./cmd/useradd -project <ID> -disable a@instansi.go.id    # berlaku <= 30 
 go run ./cmd/useradd -project <ID> -enable  a@instansi.go.id
 ```
 
-Akun `dokter` wajib punya `-doctor-id`; tanpa itu ia tidak melihat rujukan apa pun. Hapus akun `*@demo.sirujuk.id` dari konsol Firestore sebelum produksi nyata. Di frontend, pastikan `DEMO_MODE` tidak diset di Vercel production.
+Akun `dokter` wajib punya `-doctor-id`; tanpa itu ia tidak melihat rujukan apa pun. Hapus akun `*@demo.sirujuk.id` dari konsol Firestore sebelum produksi nyata. Saat ini sirujuk.vercel.app sengaja memakai `DEMO_MODE=true` dan backend demo untuk hackathon; hapus `DEMO_MODE` di Vercel production sebelum dipakai dengan data asli.
 
 ## Data contoh (sintetis)
 

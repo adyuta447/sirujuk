@@ -57,8 +57,7 @@ jobs:
               --environment sirujuk-azure-env --image redis:7-alpine \
               --ingress internal --target-port 6379 --transport tcp \
               --min-replicas 1 --max-replicas 1 \
-              --env-vars "REDIS_PASSWORD=$REDIS_PASSWORD" \
-              --command "sh" "-c" "exec redis-server --appendonly yes --requirepass \$REDIS_PASSWORD"
+              --env-vars "REDIS_PASSWORD=$REDIS_PASSWORD"
           fi
 
           if az containerapp show --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
@@ -83,7 +82,7 @@ jobs:
               --image "$REGISTRY/backend:${GITHUB_SHA}" \
               --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
               --set-env-vars "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
-                "ML_SERVICE_URL=http://$ML_FQDN" "REDIS_URL=redis://:$REDIS_PASSWORD@$REDIS_FQDN:6379/0" \
+                "ML_SERVICE_URL=http://$ML_FQDN" "REDIS_URL=redis://$REDIS_FQDN:6379/0" \
                 "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
           else
             az containerapp create --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -92,7 +91,7 @@ jobs:
               --ingress external --target-port 8080 --transport http --allow-insecure \
               --min-replicas 1 --max-replicas 1 \
               --env-vars "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
-                "ML_SERVICE_URL=http://$ML_FQDN" "REDIS_URL=redis://:$REDIS_PASSWORD@$REDIS_FQDN:6379/0" \
+                "ML_SERVICE_URL=http://$ML_FQDN" "REDIS_URL=redis://$REDIS_FQDN:6379/0" \
                 "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
           fi
 

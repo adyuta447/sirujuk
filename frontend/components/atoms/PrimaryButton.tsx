@@ -1,18 +1,14 @@
 import type { ReactNode } from "react";
 
-export function PrimaryButton({
-  children,
-  onClick,
-  className = "",
-  type = "button",
-  disabled = false,
-}: {
+interface PrimaryButtonProps {
   children: ReactNode;
   onClick?: () => void;
   className?: string;
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
-}) {
+}
+
+export function PrimaryButton({ children, onClick, className = "", type = "button", disabled = false }: PrimaryButtonProps) {
   return (
     <button
       type={type}

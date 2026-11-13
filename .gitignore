@@ -9,3 +9,10 @@ coverage/
 .env.*
 !.env.example
 .vercel
+
+# BPJS Kesehatan data sample: under a data-use agreement, never commit (repo is public)
+2025/
+.DS_Store
+
+# Graphify knowledge-graph output (local tooling cache)
+graphify-out/

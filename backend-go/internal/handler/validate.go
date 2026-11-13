@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"regexp"
+	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -27,7 +28,7 @@ const (
 // Newline and tab are allowed only when multiline is true.
 func text(s string, max int, required, multiline bool) error {
 	n := utf8.RuneCountInString(s)
-	if (required && n == 0) || n > max || !utf8.ValidString(s) {
+	if (required && strings.TrimSpace(s) == "") || n > max || !utf8.ValidString(s) {
 		return errors.New("bad length or encoding")
 	}
 	for _, r := range s {
@@ -59,7 +60,7 @@ func validate(r domain.ReferralRequest, allowContext bool) error {
 	if err := text(r.Reason, maxReason, true, false); err != nil {
 		return errors.New("invalid reason")
 	}
-	if err := text(r.ClinicalNarrative, maxNarrative, false, true); err != nil {
+	if err := text(r.ClinicalNarrative, maxNarrative, true, true); err != nil {
 		return errors.New("invalid clinical_narrative")
 	}
 	if r.IssuedAt.IsZero() || r.IssuedAt.After(time.Now().Add(5*time.Minute)) || r.IssuedAt.Before(time.Now().AddDate(-1, 0, 0)) {

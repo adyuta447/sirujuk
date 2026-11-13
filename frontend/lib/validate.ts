@@ -17,7 +17,7 @@ export type ReferralInput = {
 
 function badText(s: string, max: number, required: boolean, multiline: boolean) {
   const n = [...s].length;
-  if ((required && n === 0) || n > max) return true;
+  if ((required && !s.trim()) || n > max) return true;
   if (!multiline) return FORBIDDEN.test(s);
   return FORBIDDEN.test(s.replace(/[\n\t]/g, ""));
 }
@@ -28,6 +28,6 @@ export function validateReferral(i: ReferralInput): string | null {
     return "ID hanya boleh huruf, angka, titik, titik dua, garis miring, atau tanda hubung (maks 64).";
   if (!DIAGNOSIS.test(i.diagnosis_code)) return "Kode diagnosis tidak valid.";
   if (badText(i.reason, 200, true, false)) return "Alasan rujukan kosong, terlalu panjang, atau memuat karakter tidak diizinkan.";
-  if (badText(i.clinical_narrative, 4000, false, true)) return "Narasi klinis terlalu panjang atau memuat karakter tidak diizinkan.";
+  if (badText(i.clinical_narrative, 4000, true, true)) return "Narasi klinis kosong, terlalu panjang, atau memuat karakter tidak diizinkan.";
   return null;
 }

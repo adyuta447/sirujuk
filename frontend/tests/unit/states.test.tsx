@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { EmptyState, ErrorState, LoadingState } from "../../components/atoms/States";
+import { EmptyState } from "../../components/atoms/EmptyState";
+import { ErrorState } from "../../components/atoms/ErrorState";
+import { LoadingState } from "../../components/atoms/LoadingState";
 
 describe("LoadingState", () => {
   it("announces what is loading to assistive technology", () => {

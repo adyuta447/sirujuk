@@ -58,6 +58,23 @@ Akun `dokter` wajib punya `-doctor-id`; tanpa itu ia tidak melihat rujukan apa p
 
 Seed ditolak (backend tidak mau start) bila `APP_ENV=production` atau `FIRESTORE_PROJECT` terisi, supaya pasien fiktif tidak masuk database asli. Untuk demo di URL publik pakai lingkungan terpisah (Cloud Run + database Firestore tersendiri), bukan yang produksi.
 
+## Data sampel BPJS Kesehatan 2025 (nyata, de-identifikasi)
+
+Folder `2025/` (Data Sampel BPJS Edisi 2025, kunjungan 2024) **tidak boleh di-commit**: repo ini publik dan data
+terikat perjanjian penggunaan data BPJS (`2025/` dan `ml-service/data/bpjs/` ada di `.gitignore`).
+
+```
+cd ml-service && pip install -r requirements.txt -r requirements-train.txt
+python bpjs.py "../2025/Data Sampel Reguler Edisi 2025"   # uji data + models/bpjs_peer.json + data/bpjs/seed.json
+python train.py --peer models/bpjs_peer.json > models/train_report.json
+```
+
+Lalu backend dengan `SEED_BPJS_FILE=../ml-service/data/bpjs/seed.json` (Docker: `SEED_BPJS_FILE=/data/bpjs/seed.json`).
+Isinya 1000 rujukan terbaru DKI Jakarta (`--province`, `--seed-rows`), riwayat NS/HHI faskes dihitung point-in-time dari
+seluruh data 2024. Tiap baris bertanda `source: "bpjs-sampel-2025"` dan UI menampilkan banner "DATA SAMPEL BPJS".
+Data ini tidak punya ID dokter (faskes FKTP dipakai sebagai perujuk), narasi klinis, SISRUTE, maupun jarak; jadi hanya
+lapisan NS yang bisa menyala. Penjagaan sama seperti `SEED_COUNT`: ditolak di produksi dan bila `FIRESTORE_PROJECT` terisi.
+
 Jalankan lokal tanpa Docker:
 ```
 KNS_FILE=ml-service/app/ml/data/kns144.tsv SPECIALIST_FILE=ml-service/app/ml/data/specialist.tsv \

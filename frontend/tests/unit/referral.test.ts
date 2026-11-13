@@ -76,15 +76,16 @@ describe("bangunIndikator", () => {
 
   it("does not crash when the narrative was not scored (similarity null)", () => {
     const d = {
-      ...item("red", 80).decision,
+      ...item("green", 1).decision,
+      reason_codes: ["NARRATIVE_UNAVAILABLE"],
       indicators: {
-        ns: { value: 0.9, peer_p95: 0.21, n: 40, min_n: 20, applies: false },
-        hhi: { value: 6000, n: 80, min_n: 30, observe_from: 1500, high_from: 2500, nearest_known: false },
-        sisrute: { flag: true, age_days: 1, weight: 0.97 },
-        narrative: { similarity: null, p10: 0.13, mapped: false },
+        ns: { value: null, peer_p95: 0.21, n: 3, min_n: 20, applies: false },
+        hhi: { value: null, n: 3, min_n: 30, observe_from: 1500, high_from: 2500, nearest_known: false },
+        sisrute: { flag: false, age_days: 0, weight: 1 },
+        narrative: { similarity: null, p10: 0.62, mapped: false },
       },
     };
-    expect(bangunIndikator(d).find((i) => i.label.includes("narasi"))?.nilai).toBe("Tidak dinilai");
+    expect(bangunIndikator(d)[3].nilai).toBe("Tidak dinilai");
   });
 });
 

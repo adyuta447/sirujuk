@@ -1,0 +1,172 @@
+{
+  "evidence": "SYNTHETIC data, temporal split (train<240, test>=240); proves the pipeline finds what was injected, not real-world performance",
+  "versions": {
+    "model": "composite-lr-synthetic-v2",
+    "diagnosis_table": "kns144-sekunder-2026.05+ppk-draft-v1",
+    "n_kns": 144,
+    "n_specialist": 34
+  },
+  "n_train": 26868,
+  "n_test": 13444,
+  "base_rate_test": 0.0719,
+  "pr_auc": 0.822,
+  "roc_auc": 0.9443,
+  "red_precision": 0.777,
+  "recall_yellow_red": 0.909,
+  "red_precision_ci": [
+    0.755,
+    0.805
+  ],
+  "red_fdr": 0.223,
+  "recall_ci": [
+    0.891,
+    0.926
+  ],
+  "cat_share": {
+    "green": 0.775,
+    "yellow": 0.153,
+    "red": 0.072
+  },
+  "op_threshold": 34.0,
+  "op_accuracy": 0.9719,
+  "op_precision": 0.831,
+  "op_recall": 0.764,
+  "acc_note": "accuracy is NOT the headline: always-'not fraud' scores 0.928",
+  "insufficient_history_share": 0.111,
+  "diagnosis_unmapped_share": 0.222,
+  "len_corr_before_after": [
+    0.344,
+    -0.0
+  ],
+  "weights": {
+    "t_ns": 1.126,
+    "t_hhi": 5.973,
+    "t_flag": 1.392,
+    "t_nlp": 0.153,
+    "t_p10": 1.201
+  },
+  "cuts": {
+    "yellow_from": 2.56,
+    "red_from": 16.49
+  },
+  "nearest_facility_unknown": {
+    "pr_auc": 0.4193,
+    "roc_auc": 0.7408,
+    "red_precision": 0.632,
+    "recall_yellow_red": 0.576
+  },
+  "robustness_subtler_fraud_half_strength": {
+    "pr_auc": 0.2542,
+    "roc_auc": 0.7661,
+    "red_precision": 0.336,
+    "recall_yellow_red": 0.62
+  },
+  "baseline_equal_weights_0.25": {
+    "pr_auc": 0.5048,
+    "top20_precision_recall": {
+      "review_share": 0.2,
+      "precision": 0.277,
+      "recall": 0.771
+    }
+  },
+  "ablation_drop_layer": {
+    "NS": {
+      "pr_auc": 0.7369,
+      "roc_auc": 0.8912,
+      "red_precision": 0.692,
+      "recall_yellow_red": 0.824
+    },
+    "HHI": {
+      "pr_auc": 0.4191,
+      "roc_auc": 0.7408,
+      "red_precision": 0.505,
+      "recall_yellow_red": 0.583
+    },
+    "SISRUTE": {
+      "pr_auc": 0.7191,
+      "roc_auc": 0.8741,
+      "red_precision": 0.681,
+      "recall_yellow_red": 0.786
+    },
+    "NLP": {
+      "pr_auc": 0.7616,
+      "roc_auc": 0.8837,
+      "red_precision": 0.787,
+      "recall_yellow_red": 0.988
+    }
+  },
+  "capacity_table": [
+    {
+      "review_share": 0.02,
+      "precision": 0.966,
+      "recall": 0.268
+    },
+    {
+      "review_share": 0.05,
+      "precision": 0.912,
+      "recall": 0.635
+    },
+    {
+      "review_share": 0.1,
+      "precision": 0.592,
+      "recall": 0.824
+    },
+    {
+      "review_share": 0.15,
+      "precision": 0.42,
+      "recall": 0.877
+    },
+    {
+      "review_share": 0.2,
+      "precision": 0.323,
+      "recall": 0.9
+    }
+  ],
+  "capacity_note": "yellow+red = 22.5% of referrals; per 1000 referrals/day/cabang that is 224 reviews/day. Percentile cuts are a capacity budget, not a fraud probability; set --yellow-share to real verifier capacity.",
+  "recall_by_scenario": {
+    "A": 1.0,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 0.781,
+    "X": 0.36
+  },
+  "flag_rate_nonfraud_by_doc_role": {
+    "A": 0.222,
+    "AB": 0.25,
+    "B": 0.204,
+    "BC": 0.222,
+    "BD": 0.2,
+    "BDA": 0.25,
+    "C": 0.125,
+    "CB": 0.1,
+    "D": 0.164,
+    "N": 0.172
+  },
+  "by_stratum": {
+    "rural": {
+      "flag_rate": 0.22,
+      "red_precision": 0.731
+    },
+    "urban": {
+      "flag_rate": 0.227,
+      "red_precision": 0.793
+    },
+    "ftype_klinik": {
+      "flag_rate": 0.23,
+      "red_precision": 0.821
+    },
+    "ftype_puskesmas": {
+      "flag_rate": 0.222,
+      "red_precision": 0.722
+    },
+    "ftype_mandiri": {
+      "flag_rate": 0.225,
+      "red_precision": 0.84
+    }
+  },
+  "peer_source": {
+    "file": "models/bpjs_peer.json",
+    "version": "bpjs-sampel-2025",
+    "note": "metrics above use the synthetic peer; see bpjs_report.json for scoring on real referrals"
+  }
+}

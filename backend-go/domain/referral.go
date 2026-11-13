@@ -141,6 +141,8 @@ type StoredReferral struct {
 	Archived       bool            `json:"archived,omitempty"`
 	// Synthetic marks demo rows made by the seed. They must never be mistaken for, or mixed into, real data.
 	Synthetic bool `json:"synthetic,omitempty"`
+	// Source names an imported historical sample (e.g. "bpjs-sampel-2025"): real but de-identified, never a live referral.
+	Source string `json:"source,omitempty"`
 	// Derived by Derive; never accepted as input.
 	ClaimStatus string `json:"claim_status"`
 	Final       bool   `json:"final"`

@@ -1,4 +1,4 @@
-import SirujukPage from "../../components/pages/SirujukPage";
+import { SirujukPage } from "../../components/pages/SirujukPage";
 
 export default function DokterProfilPage() {
   return <SirujukPage initialView="dokter" />;

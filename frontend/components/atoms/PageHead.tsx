@@ -1,15 +1,13 @@
 import { Illustration } from "./Illustration";
 import type { IllustrationName } from "./Illustration";
 
-export function PageHead({
-  title,
-  sub,
-  art,
-}: {
+interface PageHeadProps {
   title: string;
   sub?: string;
   art?: IllustrationName;
-}) {
+}
+
+export function PageHead({ title, sub, art }: PageHeadProps) {
   return (
     <div className="flex items-center justify-between gap-6">
       <div>

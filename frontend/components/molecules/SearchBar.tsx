@@ -2,7 +2,12 @@
 
 import { Search } from "lucide-react";
 
-export function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+interface SearchBarProps {
+  value: string;
+  onChange: (v: string) => void;
+}
+
+export function SearchBar({ value, onChange }: SearchBarProps) {
   return (
     <div className="relative flex-1 min-w-0 max-w-md">
       <Search

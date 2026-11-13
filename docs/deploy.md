@@ -7,8 +7,13 @@ Urutan pipeline (`.github/workflows/deploy.yml`, hanya di `main`): test + scan, 
 
 ## Setup sekali jalan
 
-1. **Redis gratis**: buat database di Upstash (region AS us-east-1), salin URL `rediss://...`.
-   Memorystore sengaja tidak dipakai: minimalnya puluhan USD per bulan.
+1. **Redis**: VM e2-micro privat (~US$7/bulan, tanpa IP publik), setelah `setup.sh` (butuh Docker lokal):
+   ```bash
+   PROJECT_ID=<id> ./infra/gcp/redis-vm.sh   # mengisi secret sirujuk-redis-url; lalu deploy ulang backend
+   ```
+   Backend menjangkaunya lewat Direct VPC egress (`infra/gcp/cloudrun-go.yaml`). Memorystore sengaja tidak dipakai:
+   minimalnya ~US$36 per bulan. Alternatif gratis: Upstash `rediss://...` langsung ke secret `sirujuk-redis-url`
+   (hapus dua anotasi VPC di manifest).
 2. **GCP** (butuh project dengan billing, `gcloud auth login`, `gh auth login`):
    ```bash
    PROJECT_ID=<id> REDIS_URL='rediss://default:<pw>@<host>:6379' BILLING_ACCOUNT=<opsional> ./infra/gcp/setup.sh

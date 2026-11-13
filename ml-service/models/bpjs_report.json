@@ -1,0 +1,214 @@
+{
+  "fktp_visits": 4073388,
+  "fktp_referrals": 391548,
+  "visit_dates": [
+    "2024-01-01",
+    "2024-12-31"
+  ],
+  "referral_share": 0.0961,
+  "referral_share_weighted": 0.0755,
+  "referral_id_parse_fail": 0.0,
+  "referral_id_month_matches_visit": 1.0,
+  "facility_code_one_kabkota": 1.0,
+  "facility_code_one_type": 1.0,
+  "fkrtl_visits": 1699219,
+  "fkrtl_with_origin_referral": 0.5896,
+  "hospital_id_parse_fail": 0.0,
+  "referrals_linked_to_fkrtl": 0.8811,
+  "facilities": 21093,
+  "hospitals": 2989,
+  "diagnosis_mapped_share": 0.3061,
+  "diagnosis_kns_share": 0.1028,
+  "top_unmapped_icd": {
+    "I11": 13067,
+    "K04": 12658,
+    "M54": 9623,
+    "H52": 8408,
+    "H54": 8266,
+    "Z09": 8023,
+    "F20": 5206,
+    "K01": 4875,
+    "D21": 4506,
+    "I64": 4344,
+    "R10": 3835,
+    "Z35": 3700,
+    "Z48": 3105,
+    "I15": 3057,
+    "F41": 2874
+  },
+  "history_sufficient_ns_share": 0.0619,
+  "history_sufficient_hhi_share": 0.0916,
+  "stratum_share": {
+    "rural|puskesmas": 0.314,
+    "rural|klinik": 0.205,
+    "urban|klinik": 0.184,
+    "urban|puskesmas": 0.136,
+    "rural|mandiri": 0.121,
+    "urban|mandiri": 0.04
+  },
+  "sampling_note": "participant sample (PSTV15 = weight): per-facility counts are far below real volume, so n90/n180 minimums are rarely met and HHI from few referrals is biased upward",
+  "peer_real": {
+    "__all__": {
+      "ns_median": 0.091,
+      "ns_mad": 0.045,
+      "ns_p95": 0.207,
+      "hhi_median": 2098,
+      "hhi_mad": 770
+    },
+    "rural|klinik": {
+      "ns_median": 0.091,
+      "ns_mad": 0.043,
+      "ns_p95": 0.227,
+      "hhi_median": 2894,
+      "hhi_mad": 993
+    },
+    "rural|mandiri": {
+      "ns_median": 0.037,
+      "ns_mad": 0.037,
+      "ns_p95": 0.191,
+      "hhi_median": 2445,
+      "hhi_mad": 593
+    },
+    "rural|puskesmas": {
+      "ns_median": 0.095,
+      "ns_mad": 0.055,
+      "ns_p95": 0.233,
+      "hhi_median": 2840,
+      "hhi_mad": 1083
+    },
+    "urban|klinik": {
+      "ns_median": 0.078,
+      "ns_mad": 0.042,
+      "ns_p95": 0.217,
+      "hhi_median": 2176,
+      "hhi_mad": 727
+    },
+    "urban|mandiri": {
+      "ns_median": 0.179,
+      "ns_mad": 0.081,
+      "ns_p95": 0.315,
+      "hhi_median": 4640,
+      "hhi_mad": 1200
+    },
+    "urban|puskesmas": {
+      "ns_median": 0.1,
+      "ns_mad": 0.036,
+      "ns_p95": 0.192,
+      "hhi_median": 1499,
+      "hhi_mad": 385
+    }
+  },
+  "peer_synthetic": {
+    "__all__": {
+      "ns_median": 0.098,
+      "ns_mad": 0.037,
+      "ns_p95": 0.217,
+      "hhi_median": 6557,
+      "hhi_mad": 680
+    },
+    "rural|klinik": {
+      "ns_median": 0.095,
+      "ns_mad": 0.045,
+      "ns_p95": 0.205,
+      "hhi_median": 7812,
+      "hhi_mad": 1080
+    },
+    "rural|mandiri": {
+      "ns_median": 0.095,
+      "ns_mad": 0.048,
+      "ns_p95": 0.215,
+      "hhi_median": 10000,
+      "hhi_mad": 0
+    },
+    "rural|puskesmas": {
+      "ns_median": 0.091,
+      "ns_mad": 0.045,
+      "ns_p95": 0.226,
+      "hhi_median": 8320,
+      "hhi_mad": 1680
+    },
+    "urban|klinik": {
+      "ns_median": 0.1,
+      "ns_mad": 0.032,
+      "ns_p95": 0.244,
+      "hhi_median": 6098,
+      "hhi_mad": 538
+    },
+    "urban|mandiri": {
+      "ns_median": 0.103,
+      "ns_mad": 0.034,
+      "ns_p95": 0.2,
+      "hhi_median": 6278,
+      "hhi_mad": 464
+    },
+    "urban|puskesmas": {
+      "ns_median": 0.096,
+      "ns_mad": 0.035,
+      "ns_p95": 0.222,
+      "hhi_median": 6329,
+      "hhi_mad": 437
+    }
+  },
+  "shadow": {
+    "model": "composite-lr-synthetic-v2+peer-bpjs-sampel-2025",
+    "cuts": {
+      "yellow_from": 2.56,
+      "red_from": 16.49
+    },
+    "cat_share": {
+      "green": 0.9969,
+      "yellow": 0.0029,
+      "red": 0.0002
+    },
+    "cat_share_by_stratum": {
+      "rural|klinik": {
+        "green": 0.998,
+        "yellow": 0.002,
+        "red": 0.0
+      },
+      "rural|mandiri": {
+        "green": 0.999,
+        "yellow": 0.001,
+        "red": 0.0
+      },
+      "rural|puskesmas": {
+        "green": 0.999,
+        "yellow": 0.001,
+        "red": 0.0
+      },
+      "urban|klinik": {
+        "green": 0.994,
+        "yellow": 0.005,
+        "red": 0.0
+      },
+      "urban|mandiri": {
+        "green": 1.0,
+        "yellow": 0.0,
+        "red": 0.0
+      },
+      "urban|puskesmas": {
+        "green": 0.991,
+        "yellow": 0.009,
+        "red": 0.0
+      }
+    },
+    "note": "only the NS layer can fire on this data (no narrative, SISRUTE or distance); per the model card the cuts are not re-cut",
+    "proxy_check": {
+      "question": "for KNS referrals, does a higher facility NS predict that the hospital also coded a simple KNS case?",
+      "n": 2340,
+      "proxy_rate": 0.081,
+      "auc_ns_z": 0.485,
+      "caveat": "weak proxy, not a fraud label: Z09 follow-ups and coding habits dominate hospital diagnoses"
+    }
+  },
+  "seed_cat_share": {
+    "green": 0.976,
+    "yellow": 0.022,
+    "red": 0.002
+  },
+  "seed": {
+    "province": 31,
+    "rows": 1000,
+    "file": "data/bpjs/seed.json"
+  }
+}

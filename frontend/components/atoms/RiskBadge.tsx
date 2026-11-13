@@ -1,11 +1,13 @@
-import { Check, Eye, OctagonAlert } from "lucide-react";
+import { ICON } from "../../data/risk-icons";
 import { RISK } from "../../lib/sirujuk-data";
 import type { RiskLevel } from "../../lib/sirujuk-data";
 
-// Ikon + label supaya kategori tidak bergantung pada warna saja.
-const ICON = { tinggi: OctagonAlert, sedang: Eye, rendah: Check } as const;
+interface RiskBadgeProps {
+  level: RiskLevel;
+  score?: number;
+}
 
-export function RiskBadge({ level, score }: { level: RiskLevel; score?: number }) {
+export function RiskBadge({ level, score }: RiskBadgeProps) {
   const color = RISK[level];
   const Icon = ICON[level];
 

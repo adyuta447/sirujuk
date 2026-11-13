@@ -59,6 +59,7 @@ func TestRejectsBadInput(t *testing.T) {
 		"bad doctor id": {"R1", valid(`,"doctor_id":"d-1'; DROP"`)},
 		"trailing json": {"R1", valid("") + `{}`},
 		"too long":      {"R1", valid(`,"clinical_narrative":"` + strings.Repeat("a", 40000) + `"`)},
+		"no narrative":  {"R1", valid(`,"clinical_narrative":" \n "`)}, // the model reads blank as "not recorded"
 	}
 	for name, c := range bad {
 		if got := call(h, c.key, c.body); got < 400 || got >= 500 {

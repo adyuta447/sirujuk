@@ -5,11 +5,13 @@ import { getStats } from "../services/stats.service";
 import { namaDokter } from "../lib/sirujuk-data";
 import type { Stats } from "../types/referral";
 
-const useStatsQuery = <T,>(select: (s: Stats) => T) =>
-  useQuery({ queryKey: ["stats"], queryFn: getStats, staleTime: 60 * 1000, select });
+const useStatsQuery = <T,>(select: (s: Stats) => T, enabled = true) =>
+  useQuery({ queryKey: ["stats"], queryFn: getStats, staleTime: 60 * 1000, select, enabled });
 
-/** True bila statistik dihitung dari baris seed demo. */
-export const useStatsSintetis = () => useStatsQuery((s) => s.synthetic === true);
+/** Nama wilayah yang benar-benar ada di data, untuk pilihan filter. Hanya peran yang boleh membaca statistik. */
+
+/** Asal data statistik bila bukan rujukan berjalan: sumber sampel (mis. "bpjs-sampel-2025"), "sintetis", atau null. */
+export const useStatsSumber = () => useStatsQuery((s) => s.source ?? (s.synthetic ? "sintetis" : null));
 
 /** Agregat per wilayah (tanpa data pasien), dihitung backend dari skor ML. */
 export const useWilayahStats = () =>

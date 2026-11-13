@@ -1,18 +1,18 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { Dinkes } from "../../components/organisms/Dinkes";
-import { useStatsSintetis, useWilayahStats } from "../../hooks/useStats";
+import { useStatsSumber, useWilayahStats } from "../../hooks/useStats";
 
 jest.mock("../../hooks/useStats", () => ({
-  useStatsSintetis: jest.fn(),
+  useStatsSumber: jest.fn(),
   useWilayahStats: jest.fn(),
 }));
 
 const mockWilayah = useWilayahStats as jest.Mock;
-const mockSintetis = useStatsSintetis as jest.Mock;
+const mockSumber = useStatsSumber as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockSintetis.mockReturnValue({ data: false });
+  mockSumber.mockReturnValue({ data: null });
 });
 
 describe("Dinkes", () => {
@@ -66,5 +66,13 @@ describe("Dinkes", () => {
     const kartu = screen.getAllByRole("button", { name: /Jakarta/ });
     expect(kartu[0]).toHaveAccessibleName(/Jakarta Utara/);
     expect(kartu[1]).toHaveAccessibleName(/Jakarta Barat/);
+  });
+
+  it("menandai data sampel BPJS sebagai historis, bukan sintetis", () => {
+    mockSumber.mockReturnValue({ data: "bpjs-sampel-2025" });
+    mockWilayah.mockReturnValue({ data: [], isError: false, isLoading: false, refetch: jest.fn() });
+    render(<Dinkes onWilayah={() => {}} />);
+    expect(screen.getByRole("note")).toHaveTextContent("DATA SAMPEL BPJS");
+    expect(screen.getByRole("note")).not.toHaveTextContent("SINTETIS");
   });
 });

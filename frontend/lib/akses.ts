@@ -35,6 +35,10 @@ const AKSES: [string, Peran[]][] = [
 
 export const HALAMAN_PUBLIK = ["/", "/login", "/daftar"];
 
+/** Halaman yang memang ada. Selain ini dibiarkan sampai Next sendiri, supaya URL asal-asalan mendapat 404, bukan dialihkan. */
+export const halamanDikenal = (path: string) =>
+  HALAMAN_PUBLIK.includes(path) || AKSES.some(([p]) => path === p || path.startsWith(`${p}/`));
+
 export function bolehAkses(peran: Peran, path: string): boolean {
   const aturan = AKSES.find(([p]) => path === p || path.startsWith(`${p}/`));
   return !!aturan && aturan[1].includes(peran);
@@ -42,5 +46,6 @@ export function bolehAkses(peran: Peran, path: string): boolean {
 
 export const bolehSkor = (peran: Peran) => PETUGAS.includes(peran);
 
-export const hanyaTkmkb = (risk: string, peran?: Peran) =>
-  risk === "tinggi" && peran === "verifikator";
+// Klaim yang ditahan tetap urusan TKMKB walau skor sudah turun (mis. sesudah diedit); backend menegakkannya sama.
+export const hanyaTkmkb = (risk: string, peran?: Peran, claimStatus?: string) =>
+  peran === "verifikator" && (risk === "tinggi" || claimStatus === "ditahan");

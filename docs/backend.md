@@ -51,7 +51,7 @@ REDIS_PASSWORD=...     # openssl rand -hex 24
 AUTH_SECRET=...        # openssl rand -hex 32
 STREAM_ENC_KEY=...     # openssl rand -hex 32
 DEMO_ACCOUNTS=true
-SEED_COUNT=200
+SEED_COUNT=500
 ```
 
 `APP_ENV=development` is required for a demo. Compose defaults to `production`, and in that mode the backend refuses demo accounts and sample data and exits at startup. Do not reuse production secrets in this file.
@@ -64,7 +64,7 @@ Start the ML service first (from `ml-service`, after `python train.py`), then th
 cd backend-go
 KNS_FILE=../ml-service/app/ml/data/kns144.tsv \
 SPECIALIST_FILE=../ml-service/app/ml/data/specialist.tsv \
-APP_ENV=development DEMO_ACCOUNTS=true SEED_COUNT=200 \
+APP_ENV=development DEMO_ACCOUNTS=true SEED_COUNT=500 \
 API_TOKEN=devtoken GO_PORT=18080 go run ./cmd
 ```
 
@@ -86,6 +86,7 @@ Redis is optional in development. Without it the service still scores, but batch
 | `KNS_FILE` | no | Path to the 144 diagnosis table. Defaults to the copy compiled into the binary. |
 | `MIN_RED_LAYERS` | no | Default 1. Set 2 so that red needs two independent layers. |
 | `STORE_SYNC_SECONDS` | no | Default 30. How often each instance reloads referrals from Firestore to see other instances' changes. 0 turns it off. |
+| `ASSUMED_COST_PER_PREVENTED_REFERRAL_IDR` and `ASSUMED_PREVENTION_PERCENT` | no | The owner's cost assumption behind the estimate in `/stats` `prevention.cost`. Both are needed (cost above 0, percent in (0,100]). With either missing, no rupiah figure is produced at all, because there is no real claim-cost data. |
 | `ALLOW_CLIENT_CONTEXT` | no | Default false. Only for demos: trusts doctor history sent by the client. |
 | `DEMO_ACCOUNTS` | no | Creates four in-memory demo accounts. Refused in production. |
 | `SEED_COUNT` | no | Creates synthetic referrals. Refused in production or with Firestore set. |

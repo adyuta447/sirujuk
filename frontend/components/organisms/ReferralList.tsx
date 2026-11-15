@@ -6,7 +6,7 @@ import { useReferralList } from "../../hooks/useReferralList";
 import { Card } from "../atoms/Card";
 import { PageHead } from "../atoms/PageHead";
 import { PageScroll } from "../molecules/PageScroll";
-import { Pagination } from "../molecules/Pagination";
+import { PagerKursor } from "../molecules/PagerKursor";
 import { ReferralListEmpty } from "./referral-list/ReferralListEmpty";
 import { ReferralRow } from "./referral-list/ReferralRow";
 
@@ -36,7 +36,7 @@ export function ReferralList({ onSelect, wilayah, query }: ReferralListProps) {
           Memuat rujukan…
         </p>
       )}
-      {!list.isLoading && !list.isError && list.totalItems === 0 && (
+      {!list.isLoading && !list.isError && list.total === 0 && (
         <ReferralListEmpty />
       )}
       <Card className="overflow-hidden">
@@ -51,12 +51,15 @@ export function ReferralList({ onSelect, wilayah, query }: ReferralListProps) {
           ))}
         </div>
       </Card>
-      <Pagination
-        page={list.halaman}
-        totalPages={list.totalPages}
-        onChange={list.gantiHalaman}
-        totalItems={list.totalItems}
+      <PagerKursor
+        halaman={list.halaman}
+        jumlahTampil={list.tampak.length}
+        total={list.total}
         pageSize={PAGE_SIZE}
+        adaSebelum={list.adaSebelum}
+        adaLanjut={list.adaLanjut}
+        onSebelum={list.sebelum}
+        onBerikut={list.berikut}
       />
     </PageScroll>
   );

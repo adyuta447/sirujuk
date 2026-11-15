@@ -1,3 +1,4 @@
+import { klaim } from "../../../data/claim-styles";
 import { NAVY, RISK } from "../../../lib/sirujuk-data";
 import type { RiskSegment } from "../../../types/queue";
 
@@ -20,7 +21,7 @@ export function RiskFilterChip({ segment, active, onClick }: RiskFilterChipProps
       }
     >
       {segment.key !== "semua" && (
-        <span className="w-2 h-2 rounded-4xl" style={{ backgroundColor: RISK[segment.key].solid }} />
+        <span className="w-2 h-2 rounded-4xl" style={{ backgroundColor: segment.key === "ditahan" ? klaim.ditahan.bg : RISK[segment.key].solid }} />
       )}
       {segment.label}
       <span

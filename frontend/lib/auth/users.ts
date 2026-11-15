@@ -11,8 +11,12 @@ export type Pengguna = { email: string; nama: string; role: Peran };
  * null = email atau kata sandi salah. Melempar error bila backend/database tidak bisa dijangkau, supaya login
  * menjawab "layanan tidak tersedia" dan bukan "kata sandi salah".
  */
-export async function verifikasi(email: string, sandi: string): Promise<Pengguna | null> {
-  const res = await keBackend("/api/v1/auth/verify", { method: "POST", body: JSON.stringify({ email, password: sandi }) });
+export async function verifikasi(email: string, sandi: string, ip = ""): Promise<Pengguna | null> {
+  const res = await keBackend("/api/v1/auth/verify", {
+    method: "POST",
+    body: JSON.stringify({ email, password: sandi }),
+    headers: ip ? { "X-Client-IP": ip } : {},
+  });
   if (res.status === 401) return null;
   if (res.status === 429) throw new TerlaluBanyak();
   if (!res.ok) throw new Error(`auth backend ${res.status}`);

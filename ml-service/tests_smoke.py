@@ -1,5 +1,6 @@
 """Run with the trained model present: python tests_smoke.py"""
 import sys
+import numpy as np
 from fastapi.testclient import TestClient
 from app.ml import diagnosis
 from app.main import app
@@ -26,7 +27,18 @@ with TestClient(app) as c:
     assert bad["score"] > cold["score"] and bad["category"] == "red"
     assert bad["yellow_from"] == info["yellow_from"] and bad["indicators"]["ns"]["applies"] and bad["indicators"]["ns"]["peer_p95"] > 0
     assert "INSUFFICIENT_HISTORY" in codes(cold)
+    # the NS reason says "vs peer P95" only when the doctor really is above it; above the median alone is worded as such
+    mid = c.post("/v1/predict", json=dict(base, n90=36, ns90=0.14, n180=60, hhi180=900, to_dominant_dest=False, dest_is_nearest=True)).json()
+    detail = next(x["detail"] for x in mid["reasons"] if x["code"] == "NS_ABOVE_PEER_P95")
+    assert "median sejenis" in detail and "vs peer P95" not in detail, detail
+    assert "vs peer P95" in next(x["detail"] for x in bad["reasons"] if x["code"] == "NS_ABOVE_PEER_P95")
     assert "DIAGNOSIS_UNMAPPED" in codes(unk) and "HHI_NEAREST_UNKNOWN" in codes(unk) and unk["nlp_similarity"] == 0.0
+    # a code that is not ICD-10 at all is never green; a real ICD-10 code outside the table (K30) is scored as usual
+    junk = c.post("/v1/predict", json=dict(base, diagnosis_code="ZZZ.99", reason="clinical")).json()
+    assert junk["category"] == "yellow" and "DIAGNOSIS_INVALID" in codes(junk) and "DIAGNOSIS_INVALID" not in codes(unk), junk
+    # wire score: the model's own cuts sit at 50 (yellow) and 80 (red), so the number agrees with the colour
+    assert (bad["yellow_from"], bad["red_from"], info["yellow_from"]) == (50, 80, 50)
+    assert bad["score"] > 80 and cold["score"] < 50 and 0 < cold["fraud_score"] < cold["score"] / 100, (bad, cold)
     # empty narrative (historical import) = layer not run, never "generic"
     blank = c.post("/v1/predict", json=dict(base, reason="clinical", clinical_narrative="")).json()
     assert "NARRATIVE_UNAVAILABLE" in codes(blank) and "NARRATIVE_GENERIC" not in codes(blank) and blank["indicators"]["narrative"]["similarity"] is None
@@ -74,4 +86,22 @@ with TestClient(app) as c:
     except grpc.RpcError as e:
         assert e.code() == grpc.StatusCode.INVALID_ARGUMENT and base["clinical_narrative"] not in e.details(), e.details()
     srv.stop(0)
+    # retrain on real audit labels: too few -> no model; enough -> judged on the newest labels, never on its own training rows
+    import retrain
+    from app.core.model_loader import load_models
+    rng = np.random.default_rng(0)
+    def label_rows(n):
+        out = []
+        for i in range(n):
+            ns, dom = float(rng.uniform(0, 1)), bool(rng.uniform() < 0.5)
+            out.append(dict(base, referral_id=f"l{i}", issued_at=f"2026-01-{1 + i % 28:02d}T00:00:00Z", reason="clinical", stratum="urban|klinik",
+                            n90=60, ns90=ns, n180=80, hhi180=float(rng.uniform(1000, 8000)), to_dominant_dest=dom,
+                            label=int(ns > 0.7 and dom) if i % 3 else None, random_audit=i % 10 == 0))
+        return out
+    rep, new = retrain.run(label_rows(60), load_models())
+    assert not rep["retrained"] and new is None and "need" in rep["why"], rep
+    rep, new = retrain.run(label_rows(600), load_models())
+    assert rep["labeled"] == 400 and "holdout" in rep and rep["current_random_audit_only"]["n"] > 0, rep
+    assert (new is not None) == rep["retrained"] and (new is None or "+real-400" in new.version), rep
+    print("retrain", rep["retrained"], rep["holdout"])
     print("ok")

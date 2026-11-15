@@ -71,6 +71,8 @@ func storeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, repository.ErrNotFound):
 		notFound(w)
+	case errors.Is(err, repository.ErrFinal):
+		writeJSON(w, http.StatusConflict, apiError{"DECISION_FINAL", "This referral already has its final decision; nothing was changed", ""})
 	case errors.Is(err, repository.ErrLimit):
 		writeJSON(w, http.StatusConflict, apiError{"LIMIT_REACHED", "Limit reached for this referral", ""})
 	default:
@@ -85,7 +87,15 @@ func roleMayDecide(store *repository.MemoryStore, id, role, outcome string) bool
 		return true
 	}
 	item, ok := store.Get(id)
-	return !ok || item.Decision.Decision != "red"
+	return !ok || !item.Red()
+}
+
+// isFinal answers 409 when the referral already has its final decision; the store checks again inside the write.
+func isFinal(w http.ResponseWriter, item domain.StoredReferral) bool {
+	if item.Final {
+		storeError(w, repository.ErrFinal)
+	}
+	return item.Final
 }
 
 func notFound(w http.ResponseWriter) {
@@ -102,9 +112,12 @@ func (h ReferralHandler) rescore(w http.ResponseWriter, r *http.Request, id stri
 		writeJSON(w, http.StatusBadGateway, apiError{"SCORING_UNAVAILABLE", "Scoring service unavailable; nothing was changed", ""})
 		return
 	}
-	h.Store.Upsert(req, d)
+	if err := h.Store.Rescore(req, d); err != nil {
+		storeError(w, err)
+		return
+	}
 	item, _ := h.Store.Get(id)
-	writeJSON(w, http.StatusOK, redact(item, role))
+	writeJSON(w, http.StatusOK, shown(item, role))
 }
 
 // Rescore: POST /referrals/{id}/rescore
@@ -123,7 +136,7 @@ func (h ReferralHandler) Rescore(w http.ResponseWriter, r *http.Request) {
 		notFound(w)
 		return
 	}
-	if !mayChangeRed(w, item, role) {
+	if !mayChangeRed(w, item, role) || isFinal(w, item) {
 		return
 	}
 	auditLog(r, "referral_rescored", id, nil)
@@ -146,28 +159,27 @@ func (h ReferralHandler) Update(w http.ResponseWriter, r *http.Request) {
 		notFound(w)
 		return
 	}
-	if !mayChangeRed(w, item, role) {
+	if !mayChangeRed(w, item, role) || isFinal(w, item) {
 		return
 	}
+	// Only the clinical evidence can be edited. Who issued the referral and where it goes are its identity (doctor and
+	// facility statistics, the doctor's own view and the audit trail hang on them): they stay as stored, and a body
+	// carrying them is refused as an unknown field.
 	var body struct {
-		DoctorID              string `json:"doctor_id"`
-		OriginFacilityID      string `json:"origin_facility_id"`
-		DestinationFacilityID string `json:"destination_facility_id"`
-		DiagnosisCode         string `json:"diagnosis_code"`
-		Reason                string `json:"reason"`
-		ClinicalNarrative     string `json:"clinical_narrative"`
+		DiagnosisCode     string `json:"diagnosis_code"`
+		Reason            string `json:"reason"`
+		ClinicalNarrative string `json:"clinical_narrative"`
 	}
 	if err := decodeStrict(w, r, maxEditBody, &body); err != nil {
 		badRequest(w)
 		return
 	}
 	req := item.Request
-	req.DoctorID, req.OriginFacilityID, req.DestinationFacilityID = body.DoctorID, body.OriginFacilityID, body.DestinationFacilityID
 	req.DiagnosisCode, req.Reason, req.ClinicalNarrative = body.DiagnosisCode, body.Reason, body.ClinicalNarrative
 	if !h.AllowClientContext {
 		req.Context = domain.ReferralContext{}
 	}
-	if err := validate(req, h.AllowClientContext); err != nil {
+	if err := validateEditable(req); err != nil {
 		badRequest(w)
 		return
 	}
@@ -191,7 +203,7 @@ func (h ReferralHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	a := domain.AuditReview{Reviewer: body.Reviewer, Actor: actor, Role: roleTKMKB, Outcome: domain.OutcomeArchived, Note: body.Note, ReviewedAt: time.Now().UTC().Format(time.RFC3339)}
+	a := domain.AuditReview{Reviewer: body.Reviewer, Actor: actor, Role: roleTKMKB, Outcome: domain.OutcomeArchived, Note: body.Note, ReviewedAt: time.Now().UTC().Format(domain.OrderedTime)}
 	if h.Store == nil {
 		notFound(w)
 		return

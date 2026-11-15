@@ -15,9 +15,12 @@ interface ActionToolbarProps {
 export function ActionToolbar({ sibuk, bisaUbah, bisaArsip, onRescore, onToggle }: ActionToolbarProps) {
   return (
     <div className="flex flex-wrap gap-2">
-      <SecondaryButton disabled={sibuk} onClick={onRescore} className={TOOLBAR_BUTTON_CLASS}>
-        <RefreshCw aria-hidden="true" size={16} /> Hitung ulang (ML)
-      </SecondaryButton>
+      {/* Backend refuses both on a red referral unless TKMKB (mayChangeRed). */}
+      {bisaUbah && (
+        <SecondaryButton disabled={sibuk} onClick={onRescore} className={TOOLBAR_BUTTON_CLASS}>
+          <RefreshCw aria-hidden="true" size={16} /> Hitung ulang (ML)
+        </SecondaryButton>
+      )}
       {bisaUbah && (
         <SecondaryButton disabled={sibuk} onClick={() => onToggle("edit")} className={TOOLBAR_BUTTON_CLASS}>
           <Pencil aria-hidden="true" size={16} /> Ubah data

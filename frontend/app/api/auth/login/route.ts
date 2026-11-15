@@ -1,7 +1,8 @@
 import { bacaLogin } from "../../../../lib/auth/baca-login";
 import { galatAuth } from "../../../../lib/auth/galat-auth";
+import { ipKlien } from "../../../../lib/auth/ip-klien";
 import { asalSama } from "../../../../lib/auth/origin";
-import { buatPembatas, kunciPercobaan } from "../../../../lib/auth/pembatas";
+import { buatPembatas } from "../../../../lib/auth/pembatas";
 import { TTL_DETIK, rahasia } from "../../../../lib/auth/session";
 import { terbitkanSesi } from "../../../../lib/auth/terbitkan-sesi";
 import { TerlaluBanyak, verifikasi } from "../../../../lib/auth/users";
@@ -21,14 +22,17 @@ export async function POST(request: Request) {
   const { email, sandi } = kredensial;
   if (!email || !sandi) return galatAuth(400, "INVALID_REQUEST", "Email dan kata sandi wajib diisi.");
 
-  const kunci = kunciPercobaan(email, request.headers);
+  // Dengan IP tepercaya, kunci = IP + email: penebak tertahan tanpa mengunci pemilik akun dari tempat lain. Tanpa IP
+  // (di luar Vercel header bisa dipalsukan) kunci = email. Batas lintas instance, per IP dan per akun ada di backend.
+  const ip = ipKlien(request);
+  const kunci = ip ? `${ip}|${email.toLowerCase()}` : email.toLowerCase();
   if (pembatas.tertahan(kunci)) {
     return galatAuth(429, "TOO_MANY_ATTEMPTS", TERLALU_BANYAK, { "Retry-After": String(pembatas.sisaDetik(kunci)) });
   }
 
   let user;
   try {
-    user = await verifikasi(email, sandi);
+    user = await verifikasi(email, sandi, ip);
   } catch (e) {
     if (e instanceof TerlaluBanyak) return galatAuth(429, "TOO_MANY_ATTEMPTS", TERLALU_BANYAK);
     return galatAuth(503, "AUTH_UNAVAILABLE", "Layanan login sedang tidak tersedia. Coba lagi sebentar.");

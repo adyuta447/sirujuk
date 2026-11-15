@@ -116,10 +116,10 @@ func TestNewMLClientRejectsURLWithoutScheme(t *testing.T) {
 }
 
 func TestReasonCategoryBeatsKeywordGuessing(t *testing.T) {
-	if got := reasonKind(domain.ReferralRequest{Reason: "atas saran dokter spesialis", ReasonCategory: "clinical"}); got != "clinical" {
+	if got := ReasonKind(domain.ReferralRequest{Reason: "atas saran dokter spesialis", ReasonCategory: "clinical"}); got != "clinical" {
 		t.Fatalf("chosen category must win over the keyword fallback, got %q", got)
 	}
-	if got := reasonKind(domain.ReferralRequest{Reason: "Keterbatasan alat"}); got != "equipment" {
+	if got := ReasonKind(domain.ReferralRequest{Reason: "Keterbatasan alat"}); got != "equipment" {
 		t.Fatalf("fallback: %q", got)
 	}
 }

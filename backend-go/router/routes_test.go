@@ -15,6 +15,8 @@ import (
 
 const token = "0123456789abcdef0123456789abcdef"
 
+const sid = "sess-0123456789abcdef"
+
 func testRouter(t *testing.T) http.Handler {
 	t.Helper()
 	users := repository.NewMemoryUsers("")
@@ -78,11 +80,12 @@ func TestInactiveOrMismatchedActorIsRefused(t *testing.T) {
 		"forged role": {"X-Actor": "tkmkb@x.id", "X-Actor-Role": "verifikator"},
 	} {
 		hdr["Authorization"] = "Bearer " + token
+		hdr["X-Session"] = sid // a live session, so only the account check below decides
 		if w := do(h, "GET", "/api/v1/referrals", hdr); w.Code != http.StatusForbidden {
 			t.Errorf("%s: want 403, got %d", name, w.Code)
 		}
 	}
-	good := map[string]string{"Authorization": "Bearer " + token, "X-Actor": "tkmkb@x.id", "X-Actor-Role": "tkmkb"}
+	good := map[string]string{"Authorization": "Bearer " + token, "X-Session": sid, "X-Actor": "tkmkb@x.id", "X-Actor-Role": "tkmkb"}
 	if w := do(h, "GET", "/api/v1/referrals", good); w.Code != http.StatusOK {
 		t.Errorf("active actor: want 200, got %d", w.Code)
 	}

@@ -17,8 +17,6 @@ var (
 	metadataTokenURL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 )
 
-// CloudRunIDToken returns a token source for calling a private Cloud Run service as this service's account.
-// It asks the metadata server directly (no SDK dependency); tokens live 1h, cached for 50 min.
 func CloudRunIDToken(audience string) func(context.Context) (string, error) {
 	var (
 		mu  sync.Mutex

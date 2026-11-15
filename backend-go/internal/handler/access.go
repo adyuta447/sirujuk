@@ -24,7 +24,8 @@ func actorIn(w http.ResponseWriter, r *http.Request, allowed ...string) (sub, ro
 }
 
 // visibility says which referrals a caller may read. A doctor sees only their own (the account's doctor_id), Dinkes
-// sees no patient rows at all, and verifier/TKMKB see everything. A request with no actor is a service call.
+// sees no patient rows at all, and verifier/TKMKB see everything. A request with no actor sees nothing: the service
+// token alone must not open patient records (only /auth/verify and /labels serve token-only calls).
 type visibility struct {
 	all      bool
 	doctorID string
@@ -34,8 +35,6 @@ type visibility struct {
 func (h ReferralHandler) visibilityOf(r *http.Request) visibility {
 	sub, role := middleware.Actor(r)
 	switch role {
-	case "":
-		return visibility{all: true}
 	case roleVerifikator, roleTKMKB:
 		return visibility{all: true}
 	case roleDokter:
@@ -58,7 +57,7 @@ func (v visibility) allows(item domain.StoredReferral) bool {
 // mayChangeRed keeps edits and re-scores of red referrals with TKMKB, as the final decision on them is theirs.
 // It writes the 403 itself and reports whether the caller may go on.
 func mayChangeRed(w http.ResponseWriter, item domain.StoredReferral, role string) bool {
-	if item.Decision.Decision == "red" && role != roleTKMKB {
+	if item.Red() && role != roleTKMKB {
 		writeJSON(w, http.StatusForbidden, apiError{"FORBIDDEN_LEVEL", "Only TKMKB may change a red referral", ""})
 		return false
 	}
@@ -67,20 +66,49 @@ func mayChangeRed(w http.ResponseWriter, item domain.StoredReferral, role string
 
 // redact limits what a role receives (data minimization, UU PDP). TKMKB sees the full evidence; a verifier sees the
 // patient only as initials; a doctor sees their own referral's category, reasons and the clarification requests, but
-// not model internals, score history, other users' audit trail or the patient's name. A request without an actor is a
-// service call and gets the full record.
+// not model internals, score history, other users' audit trail or the patient's name. Callers check the role first;
+// the empty role (a service call) never reaches here with a referral.
 func redact(item domain.StoredReferral, role string) domain.StoredReferral {
 	switch role {
 	case roleVerifikator:
 		item.Request.PatientName = maskName(item.Request.PatientName)
 	case roleDokter:
 		item.Request.PatientName = ""
-		item.History = nil
-		item.Decision.Features, item.Decision.Indicators = nil, nil
+		item.History, item.Held = nil, false // no score trail; ClaimStatus is already derived
+		item.Decision.Features, item.Decision.Indicators, item.Decision.Breakdown = nil, nil, nil
 		item.Decision.Signals = domain.MLScores{}
 		item.Decision.ModelVersion, item.Decision.ModelCategory, item.Decision.DiagnosisVersion = "", "", ""
 		item.Decision.YellowFrom, item.Decision.RedFrom = 0, 0
 		item.Audits = clarificationRequestsOnly(item.Audits)
+	}
+	// Referrals scored before the breakdown existed get it from their stored reasons.
+	if role != roleDokter && item.Decision.Breakdown == nil && item.Decision.Status == "SCORED" {
+		item.Decision.Breakdown = item.Decision.Explain()
+	}
+	return item
+}
+
+// doctorView is what a doctor receives: redact, plus no score at all (the contract gives them the category and reasons).
+// The outer fields below shadow the same names in RiskDecision and are always omitted.
+type doctorView struct {
+	domain.StoredReferral
+	Decision doctorDecision `json:"decision"`
+}
+
+// Signals and the model version are shadowed the same way: they are model internals, and an all-zero object would only
+// look like a real result.
+type doctorDecision struct {
+	domain.RiskDecision
+	Score        *float64         `json:"score,omitempty"`
+	Signals      *domain.MLScores `json:"signals,omitempty"`
+	ModelVersion *string          `json:"model_version,omitempty"`
+}
+
+// shown is redact in the shape that is sent to the role.
+func shown(item domain.StoredReferral, role string) any {
+	item = redact(item, role)
+	if role == roleDokter {
+		return doctorView{StoredReferral: item, Decision: doctorDecision{RiskDecision: item.Decision}}
 	}
 	return item
 }

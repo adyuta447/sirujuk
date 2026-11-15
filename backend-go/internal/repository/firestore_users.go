@@ -13,8 +13,6 @@ import (
 	"github.com/sirujuk/backend-go/domain"
 )
 
-// FirestoreUsers keeps accounts in the "users" collection of the (default) Firestore database through the REST API,
-// so the backend needs no SDK. Access comes from the runtime service account (roles/datastore.user).
 type FirestoreUsers struct{ firestoreREST }
 
 func NewFirestoreUsers(project string, token func(context.Context) (string, error)) FirestoreUsers {

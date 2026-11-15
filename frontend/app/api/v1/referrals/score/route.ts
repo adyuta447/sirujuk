@@ -57,6 +57,7 @@ export async function POST(request: Request) {
         "Idempotency-Key": key,
         "X-Actor": sesi.sub,
         "X-Actor-Role": sesi.role,
+        "X-Session": sesi.sid,
         ...(SAFE_ID.test(cid) && { "X-Correlation-ID": cid }),
         ...(process.env.API_TOKEN && {
           Authorization: `Bearer ${process.env.API_TOKEN}`,

@@ -16,7 +16,7 @@ export function DetailActionBar({ kasus, hanyaTkmkb, onAudit, onKlarifikasi }: D
       <div className="flex flex-col sm:flex-row gap-3">
         {hanyaTkmkb ? (
           <p role="note" className="flex-1 rounded-4xl px-4 py-3 text-sm bg-[#1E3A5F] text-white">
-            Kasus risiko tinggi diputuskan oleh TKMKB.
+            Kasus risiko tinggi atau klaim yang ditahan diputuskan oleh TKMKB.
           </p>
         ) : (
           <PrimaryButton onClick={() => onAudit(kasus)} className="flex-1 py-3.5">

@@ -12,8 +12,11 @@ type ReferralRequest struct {
 	OriginFacilityID      string `json:"origin_facility_id"`
 	OriginWilayah         string `json:"origin_wilayah"`
 	DestinationFacilityID string `json:"destination_facility_id"`
-	DiagnosisCode         string `json:"diagnosis_code"`
-	Reason                string `json:"reason"`
+	// The names are for display only (the ids drive all logic); empty = the UI shows the id.
+	OriginFacilityName      string `json:"origin_facility_name,omitempty"`
+	DestinationFacilityName string `json:"destination_facility_name,omitempty"`
+	DiagnosisCode           string `json:"diagnosis_code"`
+	Reason                  string `json:"reason"`
 	// ReasonCategory (clinical|equipment|staff) is chosen from a fixed list; the free-text Reason is not parsed when it is set.
 	ReasonCategory    string    `json:"reason_category,omitempty"`
 	ClinicalNarrative string    `json:"clinical_narrative"`
@@ -92,12 +95,16 @@ type RiskDecision struct {
 	Indicators          json.RawMessage `json:"indicators,omitempty"`
 	DiagnosisVersion    string          `json:"diagnosis_version,omitempty"`
 	RequiresHumanReview bool            `json:"requires_human_review"`
-	Reasons             []Reason        `json:"reasons,omitempty"`
-	Status              string          `json:"status"`                   // SCORED | ACCEPTED_ASYNC; never a final decision
-	SignalsSource       string          `json:"signals_source,omitempty"` // "backend-dummy" only when DUMMY_SCORING is on
+	// RandomAudit marks a green referral drawn for review anyway, so audit labels also cover what the model let through.
+	RandomAudit   bool     `json:"random_audit,omitempty"`
+	Reasons       []Reason `json:"reasons,omitempty"`
+	Status        string   `json:"status"`                   // SCORED | ACCEPTED_ASYNC; never a final decision
+	SignalsSource string   `json:"signals_source,omitempty"` // "backend-dummy" only when DUMMY_SCORING is on
 	// Features is the exact input the ML service saw (doctor NS/HHI, SISRUTE snapshot): needed to explain a score on appeal.
 	Features *FeatureSnapshot `json:"features,omitempty"`
 	ScoredAt string           `json:"scored_at,omitempty"`
+	// Breakdown says how much each indicator layer contributed (see Explain). Not shown to doctors.
+	Breakdown *Breakdown `json:"breakdown,omitempty"`
 }
 
 type FeatureSnapshot struct {
@@ -146,6 +153,12 @@ type StoredReferral struct {
 	// Derived by Derive; never accepted as input.
 	ClaimStatus string `json:"claim_status"`
 	Final       bool   `json:"final"`
+	// Held is set the first time a score of this referral is red and never cleared. An edit that lowers a red to green
+	// must not release the claim: only a TKMKB audit made after the latest score does (see Derive). It is not derived
+	// from History, which keeps only the newest 20 scores.
+	Held bool `json:"held,omitempty"`
+	// Version is the database's update time of this copy; a save on a stale version is refused (several instances).
+	Version string `json:"-"`
 }
 
 // Audit outcomes. Only OutcomeValid and OutcomeInvalid are final; asking the doctor for clarification is not.
@@ -164,16 +177,79 @@ const (
 	ClaimConfirmed = "temuan-terkonfirmasi"
 )
 
+// Label is the final human verdict, for retraining: 1 = tidak-valid, 0 = valid, nil = not decided yet.
+func (s StoredReferral) Label() *int {
+	var out *int
+	for _, a := range s.Audits {
+		switch a.Outcome {
+		case OutcomeValid:
+			v := 0
+			out = &v
+		case OutcomeInvalid:
+			v := 1
+			out = &v
+		}
+	}
+	return out
+}
+
+// OrderedTime is how ScoredAt and an audit's ReviewedAt are written: UTC with milliseconds, so an audit and a score in
+// the same second still have an order. Readers use time.Parse(time.RFC3339), which accepts it and older whole seconds.
+const OrderedTime = "2006-01-02T15:04:05.000Z07:00"
+
+// reviewedAfter reports whether an audit was made at or after the score. Times are parsed, not compared as strings:
+// RFC3339 with and without fractional seconds do not sort the same. An unreadable time fails closed (the claim stays
+// held); no score time at all (a row without one) cannot make the audit older.
+func reviewedAfter(reviewedAt, scoredAt string) bool {
+	if scoredAt == "" {
+		return true
+	}
+	scored, err := time.Parse(time.RFC3339, scoredAt)
+	if err != nil {
+		return false
+	}
+	reviewed, err := time.Parse(time.RFC3339, reviewedAt)
+	return err == nil && !reviewed.Before(scored)
+}
+
+// Red reports whether the claim is held for TKMKB: the score is red now, or was red before (Held, or a red entry in
+// History for referrals saved before Held existed).
+func (s StoredReferral) Red() bool {
+	if s.Held || s.Decision.Decision == "red" {
+		return true
+	}
+	for _, h := range s.History {
+		if h.Decision == "red" {
+			return true
+		}
+	}
+	return false
+}
+
+// Hold records a red score. Call it wherever Decision is set.
+func (s *StoredReferral) Hold() {
+	if s.Decision.Decision == "red" {
+		s.Held = true
+	}
+}
+
 // Derive fills ClaimStatus and Final from the audit trail. The model never decides: only a human audit moves a red claim.
 func (s *StoredReferral) Derive() {
 	s.Final, s.ClaimStatus = false, ClaimNormal
+	red := s.Red()
 	last := ""
 	for _, a := range s.Audits {
-		if a.Outcome == OutcomeValid || a.Outcome == OutcomeInvalid {
-			s.Final, last = true, a.Outcome
+		if a.Outcome != OutcomeValid && a.Outcome != OutcomeInvalid {
+			continue
 		}
+		// A red claim is settled only by TKMKB on the score it carries now: a verdict on an earlier, lower score does not
+		// carry over.
+		if red && (a.Role != "tkmkb" || !reviewedAfter(a.ReviewedAt, s.Decision.ScoredAt)) {
+			continue
+		}
+		s.Final, last = true, a.Outcome
 	}
-	if s.Decision.Decision != "red" {
+	if !red {
 		return
 	}
 	switch last {

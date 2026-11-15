@@ -18,7 +18,7 @@ func referrals(doctor string, n int, dest func(i int) string, dx string, now tim
 	for i := range out {
 		out[i].Request = domain.ReferralRequest{
 			ReferralID: fmt.Sprint(doctor, i), DoctorID: doctor, DestinationFacilityID: dest(i),
-			DiagnosisCode: dx, IssuedAt: now.AddDate(0, 0, -1-(i%60)), // strictly before now: a referral never counts itself
+			DiagnosisCode: dx, IssuedAt: now.AddDate(0, 0, -1-(i%60)),
 		}
 	}
 	return out

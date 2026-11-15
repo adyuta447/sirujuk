@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"log"
@@ -28,10 +29,22 @@ func (r Redis) WithKey(key []byte) Redis { r.Key = key; return r }
 // Ping reports whether Redis answers; used by /ready and at startup.
 func (r Redis) Ping(ctx context.Context) error { return r.C.Ping(ctx).Err() }
 
-func NewRedis(url string) (Redis, error) {
+// NewRedis connects to url. A rediss:// URL uses TLS; caPEM, when set, is the only certificate (or CA) trusted for
+// it, for a self-hosted Redis whose certificate no public CA signed (infra/gcp/redis-vm.sh).
+func NewRedis(url, caPEM string) (Redis, error) {
 	opt, err := redis.ParseURL(url)
 	if err != nil { // NewClient(nil) would panic
 		return Redis{}, err
+	}
+	if caPEM != "" {
+		if opt.TLSConfig == nil {
+			return Redis{}, errors.New("REDIS_CA_CERT is set but REDIS_URL is not rediss:// (TLS)")
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM([]byte(caPEM)) {
+			return Redis{}, errors.New("REDIS_CA_CERT holds no PEM certificate")
+		}
+		opt.TLSConfig.RootCAs = pool
 	}
 	// Fail fast: the defaults retry with growing pauses, which would push every request past the 300 ms scoring budget
 	// while Redis is down. One quick retry is enough; Resilient handles the rest.
@@ -49,6 +62,16 @@ func (r Redis) Hit(ctx context.Context, key string, window time.Duration) (int64
 		err = r.C.Expire(ctx, key, window).Err()
 	}
 	return n, err
+}
+
+// Revoke marks a logged-out session id for ttl (the session's longest possible life), on every instance.
+func (r Redis) Revoke(ctx context.Context, sid string, ttl time.Duration) error {
+	return r.C.Set(ctx, "revoked:"+sid, 1, ttl).Err()
+}
+
+func (r Redis) Revoked(ctx context.Context, sid string) (bool, error) {
+	n, err := r.C.Exists(ctx, "revoked:"+sid).Result()
+	return n == 1, err
 }
 
 // Get returns nil, nil on a miss.
@@ -86,8 +109,16 @@ func (r Redis) Enqueue(ctx context.Context, req domain.ReferralRequest, reason s
 	return r.C.XAdd(ctx, &redis.XAddArgs{Stream: retryStream, MaxLen: 100000, Approx: true, Values: map[string]any{field: b, "reason": reason}}).Err()
 }
 
+// Save caches a score for idempotent replay, sealed with the stream key when one is set (scores and reasons are
+// patient data too).
 func (r Redis) Save(ctx context.Context, d domain.RiskDecision) error {
 	b, _ := json.Marshal(d)
+	if r.Key != nil {
+		var err error
+		if b, err = sealbox.Seal(r.Key, b); err != nil {
+			return err
+		}
+	}
 	return r.C.Set(ctx, "result:"+d.ReferralID, b, resultTTL).Err()
 }
 
@@ -95,6 +126,11 @@ func (r Redis) Load(ctx context.Context, id string) (*domain.RiskDecision, error
 	b, err := r.Get(ctx, "result:"+id)
 	if err != nil || b == nil {
 		return nil, err
+	}
+	if r.Key != nil {
+		if b, err = sealbox.Open(r.Key, b); err != nil {
+			return nil, err // e.g. a plaintext entry from before the key: a miss, never trusted
+		}
 	}
 	var d domain.RiskDecision
 	return &d, json.Unmarshal(b, &d)
@@ -156,9 +192,12 @@ func scoreWithRetry(ctx context.Context, req domain.ReferralRequest, eval func(c
 func (r Redis) handle(ctx context.Context, m redis.XMessage, eval func(context.Context, domain.ReferralRequest) (domain.RiskDecision, error)) {
 	var req domain.ReferralRequest
 	raw, _ := m.Values["referral"].(string)
-	if enc, ok := m.Values["referral_enc"].(string); ok && r.Key != nil {
-		if plain, err := sealbox.Open(r.Key, []byte(enc)); err == nil {
-			raw = string(plain)
+	if r.Key != nil { // with a key, only sealed messages count: a plaintext one was not written by this backend
+		raw = ""
+		if enc, ok := m.Values["referral_enc"].(string); ok {
+			if plain, err := sealbox.Open(r.Key, []byte(enc)); err == nil {
+				raw = string(plain)
+			}
 		}
 	}
 	if json.Unmarshal([]byte(raw), &req) == nil && scoreWithRetry(ctx, req, eval, r.Save) {

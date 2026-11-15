@@ -38,6 +38,8 @@ type statsResponse struct {
 	Source    string        `json:"source,omitempty"` // set when rows come from an imported sample (see StoredReferral.Source)
 	Wilayah   []wilayahStat `json:"wilayah"`
 	Dokter    []dokterStat  `json:"dokter"`
+	// Prevention is absent when the KNS list is not loaded (see buildPrevention).
+	Prevention *preventionStats `json:"prevention,omitempty"`
 }
 
 // Stats: GET /stats. Aggregates only (no patient fields), built from ML scores and stored feature snapshots.
@@ -51,6 +53,7 @@ func (h ReferralHandler) Stats(w http.ResponseWriter, r *http.Request) {
 		items = h.Store.List()
 	}
 	stats := buildStats(items)
+	stats.Prevention = buildPrevention(items, h.Decisions.KNS, h.Cost)
 	if role == roleDinkes { // data minimization: Dinkes sees facility/region aggregates, never per-doctor rows
 		stats.Dokter = []dokterStat{}
 	}

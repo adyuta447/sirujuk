@@ -44,6 +44,24 @@ gcloud compute addresses describe sirujuk-redis --region "$REGION" >/dev/null 2>
   gcloud compute addresses create sirujuk-redis --region "$REGION" --subnet default
 IP=$(gcloud compute addresses describe sirujuk-redis --region "$REGION" --format 'value(address)')
 
+# TLS: the wire carries the Redis password, login counters and sealed patient data. One self-signed certificate for
+# this VM's fixed internal IP, created once; the backend trusts exactly this certificate (REDIS_CA_CERT), nothing else.
+if ! gcloud secrets describe sirujuk-redis-tls-key >/dev/null 2>&1; then
+  tls=$(mktemp -d)
+  trap 'rm -rf "$tls"' EXIT
+  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 3650 -subj /CN=sirujuk-redis \
+    -addext "subjectAltName=IP:$IP" -addext "basicConstraints=critical,CA:FALSE" -addext "extendedKeyUsage=serverAuth" \
+    -keyout "$tls/server.key" -out "$tls/server.crt"
+  gcloud secrets describe sirujuk-redis-ca >/dev/null 2>&1 || gcloud secrets create sirujuk-redis-ca
+  gcloud secrets versions add sirujuk-redis-ca --data-file="$tls/server.crt"
+  gcloud secrets create sirujuk-redis-tls-key --data-file="$tls/server.key"
+fi
+for sec in sirujuk-redis-tls-key sirujuk-redis-ca; do
+  gcloud secrets add-iam-policy-binding "$sec" --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor >/dev/null
+done
+gcloud secrets add-iam-policy-binding sirujuk-redis-ca --member "serviceAccount:sirujuk-backend@$P.iam.gserviceaccount.com" \
+  --role roles/secretmanager.secretAccessor >/dev/null
+
 init=$(mktemp)
 cat >"$init" <<EOF
 #cloud-config
@@ -58,8 +76,14 @@ $(sed 's/^/      /' infra/redis/redis.conf)
       set -eu
       H='Metadata-Flavor: Google'; M=http://metadata.google.internal/computeMetadata/v1
       T=\$(curl -sf -H "\$H" \$M/instance/service-accounts/default/token | sed -E 's/.*"access_token":"([^"]+)".*/\1/')
-      PW=\$(curl -sf -H "Authorization: Bearer \$T" https://secretmanager.googleapis.com/v1/projects/$P/secrets/sirujuk-redis-password/versions/latest:access | sed -nE 's/.*"data": *"([^"]+)".*/\1/p' | base64 -d)
-      { cat /etc/redis/base.conf; echo "requirepass \$PW"; } > /run/redis.conf
+      sec() { curl -sf -H "Authorization: Bearer \$T" https://secretmanager.googleapis.com/v1/projects/$P/secrets/\$1/versions/latest:access | sed -nE 's/.*"data": *"([^"]+)".*/\1/p' | base64 -d; }
+      PW=\$(sec sirujuk-redis-password)
+      mkdir -p /run/redis-tls
+      sec sirujuk-redis-ca > /run/redis-tls/server.crt
+      sec sirujuk-redis-tls-key > /run/redis-tls/server.key
+      chown -R 999:999 /run/redis-tls && chmod 600 /run/redis-tls/server.key # 999 = the image's redis user
+      # TLS only: port 0 closes the plaintext port. Clients are not asked for certificates; the password authenticates them.
+      { cat /etc/redis/base.conf; echo "requirepass \$PW"; printf '%s\n' 'port 0' 'tls-port 6379' 'tls-cert-file /tls/server.crt' 'tls-key-file /tls/server.key' 'tls-ca-cert-file /tls/server.crt' 'tls-auth-clients no'; } > /run/redis.conf
       chmod 644 /run/redis.conf
       mkdir -p /var/lib/redis /home/redis-svc
       # COS host firewall drops all inbound but SSH; let the VPC (Cloud Run Direct VPC egress) in.
@@ -75,7 +99,7 @@ $(sed 's/^/      /' infra/redis/redis.conf)
       Environment=HOME=/home/redis-svc
       ExecStartPre=/bin/sh /etc/redis/boot.sh
       ExecStartPre=-/usr/bin/docker rm -f redis
-      ExecStart=/usr/bin/docker run --rm --name redis --network host -v /var/lib/redis:/data -v /run/redis.conf:/usr/local/etc/redis/redis.conf:ro $IMAGE redis-server /usr/local/etc/redis/redis.conf
+      ExecStart=/usr/bin/docker run --rm --name redis --network host -v /var/lib/redis:/data -v /run/redis.conf:/usr/local/etc/redis/redis.conf:ro -v /run/redis-tls:/tls:ro $IMAGE redis-server /usr/local/etc/redis/redis.conf
       ExecStop=/usr/bin/docker stop redis
       Restart=always
       RestartSec=5
@@ -85,7 +109,9 @@ runcmd:
 EOF
 
 if gcloud compute instances describe sirujuk-redis --zone "$ZONE" >/dev/null 2>&1; then
-  gcloud compute instances add-metadata sirujuk-redis --zone "$ZONE" --metadata-from-file user-data="$init" # next boot
+  gcloud compute instances add-metadata sirujuk-redis --zone "$ZONE" --metadata-from-file user-data="$init"
+  # Apply it now (about a minute without Redis; the backend runs degraded meanwhile): REDIS_URL turns rediss:// below.
+  gcloud compute instances reset sirujuk-redis --zone "$ZONE"
 else
   gcloud compute instances create sirujuk-redis --zone "$ZONE" --machine-type e2-micro \
     --image-family cos-stable --image-project cos-cloud --boot-disk-size 10GB --boot-disk-type pd-standard \
@@ -94,5 +120,5 @@ else
 fi
 
 PW=$(gcloud secrets versions access latest --secret sirujuk-redis-password)
-printf %s "redis://:$PW@$IP:6379/0" | gcloud secrets versions add sirujuk-redis-url --data-file=-
+printf %s "rediss://:$PW@$IP:6379/0" | gcloud secrets versions add sirujuk-redis-url --data-file=-
 echo "Redis at $IP. Redeploy the backend (pipeline or gcloud run services replace) to pick up the new REDIS_URL."

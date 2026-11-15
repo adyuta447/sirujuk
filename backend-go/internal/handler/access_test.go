@@ -139,6 +139,27 @@ func TestVerifierCannotEditOrRescoreRed(t *testing.T) {
 	}
 }
 
+func TestServiceTokenAloneOpensNoPatientRecord(t *testing.T) {
+	h := twoDoctorsHandler()
+	for _, tc := range []struct {
+		name    string
+		handler http.HandlerFunc
+		method  string
+		id      string
+	}{{"list", h.List, "GET", ""}, {"get", h.Get, "GET", "r-1"}} {
+		w := httptest.NewRecorder()
+		tc.handler(w, requestFor(tc.method, tc.id, ""))
+		if strings.Contains(w.Body.String(), "r-1") {
+			t.Fatalf("%s without an actor leaked a referral: %d %s", tc.name, w.Code, w.Body)
+		}
+	}
+	w := httptest.NewRecorder()
+	h.Score(w, requestFor("POST", "", valid("")))
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("score without an actor must be 403, got %d", w.Code)
+	}
+}
+
 func TestRegionComesFromTheDirectoryNotFromTheIssuer(t *testing.T) {
 	h, store := crudHandler(fixedML{})
 	h.Regions = func(id string) string {
@@ -153,7 +174,12 @@ func TestRegionComesFromTheDirectoryNotFromTheIssuer(t *testing.T) {
 	post := func(key, b string) {
 		r := requestFor("POST", "", b)
 		r.Header.Set("Idempotency-Key", key)
-		h.Score(httptest.NewRecorder(), r)
+		r.Header.Set("X-Actor", "uji@demo.id") // scoring needs a verifier or TKMKB actor
+		r.Header.Set("X-Actor-Role", "verifikator")
+		w := httptest.NewRecorder()
+		if h.Score(w, r); w.Code >= 300 {
+			t.Fatalf("score %s: %d %s", key, w.Code, w.Body)
+		}
 	}
 	post("R-known", body("f-known", "Papua")) // forged region for a known facility
 	post("R-other", body("f-unlisted", "Bali"))

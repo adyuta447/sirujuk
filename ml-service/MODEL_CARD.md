@@ -106,3 +106,31 @@ fraud model. What it does give, and what the model now uses:
   signal. That proxy is weak, not a fraud label, but it means the NS layer alone is not shown to work on real data.
 - Empty narrative is now "not recorded" (`NARRATIVE_UNAVAILABLE`, no NLP term) instead of "generic", so imported
   history is not punished for a missing field. The backend and frontend now require a narrative on new referrals.
+
+## Retraining on real audit labels (`retrain.py`)
+
+The weights above come from synthetic data. Real labels come from the audit trail: a final `tidak-valid` is 1, `valid` is 0.
+- The backend exports them at `GET /api/v1/labels`. Called with the service token and no actor, it returns the rows: the exact
+  model input as scored, plus the label. TKMKB gets only the counts and `ready`. Seed rows and dummy scores are never exported.
+- Auditors only see what the model flagged, so those labels cannot show its misses. `RANDOM_AUDIT_PERMILLE` (default 30, i.e. 3%)
+  sends a salted, per-ID random share of green referrals to review as well. They stay green, so no claim is held, and they are
+  marked `random_audit`. `current_random_audit_only` in the report is the unbiased view.
+- `python retrain.py data/labels.json [--dry-run]` reports the current model on real labels. Below 200 labels or 30
+  `tidak-valid`, it stops there. Above that, it refits the weights on the older 70% and compares PR-AUC on the newest 30%.
+  It saves (refitting on all labels, with cuts re-taken from all real referrals) only if the candidate wins.
+- After a save, the model hash changes: update `MODEL_SHA256` wherever it is pinned.
+
+## Score on the wire, and diagnosis codes (QA 30 Oct 2026)
+
+- **Score scale.** Internally the score is P(abuse) × 100 (fitted on synthetic data). The cuts are a capacity budget,
+  so a raw 17 was already red, and the UI showed "20 = risiko tinggi". The API now returns `score` as an index:
+  the model's yellow cut maps to 50, its red cut to 80, linear in between (`Scorer.display`). Order and categories
+  are unchanged. `yellow_from`/`red_from` are now always 50/80; `fraud_score` keeps the raw value; reports such as
+  `train_report.json` keep raw cuts.
+  Scores stored before this change are on the raw scale: a re-score of an old referral jumps (e.g. 12 → 75) without the risk changing.
+- **Diagnosis codes.** A code that is not ICD-10 in shape (e.g. `ZZZ.99`) is never green: `DIAGNOSIS_INVALID`, at least yellow.
+  A real ICD-10 code outside the KNS/specialist table stays `DIAGNOSIS_UNMAPPED` and is scored as usual. The QA ask was
+  to make those yellow too, but they are by definition not among the 144 KNS diagnoses, so referring them is expected.
+  Measured on 30 Oct 2026, it would have raised the review share from 22.5% to 43% on the synthetic test set, and put
+  about 70% of the BPJS sample in review.
+- **Tests.** `requirements-dev.txt` is the test environment (see its header). CI checks the hash `train.py` writes instead of rewriting it.

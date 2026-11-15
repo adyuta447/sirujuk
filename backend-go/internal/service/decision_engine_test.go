@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/sirujuk/backend-go/domain"
@@ -42,5 +43,29 @@ func TestRedNeedsEnoughIndependentLayersWhenConfigured(t *testing.T) {
 	}
 	if got := (DecisionEngine{}).Decide("r", domain.MLScores{Category: CategoryRed, Reasons: reasons("NARRATIVE_GENERIC")}); got.Decision != CategoryRed {
 		t.Fatal("default trusts the model")
+	}
+}
+
+func TestRandomAuditSamplesGreenOnlyAndIsStable(t *testing.T) {
+	e := DecisionEngine{RandomAuditPermille: 100, RandomAuditSalt: "s"}
+	n := 0
+	for i := range 2000 {
+		id := fmt.Sprintf("r-%d", i)
+		d := e.Decide(id, domain.MLScores{Category: CategoryGreen})
+		if d.RandomAudit != d.RequiresHumanReview || d.Decision != CategoryGreen {
+			t.Fatalf("%s: a sampled green stays green and is sent to review: %+v", id, d)
+		}
+		if d.RandomAudit != e.Decide(id, domain.MLScores{Category: CategoryGreen}).RandomAudit {
+			t.Fatal("the draw must not change on re-score")
+		}
+		if d.RandomAudit {
+			n++
+		}
+	}
+	if n < 140 || n > 260 { // ~10% of 2000
+		t.Fatalf("sampled %d of 2000 at 100 permille", n)
+	}
+	if e.Decide("x", domain.MLScores{Category: CategoryRed}).RandomAudit || (DecisionEngine{}).Decide("x", domain.MLScores{}).RandomAudit {
+		t.Fatal("only greens are sampled, and only when enabled")
 	}
 }

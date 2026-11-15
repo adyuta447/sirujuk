@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,7 +32,13 @@ func env(k, d string) string {
 }
 
 func main() {
-	redis, err := rc.NewRedis(env("REDIS_URL", "redis://localhost:6379/0"))
+	redisURL := env("REDIS_URL", "redis://localhost:6379/0")
+	// Redis carries the password, login counters and sealed patient data, so production needs TLS on the wire.
+	// ALLOW_PLAINTEXT_REDIS is for a Redis on the same private Docker network only (docker-compose.yml).
+	if env("APP_ENV", "development") == "production" && !strings.HasPrefix(redisURL, "rediss://") && os.Getenv("ALLOW_PLAINTEXT_REDIS") != "true" {
+		log.Fatal("REDIS_URL must be rediss:// (TLS) in production; run infra/gcp/redis-vm.sh to enable TLS on the Redis VM")
+	}
+	redis, err := rc.NewRedis(redisURL, os.Getenv("REDIS_CA_CERT"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,9 +80,26 @@ func main() {
 	if prod && len(token) < 32 {
 		log.Fatal("API_TOKEN (>=32 chars) is required in production")
 	}
+	// The secret token salts the random-audit draw, so nobody can work out from the public code which IDs get sampled.
+	decisions.Engine.RandomAuditPermille, decisions.Engine.RandomAuditSalt = randomAuditPermille(), token
 	// Demo list/detail/audit store. SEED_COUNT>0 fills it with fake referrals (local demo only; unset = empty).
 	store := repository.NewMemoryStore()
 	project := os.Getenv("FIRESTORE_PROJECT")
+	// National risk cut-offs (GET/PUT /api/v1/config/risk). Never configured = the ML service's own category applies.
+	riskLive := &service.LiveConfig{}
+	var riskStore repository.RiskConfigRepository = &repository.MemoryRiskConfig{}
+	if project != "" {
+		riskStore = repository.NewFirestoreRiskConfig(project, client.MetadataAccessToken)
+	}
+	cfgCtx, cancelCfg := context.WithTimeout(context.Background(), 3*time.Second)
+	riskLive.Refresh(cfgCtx, riskStore)
+	cancelCfg()
+	decisions.Engine.Config = riskLive
+	// Destination hospitals: the demo directory outside production; in production empty until an official register exists.
+	hospitals := repository.MemoryHospitals{}
+	if !prod {
+		hospitals = repository.MemoryHospitals(seed.Hospitals())
+	}
 	dataEncrypted := false
 	seedCount, _ := strconv.Atoi(os.Getenv("SEED_COUNT"))
 	if seedCount > 0 && (prod || project != "") {
@@ -92,11 +116,9 @@ func main() {
 	case project != "":
 		// Scores, audits and clarifications survive restarts. Load before seeding: seeding is skipped when data exists.
 		persister := repository.NewFirestoreReferrals(project, client.MetadataAccessToken)
-		if key := hexKey("DATA_ENC_KEY"); key != nil {
+		if key := encKey("DATA_ENC_KEY", "referrals in Firestore", prod); key != nil {
 			persister = persister.WithKey(key)
 			dataEncrypted = true
-		} else if prod {
-			log.Print(`{"event":"data_unencrypted","effect":"patient names and narratives are plaintext in Firestore; set DATA_ENC_KEY"}`)
 		}
 		if err := store.UsePersister(context.Background(), persister); err != nil {
 			log.Fatalf("cannot load referrals from Firestore: %v", err)
@@ -114,6 +136,9 @@ func main() {
 	var mlEval func(context.Context, domain.ReferralRequest) (domain.RiskDecision, error)
 	if !dummy {
 		mlEval = seedDecisions.Evaluate // seed rows are scored by the real ML service
+	}
+	if (seedCount > 0 || bpjsFile != "") && !seed.WaitForML(mlEval, time.Minute) {
+		log.Print("ML service did not answer within a minute: seed rows will carry the dummy score")
 	}
 	if n, err := seed.RunBPJS(store, bpjsFile, mlEval); err != nil {
 		log.Fatalf("SEED_BPJS_FILE: %v", err)
@@ -145,18 +170,20 @@ func main() {
 			"data_encryption": status(dataEncrypted),
 		}
 	}
-	h := handler.ReferralHandler{Regions: seed.Regions(), Ready: ready, Decisions: decisions, Queue: cache, Results: cache, Store: store, Users: users, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
-	auth := handler.AuthHandler{Auth: service.Authenticator{Users: users}, Limiter: cache}
+	h := handler.ReferralHandler{Regions: seed.Regions(), Ready: ready, Decisions: decisions, Queue: cache, Results: cache, Store: store, Users: users, Hospitals: hospitals, Cost: costAssumption(), ConfigLive: riskLive, ConfigStore: riskStore, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
+	// Revocation goes straight to Redis: the per-instance fallback would forget a logout another instance recorded.
+	auth := handler.AuthHandler{Auth: service.Authenticator{Users: users}, Limiter: cache, Sessions: redis}
 	port := env("GO_PORT", "8080")
 	log.Printf("sirujuk backend listening on :%s", port)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go store.Sync(ctx, storeSyncInterval()) // pick up changes made by other instances
+	go riskLive.Run(ctx, riskStore, 30*time.Second)
 	go service.RunFeatureJob(ctx, store, cache, kns, 6*time.Hour)
 	go cache.Consume(ctx, "go-"+port, func(c context.Context, r domain.ReferralRequest) (domain.RiskDecision, error) {
 		d, err := decisions.Evaluate(c, r)
 		if err == nil {
-			store.Upsert(r, d) // async result becomes visible in list/detail
+			_, _ = store.Insert(r, d) // async result becomes visible in list/detail; never overwrites an existing referral
 		}
 		return d, err
 	})
@@ -190,11 +217,35 @@ func loadKNS(path string) guideline.Guideline {
 	return g
 }
 
+// costAssumption reads the owner's assumption behind the cost estimate. Both numbers are needed: with either missing
+// or invalid, /stats produces no rupiah figure, because the system holds no real claim-cost data.
+func costAssumption() *handler.CostAssumption {
+	rawCost, rawPct := os.Getenv("ASSUMED_COST_PER_PREVENTED_REFERRAL_IDR"), os.Getenv("ASSUMED_PREVENTION_PERCENT")
+	cost, errCost := strconv.ParseInt(rawCost, 10, 64)
+	pct, errPct := strconv.ParseFloat(rawPct, 64)
+	if errCost != nil || errPct != nil || cost <= 0 || !(pct > 0 && pct <= 100) {
+		if rawCost != "" || rawPct != "" {
+			log.Print("cost estimate off: ASSUMED_COST_PER_PREVENTED_REFERRAL_IDR must be > 0 and ASSUMED_PREVENTION_PERCENT in (0,100]")
+		}
+		return nil
+	}
+	return &handler.CostAssumption{PerPreventedReferralIDR: cost, PreventionPercent: pct}
+}
+
 // minRedLayers reads MIN_RED_LAYERS (default 1 = trust the model). 2 is recommended before claims are really held.
 func minRedLayers() int {
 	n, err := strconv.Atoi(os.Getenv("MIN_RED_LAYERS"))
 	if err != nil || n < 1 {
 		return 1
+	}
+	return n
+}
+
+// randomAuditPermille defaults to 30 (3% of green referrals); RANDOM_AUDIT_PERMILLE=0 turns the sample off.
+func randomAuditPermille() int {
+	n, err := strconv.Atoi(os.Getenv("RANDOM_AUDIT_PERMILLE"))
+	if err != nil || n < 0 || n > 1000 {
+		return 30
 	}
 	return n
 }
@@ -206,11 +257,23 @@ func status(ok bool) string {
 	return "down"
 }
 
-// hexKey reads a 64 hex character (32 byte) key from the environment. Unset returns nil; malformed is fatal, because
-// a typo that silently disables encryption is worse than a refusal to start.
-func hexKey(name string) []byte {
+// withStreamKey encrypts queued referrals and cached scores with STREAM_ENC_KEY. Production refuses to run without it.
+func withStreamKey(r rc.Redis, prod bool) rc.Redis {
+	if key := encKey("STREAM_ENC_KEY", "queued referrals and cached scores", prod); key != nil {
+		return r.WithKey(key)
+	}
+	return r
+}
+
+// encKey reads a 32-byte key given as 64 hex characters. Unset is fatal in production and nil (plaintext) otherwise;
+// malformed is always fatal, because a typo that silently disables encryption is worse than a refusal to start.
+func encKey(name, what string, prod bool) []byte {
 	raw := os.Getenv(name)
 	if raw == "" {
+		if prod {
+			log.Fatalf("%s is required in production: %s contain patient data", name, what)
+		}
+		log.Printf("%s not set: %s are stored in plaintext (development only)", name, what)
 		return nil
 	}
 	key, err := hex.DecodeString(raw)
@@ -218,19 +281,6 @@ func hexKey(name string) []byte {
 		log.Fatalf("%s must be 64 hex characters (32 bytes); generate with: openssl rand -hex 32", name)
 	}
 	return key
-}
-
-// withStreamKey encrypts queued referrals with STREAM_ENC_KEY. Production refuses to run without it.
-func withStreamKey(r rc.Redis, prod bool) rc.Redis {
-	key := hexKey("STREAM_ENC_KEY")
-	if key == nil {
-		if prod {
-			log.Fatal("STREAM_ENC_KEY is required in production: queued referrals contain patient data")
-		}
-		log.Print("STREAM_ENC_KEY not set: queued referrals are stored in plaintext (development only)")
-		return r
-	}
-	return r.WithKey(key)
 }
 
 // storeSyncInterval reads STORE_SYNC_SECONDS (default 30; 0 turns it off). Each sync reads every referral document,

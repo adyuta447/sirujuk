@@ -46,6 +46,12 @@ def evaluate(m, te, hide_near=False, hide_sisrute=False):
         recall_yellow_red=round(float(y[cat != "green"].sum() / max(y.sum(), 1)), 3))
 
 
+def save(m, out=OUT):
+    joblib.dump(m, out)
+    with open(out + ".sha256", "w") as f:  # model_loader refuses to unpickle a file whose hash does not match
+        f.write(hashlib.sha256(open(out, "rb").read()).hexdigest() + "\n")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--yellow-share", type=float, default=0.20, help="share of referrals sent to review (yellow+red)")
@@ -106,9 +112,7 @@ def main():
         src = json.load(open(a.peer))
         m.peer, m.version = src["peer"], m.version + "+peer-" + src["version"]
         rep["peer_source"] = {"file": a.peer, "version": src["version"], "note": "metrics above use the synthetic peer; see bpjs_report.json for scoring on real referrals"}
-    joblib.dump(m, OUT)
-    with open(OUT + ".sha256", "w") as f:  # model_loader refuses to unpickle a file whose hash does not match
-        f.write(hashlib.sha256(open(OUT, "rb").read()).hexdigest() + "\n")
+    save(m)
     print(json.dumps(rep, indent=2, default=float))
 
 

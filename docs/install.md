@@ -19,7 +19,7 @@ The project has three services. The Next.js frontend is what people see. The Go 
 
 ## Quick start with Docker
 
-1. From the repo root, run `sh infra/local-env.sh`. It writes a `.env` with fresh random secrets and switches on the demo settings (`APP_ENV=development`, `DEMO_ACCOUNTS=true`, `SEED_COUNT=200`). It will not overwrite an existing `.env`, so delete the old one first if you want a clean start.
+1. From the repo root, run `sh infra/local-env.sh`. It writes a `.env` with fresh random secrets and switches on the demo settings (`APP_ENV=development`, `DEMO_ACCOUNTS=true`, `SEED_COUNT=500`). It will not overwrite an existing `.env`, so delete the old one first if you want a clean start.
 2. Run `docker compose up --build`. The first build trains the ML model inside the image, so give it a couple of minutes.
 3. Open http://localhost:3000/login.
 
@@ -55,7 +55,7 @@ Then the backend:
 
 ```bash
 cd backend-go
-APP_ENV=development API_TOKEN=$(openssl rand -hex 32) DEMO_ACCOUNTS=true SEED_COUNT=200 \
+APP_ENV=development API_TOKEN=$(openssl rand -hex 32) DEMO_ACCOUNTS=true SEED_COUNT=500 \
 KNS_FILE=../ml-service/app/ml/data/kns144.tsv SPECIALIST_FILE=../ml-service/app/ml/data/specialist.tsv \
 go run ./cmd
 ```

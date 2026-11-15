@@ -85,6 +85,21 @@ func main() {
 	// Demo list/detail/audit store. SEED_COUNT>0 fills it with fake referrals (local demo only; unset = empty).
 	store := repository.NewMemoryStore()
 	project := os.Getenv("FIRESTORE_PROJECT")
+	// National risk cut-offs (GET/PUT /api/v1/config/risk). Never configured = the ML service's own category applies.
+	riskLive := &service.LiveConfig{}
+	var riskStore repository.RiskConfigRepository = &repository.MemoryRiskConfig{}
+	if project != "" {
+		riskStore = repository.NewFirestoreRiskConfig(project, client.MetadataAccessToken)
+	}
+	cfgCtx, cancelCfg := context.WithTimeout(context.Background(), 3*time.Second)
+	riskLive.Refresh(cfgCtx, riskStore)
+	cancelCfg()
+	decisions.Engine.Config = riskLive
+	// Destination hospitals: the demo directory outside production; in production empty until an official register exists.
+	hospitals := repository.MemoryHospitals{}
+	if !prod {
+		hospitals = repository.MemoryHospitals(seed.Hospitals())
+	}
 	dataEncrypted := false
 	seedCount, _ := strconv.Atoi(os.Getenv("SEED_COUNT"))
 	if seedCount > 0 && (prod || project != "") {
@@ -155,7 +170,7 @@ func main() {
 			"data_encryption": status(dataEncrypted),
 		}
 	}
-	h := handler.ReferralHandler{Regions: seed.Regions(), Ready: ready, Decisions: decisions, Queue: cache, Results: cache, Store: store, Users: users, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
+	h := handler.ReferralHandler{Regions: seed.Regions(), Ready: ready, Decisions: decisions, Queue: cache, Results: cache, Store: store, Users: users, Hospitals: hospitals, Cost: costAssumption(), ConfigLive: riskLive, ConfigStore: riskStore, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
 	// Revocation goes straight to Redis: the per-instance fallback would forget a logout another instance recorded.
 	auth := handler.AuthHandler{Auth: service.Authenticator{Users: users}, Limiter: cache, Sessions: redis}
 	port := env("GO_PORT", "8080")
@@ -163,6 +178,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go store.Sync(ctx, storeSyncInterval()) // pick up changes made by other instances
+	go riskLive.Run(ctx, riskStore, 30*time.Second)
 	go service.RunFeatureJob(ctx, store, cache, kns, 6*time.Hour)
 	go cache.Consume(ctx, "go-"+port, func(c context.Context, r domain.ReferralRequest) (domain.RiskDecision, error) {
 		d, err := decisions.Evaluate(c, r)
@@ -199,6 +215,21 @@ func loadKNS(path string) guideline.Guideline {
 		log.Fatalf("KNS_FILE: %v", err)
 	}
 	return g
+}
+
+// costAssumption reads the owner's assumption behind the cost estimate. Both numbers are needed: with either missing
+// or invalid, /stats produces no rupiah figure, because the system holds no real claim-cost data.
+func costAssumption() *handler.CostAssumption {
+	rawCost, rawPct := os.Getenv("ASSUMED_COST_PER_PREVENTED_REFERRAL_IDR"), os.Getenv("ASSUMED_PREVENTION_PERCENT")
+	cost, errCost := strconv.ParseInt(rawCost, 10, 64)
+	pct, errPct := strconv.ParseFloat(rawPct, 64)
+	if errCost != nil || errPct != nil || cost <= 0 || !(pct > 0 && pct <= 100) {
+		if rawCost != "" || rawPct != "" {
+			log.Print("cost estimate off: ASSUMED_COST_PER_PREVENTED_REFERRAL_IDR must be > 0 and ASSUMED_PREVENTION_PERCENT in (0,100]")
+		}
+		return nil
+	}
+	return &handler.CostAssumption{PerPreventedReferralIDR: cost, PreventionPercent: pct}
 }
 
 // minRedLayers reads MIN_RED_LAYERS (default 1 = trust the model). 2 is recommended before claims are really held.

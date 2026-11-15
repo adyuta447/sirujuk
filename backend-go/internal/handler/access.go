@@ -75,11 +75,15 @@ func redact(item domain.StoredReferral, role string) domain.StoredReferral {
 	case roleDokter:
 		item.Request.PatientName = ""
 		item.History, item.Held = nil, false // no score trail; ClaimStatus is already derived
-		item.Decision.Features, item.Decision.Indicators = nil, nil
+		item.Decision.Features, item.Decision.Indicators, item.Decision.Breakdown = nil, nil, nil
 		item.Decision.Signals = domain.MLScores{}
 		item.Decision.ModelVersion, item.Decision.ModelCategory, item.Decision.DiagnosisVersion = "", "", ""
 		item.Decision.YellowFrom, item.Decision.RedFrom = 0, 0
 		item.Audits = clarificationRequestsOnly(item.Audits)
+	}
+	// Referrals scored before the breakdown existed get it from their stored reasons.
+	if role != roleDokter && item.Decision.Breakdown == nil && item.Decision.Status == "SCORED" {
+		item.Decision.Breakdown = item.Decision.Explain()
 	}
 	return item
 }

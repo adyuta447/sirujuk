@@ -237,3 +237,18 @@ func TestAuditTimeIsComparedAsATimeNotAsAString(t *testing.T) {
 		}
 	}
 }
+
+func TestBreakdownIsForVerifiersAndTKMKBNeverForDoctors(t *testing.T) {
+	item := domain.StoredReferral{Decision: domain.RiskDecision{Decision: "red", Status: "SCORED", Score: 90, RedFrom: 80, YellowFrom: 50,
+		Reasons: []domain.Reason{{Code: "HHI_HIGH_CONCENTRATION", Contribution: 2}}}} // stored before breakdown existed
+	for _, role := range []string{roleVerifikator, roleTKMKB} {
+		raw, _ := json.Marshal(shown(item, role))
+		if !strings.Contains(string(raw), `"breakdown"`) || !strings.Contains(string(raw), `"dominant":"hhi"`) {
+			t.Fatalf("%s must get the breakdown even for an older row: %s", role, raw)
+		}
+	}
+	item.Decision.Breakdown = item.Decision.Explain()
+	if raw, _ := json.Marshal(shown(item, roleDokter)); strings.Contains(string(raw), `"breakdown"`) || strings.Contains(string(raw), `"dominant"`) {
+		t.Fatalf("a doctor sees the category and reasons only: %s", raw)
+	}
+}

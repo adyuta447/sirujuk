@@ -33,7 +33,14 @@ type ReferralHandler struct {
 	Ready   func(context.Context) map[string]string // dependency labels for /ready; nil = not wired
 	Users   repository.UserRepository               // resolves actor -> doctor_id; nil = doctors see nothing
 	Results service.Store                           // idempotent replay + async results (Redis); nil in tests
-	Store   *repository.MemoryStore                 // demo list/detail/audit store; nil = those endpoints return empty/404
+	// ConfigLive and ConfigStore serve and change the national risk configuration (see config_handler.go); nil = 503.
+	// Cost is the owner's assumption behind the cost estimate in /stats; nil = no rupiah figure is produced.
+	Cost *CostAssumption
+	// Hospitals is the destination directory behind GET /hospitals and the destination assessment; nil = empty.
+	Hospitals   repository.HospitalDirectory
+	ConfigLive  *service.LiveConfig
+	ConfigStore repository.RiskConfigRepository
+	Store       *repository.MemoryStore // demo list/detail/audit store; nil = those endpoints return empty/404
 	// AllowClientContext trusts request.Context (doctor history). Demo only: a real client could lower its own risk.
 	AllowClientContext bool
 }

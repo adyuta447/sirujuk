@@ -103,6 +103,8 @@ type RiskDecision struct {
 	// Features is the exact input the ML service saw (doctor NS/HHI, SISRUTE snapshot): needed to explain a score on appeal.
 	Features *FeatureSnapshot `json:"features,omitempty"`
 	ScoredAt string           `json:"scored_at,omitempty"`
+	// Breakdown says how much each indicator layer contributed (see Explain). Not shown to doctors.
+	Breakdown *Breakdown `json:"breakdown,omitempty"`
 }
 
 type FeatureSnapshot struct {

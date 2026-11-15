@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -81,5 +82,48 @@ func TestVerifyThrottlesPerEmail(t *testing.T) {
 	rec := verify(h, `{"email":"a@uji.id","password":"salah-salah-123"}`, "application/json")
 	if rec.Code != http.StatusTooManyRequests || rec.Header().Get("Retry-After") == "" {
 		t.Fatalf("attempt over the limit must be 429 with Retry-After: %d", rec.Code)
+	}
+}
+
+type keyLimiter map[string]int64
+
+func (l keyLimiter) Hit(_ context.Context, key string, _ time.Duration) (int64, error) {
+	l[key]++
+	return l[key], nil
+}
+
+func TestVerifyBlocksTheGuesserNotTheAccountOwner(t *testing.T) {
+	h := AuthHandler{Auth: service.Authenticator{Users: repository.NewMemoryUsers("")}, Limiter: keyLimiter{}}
+	from := func(ip, email string) int {
+		req := httptest.NewRequest("POST", "/", strings.NewReader(`{"email":"`+email+`","password":"salah-salah-123"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Client-IP", ip)
+		rec := httptest.NewRecorder()
+		h.Verify(rec, req)
+		return rec.Code
+	}
+	for i := 0; i < maxLoginTries; i++ {
+		from("203.0.113.9", "korban@uji.id")
+	}
+	if c := from("203.0.113.9", "korban@uji.id"); c != http.StatusTooManyRequests {
+		t.Fatalf("the guessing IP must be blocked for this account, got %d", c)
+	}
+	if c := from("198.51.100.7", "korban@uji.id"); c != http.StatusUnauthorized {
+		t.Fatalf("the owner from another IP must still reach the password check, got %d", c)
+	}
+	// triesUntilBlocked counts the attempts that went through before the first 429.
+	triesUntilBlocked := func(next func(i int) (ip, email string)) int {
+		for i := 0; i < 1000; i++ {
+			if from(next(i)) == http.StatusTooManyRequests {
+				return i
+			}
+		}
+		return -1
+	}
+	if n := triesUntilBlocked(func(i int) (string, string) { return "203.0.113.50", fmt.Sprintf("u%d@uji.id", i) }); n != maxIPTries {
+		t.Fatalf("one IP spraying many accounts must stop after %d tries, stopped after %d", maxIPTries, n)
+	}
+	if n := triesUntilBlocked(func(i int) (string, string) { return fmt.Sprintf("192.0.2.%d", i/5), "target@uji.id" }); n != maxAccountTries {
+		t.Fatalf("many IPs guessing one account must stop after %d tries, stopped after %d", maxAccountTries, n)
 	}
 }

@@ -12,7 +12,7 @@ import (
 // deadRedis points at a closed port, so every call fails at once.
 func deadRedis(t *testing.T) Resilient {
 	t.Helper()
-	r, err := NewRedis("redis://127.0.0.1:1/0")
+	r, err := NewRedis("redis://127.0.0.1:1/0", "")
 	if err != nil {
 		t.Fatal(err)
 	}

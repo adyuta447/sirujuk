@@ -55,7 +55,7 @@ func NewMLClient(baseURL string) (MLClient, error) {
 func newPredictRequest(in domain.ScoringInput) *mlv1.PredictRequest {
 	r, d := in.Referral, in.Doctor
 	req := &mlv1.PredictRequest{
-		ReferralId: r.ReferralID, DiagnosisCode: r.DiagnosisCode, Reason: reasonKind(r), ClinicalNarrative: r.ClinicalNarrative,
+		ReferralId: r.ReferralID, DiagnosisCode: r.DiagnosisCode, Reason: ReasonKind(r), ClinicalNarrative: r.ClinicalNarrative,
 		IssuedAt: timestamppb.New(r.IssuedAt), N90: int64(d.N90), Ns90: d.NS90, N180: int64(d.N180), Hhi180: d.HHI180,
 		ToDominantDest: d.ToDominantDest, DestIsNearest: d.DestIsNearest,
 		SisruteAvailable: &in.SisruteAvailable, SisruteAgeDays: in.SisruteAgeDays,
@@ -66,9 +66,9 @@ func newPredictRequest(in domain.ScoringInput) *mlv1.PredictRequest {
 	return req
 }
 
-// reasonKind returns the chosen reason category. shortcut: without one, the free text is matched by keyword
+// ReasonKind returns the chosen reason category. shortcut: without one, the free text is matched by keyword
 // ("alat", "sdm"...), which misreads phrases like "atas saran dokter spesialis"; remove once every client sends it.
-func reasonKind(q domain.ReferralRequest) string {
+func ReasonKind(q domain.ReferralRequest) string {
 	if q.ReasonCategory != "" {
 		return q.ReasonCategory
 	}

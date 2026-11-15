@@ -41,6 +41,9 @@ export type StoredReferral = {
     doctor_id: string;
     origin_facility_id: string;
     destination_facility_id: string;
+    // Nama tampilan, opsional (kosong pada data seed/BPJS). ID tetap untuk logika; tampilan jatuh ke ID bila kosong.
+    origin_facility_name?: string;
+    destination_facility_name?: string;
     diagnosis_code: string;
     reason: string;
     clinical_narrative: string;
@@ -57,10 +60,8 @@ export type StoredReferral = {
   clarifications?: { author: string; text: string; at: string }[];
 };
 
-export type ReferralEdit = Pick<
-  StoredReferral["request"],
-  "doctor_id" | "origin_facility_id" | "destination_facility_id" | "diagnosis_code" | "reason" | "clinical_narrative"
->;
+// Hanya isi klinis yang boleh diubah. Dokter dan faskes tidak: memindahkan rujukan ke dokter lain adalah celah fraud.
+export type ReferralEdit = Pick<StoredReferral["request"], "diagnosis_code" | "reason" | "clinical_narrative">;
 
 export type Stats = {
   synthetic?: boolean;

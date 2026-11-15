@@ -14,7 +14,7 @@ import (
 
 func newTestRedis(t *testing.T) (Redis, *miniredis.Miniredis) {
 	mr := miniredis.RunT(t)
-	r, err := NewRedis("redis://" + mr.Addr())
+	r, err := NewRedis("redis://"+mr.Addr(), "")
 	if err != nil {
 		t.Fatal(err)
 	}

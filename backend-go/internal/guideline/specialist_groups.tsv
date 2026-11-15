@@ -1,0 +1,35 @@
+# code|group, copied from ml-service/app/ml/data/specialist.tsv (columns 1 and 3); specialist_test.go fails when they drift apart
+I21|Kardiovaskular
+I50|Kardiovaskular
+I48|Kardiovaskular
+I25|Kardiovaskular
+I63|Neurologi
+I61|Neurologi
+G40|Neurologi
+J44|Respirasi
+J96|Respirasi
+I26|Respirasi
+C50|Onkologi
+C34|Onkologi
+C18|Onkologi
+N18|Ginjal dan Saluran Kemih
+N20|Ginjal dan Saluran Kemih
+N40|Ginjal dan Saluran Kemih
+K35|Gastrointestinal
+K80|Gastrointestinal
+K56|Gastrointestinal
+K92|Gastrointestinal
+O14|Obstetri
+O60|Obstetri
+O72|Obstetri
+S72|Trauma
+S06|Trauma
+H25|Mata
+H40|Mata
+H35|Mata
+M51|Muskuloskeletal
+M05|Muskuloskeletal
+E05|Endokrin-Metabolik
+L40|Integumen
+D25|Obstetri
+A41|Infeksi Tropik

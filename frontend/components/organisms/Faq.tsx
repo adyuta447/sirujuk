@@ -12,9 +12,12 @@ export function Faq() {
   return (
     <section id="tanya-jawab" className="bg-[#F4F6F9] scroll-mt-20">
       <div ref={faq.ref} className="max-w-[56rem] mx-auto px-5 md:px-10 py-20">
-        <h2 className="mt-2 text-4xl md:text-6xl font-extrabold tracking-tighter leading-[1.05]">Tanya jawab.</h2>
+        <h2 className="mt-2 text-4xl md:text-6xl font-extrabold tracking-tighter leading-[1.05]">
+          Tanya jawab.
+        </h2>
         <p className="mt-4 text-lg text-[#56657A] max-w-2xl">
-          Jawaban singkat atas hal yang paling sering ditanyakan dokter, verifikator, dan dinas kesehatan.
+          Jawaban singkat atas hal yang paling sering ditanyakan dokter,
+          verifikator, dan dinas kesehatan.
         </p>
         <div className="mt-10 space-y-3">
           {TANYA.map((entry, i) => (

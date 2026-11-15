@@ -54,9 +54,6 @@ func FeaturesAsOf(items []domain.StoredReferral, doctorID, excludeID string, kns
 	return f
 }
 
-// featuresFor tallies one doctor's referrals in the 90/180-day windows before asOf. Below the minimum sample a value
-// stays nil (cold start) instead of being guessed, and NS stays nil without a KNS list. ok is false when no referral
-// falls in the window. DestIsNearest stays nil: there is no distance data yet.
 func featuresFor(refs []domain.ReferralRequest, excludeID string, kns KNSList, asOf time.Time) (domain.DoctorFeatures, bool) {
 	knsKnown := kns != nil && kns.Known() // a missing list means NS stays unknown, never a crash
 	var n90, nonSpecialist, n180 int

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { hanyaTkmkb } from "../lib/akses";
 import type { RujukanCase } from "../lib/sirujuk-data";
-import { validateReferral } from "../lib/validate";
+import { validateContent } from "../lib/validate";
 import { useReferralMutations } from "./useReferralMutations";
 import { useSession } from "./useSession";
 
@@ -23,14 +23,11 @@ export function useReferralActions(kasus: RujukanCase, onArchived: () => void) {
 
   const simpan = () => {
     const edit = {
-      doctor_id: kasus.dokter,
-      origin_facility_id: kasus.fasalOrigin,
-      destination_facility_id: kasus.fasalTujuan,
       diagnosis_code: diagnosis.trim(),
       reason: alasan.trim(),
       clinical_narrative: narasi.trim(),
     };
-    const salah = validateReferral({ referral_no: kasus.id, ...edit });
+    const salah = validateContent(edit);
     setGalat(salah);
     if (!salah) update.mutate({ id: kasus.id, edit }, { onSuccess: () => setMode("idle") });
   };
@@ -52,7 +49,7 @@ export function useReferralActions(kasus: RujukanCase, onArchived: () => void) {
     arsipkan,
     rescore: () => rescore.mutate(kasus.id),
     bisaArsip: sesi?.role === "tkmkb",
-    bisaUbah: !hanyaTkmkb(kasus.risk, sesi?.role),
+    bisaUbah: !hanyaTkmkb(kasus.risk, sesi?.role, kasus.claimStatus),
     pesanGagal: (update.error ?? rescore.error ?? archive.error)?.message,
     sibuk: update.isPending || rescore.isPending || archive.isPending,
     gagal: update.isError || rescore.isError || archive.isError,

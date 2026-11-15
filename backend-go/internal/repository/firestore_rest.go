@@ -8,9 +8,8 @@ import (
 	"time"
 )
 
-// firestoreREST is the minimal Firestore REST client shared by the user and referral stores.
 type firestoreREST struct {
-	BaseURL string // overridden in tests
+	BaseURL string
 	Project string
 	Token   func(context.Context) (string, error)
 	HTTP    *http.Client

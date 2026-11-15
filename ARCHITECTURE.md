@@ -4,7 +4,7 @@
 Frontend (display only)
        |
        v
-Go API + Decision Engine ---- Redis (cache, queue, limiter)      x1 (S12 gate), behind Cloud Run
+Go API + Decision Engine ---- Redis (cache, queue, limiter)      x1..3 behind Cloud Run's load balancer
        |  gRPC (proto/sirujuk/ml/v1), one HTTP/2 connection
        v
 ML inference (gRPC, inference only)                              x0..2 behind Cloud Run's load balancer

@@ -4,7 +4,7 @@ import { bacaToken, buatToken } from "../../lib/auth/token";
 import { verifikasi } from "../../lib/auth/users";
 
 const RAHASIA = "x".repeat(40);
-const sesi = (over = {}) => ({ sub: "a@b.id", nama: "A", role: "verifikator" as const, exp: Math.floor(Date.now() / 1000) + 60, ...over });
+const sesi = (over = {}) => ({ sub: "a@b.id", nama: "A", role: "verifikator" as const, exp: Math.floor(Date.now() / 1000) + 60, sid: "s-1", ...over });
 
 describe("token sesi", () => {
   it("round-trips a valid session", async () => {

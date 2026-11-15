@@ -107,7 +107,7 @@ func TestRestartRestoresReferralsAndAudits(t *testing.T) {
 	a := NewMemoryStore()
 	_ = a.UsePersister(context.Background(), p)
 	a.Upsert(newReq("r1"), domain.RiskDecision{Decision: "red", Status: "SCORED"})
-	_ = a.AddAudit("r1", domain.AuditReview{Outcome: domain.OutcomeInvalid})
+	_ = a.AddAudit("r1", domain.AuditReview{Outcome: domain.OutcomeInvalid, Role: "tkmkb"})
 	_ = a.AddClarification("r1", domain.Clarification{Author: "dr", Text: "alat rusak"})
 
 	b := NewMemoryStore() // a new instance after a restart
@@ -148,7 +148,7 @@ func TestDeriveClaimStatus(t *testing.T) {
 	for name, c := range cases {
 		r := domain.StoredReferral{Decision: domain.RiskDecision{Decision: c.decision}}
 		for _, o := range c.audits {
-			r.Audits = append(r.Audits, domain.AuditReview{Outcome: o})
+			r.Audits = append(r.Audits, domain.AuditReview{Outcome: o, Role: "tkmkb"})
 		}
 		r.Derive()
 		if r.ClaimStatus != c.claim || r.Final != c.final {
@@ -175,7 +175,7 @@ func TestTwoInstancesDoNotOverwriteEachOthersAudits(t *testing.T) {
 	if err := a.AddAudit("r1", domain.AuditReview{Outcome: domain.OutcomeClarification, Reviewer: "A"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := b.AddAudit("r1", domain.AuditReview{Outcome: domain.OutcomeInvalid, Reviewer: "B"}); err != nil {
+	if err := b.AddAudit("r1", domain.AuditReview{Outcome: domain.OutcomeInvalid, Reviewer: "B", Role: "tkmkb"}); err != nil {
 		t.Fatalf("a stale instance must still be able to write: %v", err)
 	}
 	got, _ := db.saved["r1"], 0
@@ -232,15 +232,23 @@ func TestSyncMakesAnotherInstancesChangeVisible(t *testing.T) {
 	a, b := instance(t, db), instance(t, db)
 	a.Upsert(newReq("r1"), domain.RiskDecision{Decision: "red", Status: "SCORED"})
 	_ = a.AddAudit("r1", domain.AuditReview{Outcome: domain.OutcomeValid, Role: "tkmkb"})
-	if _, ok := b.Get("r1"); ok {
-		t.Fatal("before the sync b knows nothing about r1")
+	inList := func() (domain.StoredReferral, bool) { // lists come from memory only, so they wait for the sync
+		for _, it := range b.List() {
+			if it.Request.ReferralID == "r1" {
+				return it, true
+			}
+		}
+		return domain.StoredReferral{}, false
+	}
+	if _, ok := inList(); ok {
+		t.Fatal("before the sync b's list knows nothing about r1")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go b.Sync(ctx, 20*time.Millisecond)
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		if item, ok := b.Get("r1"); ok && item.Final {
+		if item, ok := inList(); ok && item.Final {
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -256,5 +264,17 @@ func TestTwoInstancesCreatingTheSameReferralMerge(t *testing.T) {
 	saved := db.saved["r1"]
 	if saved.Decision.Score != 2 || len(saved.History) != 1 || saved.History[0].Score != 1 {
 		t.Fatalf("second writer wins the score and the first score goes to history: %+v", saved)
+	}
+}
+
+func TestReferralCreatedOnAnotherInstanceIsFound(t *testing.T) {
+	db := newFake()
+	a, b := instance(t, db), instance(t, db)
+	a.Upsert(newReq("r2"), domain.RiskDecision{Decision: "red", Status: "SCORED"})
+	if _, ok := b.Get("r2"); !ok {
+		t.Fatal("detail on B must find a referral A just created")
+	}
+	if err := b.AddAudit("r3", domain.AuditReview{}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown referral: want ErrNotFound, got %v", err)
 	}
 }

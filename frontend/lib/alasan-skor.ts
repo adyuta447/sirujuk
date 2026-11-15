@@ -14,6 +14,7 @@ export const KODE_ALASAN: Record<string, string> = {
   HHI_NEAREST_UNKNOWN: "Faskes terdekat belum diketahui, konsentrasi belum bisa dinilai adil",
   NARRATIVE_UNAVAILABLE: "Narasi klinis tidak tercatat, kesesuaian narasi tidak dinilai",
   DIAGNOSIS_UNMAPPED: "Kode diagnosis belum terpetakan ke daftar diagnosis",
+  DIAGNOSIS_INVALID: "Kode diagnosis bukan format ICD-10, perlu dicek manual",
 };
 
 export const LEVEL_DARI_KEPUTUSAN: Record<Decision, RiskLevel> = {

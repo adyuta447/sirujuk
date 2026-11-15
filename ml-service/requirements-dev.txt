@@ -1,0 +1,6 @@
+# Test environment: python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+#                   .venv/bin/python train.py > /dev/null && .venv/bin/python tests_smoke.py
+-r requirements.txt
+-r requirements-train.txt
+httpx==0.28.1  # fastapi TestClient
+pip-audit==2.9.0

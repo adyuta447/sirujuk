@@ -10,8 +10,8 @@ class Reason(BaseModel):
 class PredictionResponse(BaseModel):
     nlp_similarity: float = Field(ge=0, le=1)
     anomaly_score: float = Field(ge=0, le=1)
-    fraud_score: float = Field(ge=0, le=1)  # = score / 100; a prioritisation signal, never proof of fraud
-    score: float = Field(ge=0, le=100)
+    fraud_score: float = Field(ge=0, le=1)  # raw model output; a prioritisation signal, never proof of fraud
+    score: float = Field(ge=0, le=100)  # display index: yellow from 50, red above 80 (Scorer.display)
     category: str
     yellow_from: float  # the model's own cut-offs, so callers need not keep a second copy
     red_from: float

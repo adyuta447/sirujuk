@@ -1,4 +1,5 @@
-FROM golang:1.26-alpine AS build
+# Pinned patch: a floating tag makes builds unreproducible. Bump when govulncheck reports a stdlib fix.
+FROM golang:1.26.10-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify

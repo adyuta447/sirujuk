@@ -120,7 +120,7 @@ Data dasarnya tersimpan (skor, hasil audit, klarifikasi, status klaim, `/stats` 
 | # | Tindakan | Pemilik | Catatan |
 |---|---|---|---|
 | P0-1 | Isi Bagian 9 Profil Tim di proposal final | PM | satu-satunya bagian yang masih kosong |
-| P0-2 | Putuskan lingkungan peragaan merah: lokal dengan `SEED_COUNT=200` atau cloud dengan Redis aktif | PM + DevOps | tanpa cache riwayat dokter, cloud tak pernah menghasilkan merah |
+| P0-2 | Putuskan lingkungan peragaan merah: lokal dengan `SEED_COUNT=500` atau cloud dengan Redis aktif | PM + DevOps | tanpa cache riwayat dokter, cloud tak pernah menghasilkan merah |
 | P0-3 | Samakan klaim "NIK dan telepon dihapus" dengan kode: format `3171 2345 6789 0001`, `3171-2345-6789-0001`, `0812-3456-7890`, `+62 812 3456 7890`, `6281234567890` lolos tanpa dihapus | ML | perbaikan: hapus pemisah lalu cocokkan; tambah tes. Atau ubah kalimat proposal menjadi "format polos" |
 | P0-4 | Aktifkan `DATA_ENC_KEY` (jalankan `infra/gcp/setup.sh`, buka komentar di `cloudrun-go.yaml`) | DevOps | wajib sebelum satu pun data nyata |
 | P0-5 | Atur kedaluwarsa atau hapus empat akun demo di Firestore produksi | DevOps | `useradd -set-expiry` |

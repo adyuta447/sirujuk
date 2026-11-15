@@ -20,15 +20,18 @@ type Sources struct{ KNS, Specialist string }
 type diagnosis struct{ code, text string }
 
 var (
+	// These codes must agree with the ML service's table: the nightly feature job counts a doctor's NS from the stored
+	// diagnoses, so a "specialist" code that is really one of the 144 (J18) or a "KNS" code that is not (J06.9, K30) makes
+	// ordinary doctors look like outliers. TestSeedDoctorsKeepTheirNS holds this.
 	fallbackKNS = []diagnosis{
-		{"J06.9", "batuk pilek demam ringan sejak dua hari"},
-		{"K30", "nyeri ulu hati kembung mual"},
+		{"J00", "batuk pilek demam ringan sejak dua hari"},
+		{"K29", "nyeri ulu hati kembung mual"},
 		{"I10", "tekanan darah tinggi tanpa keluhan berat"},
 	}
 	fallbackSpecialist = []diagnosis{
 		{"I50", "sesak napas saat aktivitas bengkak tungkai ekokardiografi"},
 		{"N18.3", "penyakit ginjal kronik laboratorium kreatinin meningkat"},
-		{"J18", "pneumonia foto toraks infiltrat batuk berdahak demam"},
+		{"J44", "sesak napas kronik batuk berdahak riwayat merokok spirometri"},
 	}
 	genericNarratives = []string{
 		"Pasien dirujuk ke rumah sakit.",
@@ -53,13 +56,16 @@ type profile struct {
 func profiles() []profile {
 	n := func(v float64) *float64 { return &v }
 	normal := func(doctor string) profile {
-		return profile{doctor, 21, domain.ReferralContext{N90: 30, NS90: n(0.05), N180: 60, HHI180: n(900)}, "Rujukan spesialis sesuai indikasi klinis", "clinical", 0.85, 0.05, 0.1}
+		return profile{doctor, 20, domain.ReferralContext{N90: 30, NS90: n(0.05), N180: 60, HHI180: n(900)}, "Rujukan spesialis sesuai indikasi klinis", "clinical", 0.92, 0.05, 0.1}
 	}
 	return []profile{
-		{"d-001", 4, domain.ReferralContext{Stratum: "rural|puskesmas", N90: 40, NS90: n(0.9), N180: 80, HHI180: n(6000), SisruteAvailable: true, SisruteAgeDays: 1},
+		// 8%: with SEED_COUNT=500 d-001 stores about 32 referrals, so scoring a new one from history also meets the NS (20)
+		// and HHI (30) minimums, while all red referrals stay near 10% of the list (at 16% and 200 rows they were 21%).
+		// Urban: every seeded facility is in Jakarta.
+		{"d-001", 8, domain.ReferralContext{Stratum: "urban|puskesmas", N90: 40, NS90: n(0.9), N180: 80, HHI180: n(6000), SisruteAvailable: true, SisruteAgeDays: 1},
 			"Alat rusak dan SDM tidak ada di faskes asal", "equipment", 0, 1, 1},
 		{"d-002", 12, domain.ReferralContext{Stratum: "urban|puskesmas", N90: 30, NS90: n(0.25), N180: 60, HHI180: n(1700), SisruteAgeDays: 45},
-			"Keterbatasan alat di faskes asal", "equipment", 0.5, 0.3, 0.5},
+			"Keterbatasan alat di faskes asal", "equipment", 0.75, 0.3, 0.5},
 		normal("d-003"), normal("d-004"), normal("d-005"), normal("d-006"),
 	}
 }
@@ -161,4 +167,22 @@ func score(req domain.ReferralRequest, eval func(context.Context, domain.Referra
 	d := service.DummyEngine.Decide(req.ReferralID, service.ScoreDummy(req))
 	d.SignalsSource = "backend-dummy"
 	return d
+}
+
+// WaitForML blocks until eval answers once, or the timeout passes. A freshly started backend (or a cold ML service)
+// can time out for ~10 s on its first calls; seeding before it answers would store dummy scores for the first rows.
+func WaitForML(eval func(context.Context, domain.ReferralRequest) (domain.RiskDecision, error), timeout time.Duration) bool {
+	if eval == nil {
+		return true
+	}
+	probe := domain.ReferralRequest{ReferralID: "warm-up", DiagnosisCode: "I10", ReasonCategory: "clinical", ClinicalNarrative: "warm up", IssuedAt: time.Now()}
+	for deadline := time.Now().Add(timeout); time.Now().Before(deadline); time.Sleep(500 * time.Millisecond) {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		_, err := eval(ctx, probe)
+		cancel()
+		if err == nil {
+			return true
+		}
+	}
+	return false
 }

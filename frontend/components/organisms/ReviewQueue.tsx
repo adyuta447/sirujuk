@@ -5,7 +5,7 @@ import type { RujukanCase } from "../../lib/sirujuk-data";
 import { useReviewQueue } from "../../hooks/useReviewQueue";
 import { PageHead } from "../atoms/PageHead";
 import { PageScroll } from "../molecules/PageScroll";
-import { Pagination } from "../molecules/Pagination";
+import { PagerKursor } from "../molecules/PagerKursor";
 import { QueueCard } from "./review-queue/QueueCard";
 import { QueueEmpty } from "./review-queue/QueueEmpty";
 import { RiskFilter } from "./review-queue/RiskFilter";
@@ -23,7 +23,7 @@ export function ReviewQueue({ onSelect, wilayah, query }: ReviewQueueProps) {
     <PageScroll scrollRef={queue.scrollRef}>
       <PageHead
         title="Antrean Cek"
-        sub="Data dummy dari backend, diurutkan dari skor tertinggi. Skor heuristik, bukan evaluasi kecurangan."
+        sub="Klaim yang ditahan paling atas, lalu risiko tertinggi. Skor adalah alat bantu, bukan bukti kecurangan."
         art="antrean-kosong"
       />
       {queue.isError && (
@@ -41,7 +41,7 @@ export function ReviewQueue({ onSelect, wilayah, query }: ReviewQueueProps) {
           Memuat antrean…
         </p>
       )}
-      {!queue.isLoading && queue.totalItems === 0 ? (
+      {!queue.isLoading && queue.total === 0 ? (
         <QueueEmpty />
       ) : (
         <div className="space-y-4">
@@ -50,12 +50,15 @@ export function ReviewQueue({ onSelect, wilayah, query }: ReviewQueueProps) {
           ))}
         </div>
       )}
-      <Pagination
-        page={queue.halaman}
-        totalPages={queue.totalPages}
-        onChange={queue.gantiHalaman}
-        totalItems={queue.totalItems}
+      <PagerKursor
+        halaman={queue.halaman}
+        jumlahTampil={queue.tampak.length}
+        total={queue.total}
         pageSize={PAGE_SIZE}
+        adaSebelum={queue.adaSebelum}
+        adaLanjut={queue.adaLanjut}
+        onSebelum={queue.sebelum}
+        onBerikut={queue.berikut}
       />
     </PageScroll>
   );

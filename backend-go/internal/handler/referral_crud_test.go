@@ -48,7 +48,7 @@ func doAs(role string, handler http.HandlerFunc, method, id, body string) *httpt
 	return w
 }
 
-const editBody = `{"doctor_id":"d-1","origin_facility_id":"f-1","destination_facility_id":"f-2","diagnosis_code":"D12","reason":"klinis","clinical_narrative":"batuk"}`
+const editBody = `{"diagnosis_code":"D12","reason":"klinis","clinical_narrative":"batuk"}`
 
 func TestUpdateRescoresThroughMLAndKeepsHistory(t *testing.T) {
 	h, store := crudHandler(fixedML{score: 90})

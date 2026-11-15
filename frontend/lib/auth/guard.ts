@@ -48,7 +48,9 @@ export async function keBackend(path: string, init: RequestInit = {}): Promise<R
       signal: AbortSignal.timeout(5000),
       cache: "no-store",
     });
-    return new Response(await upstream.text(), {
+    // 204/205/304 tidak boleh punya body: Response("", {status: 204}) melempar error dan tampil sebagai 502.
+    const tanpaBody = [204, 205, 304].includes(upstream.status);
+    return new Response(tanpaBody ? null : await upstream.text(), {
       status: upstream.status,
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
@@ -59,7 +61,7 @@ export async function keBackend(path: string, init: RequestInit = {}): Promise<R
 
 /** Seperti keBackend, tapi menyertakan siapa yang bertindak (dari sesi) agar backend mencatatnya di log akses/audit. */
 export const keBackendSebagai = (sesi: Sesi, path: string, init: RequestInit = {}) =>
-  keBackend(path, { ...init, headers: { "X-Actor": sesi.sub, "X-Actor-Role": sesi.role, ...init.headers } });
+  keBackend(path, { ...init, headers: { "X-Actor": sesi.sub, "X-Actor-Role": sesi.role, "X-Session": sesi.sid, ...init.headers } });
 
 /**
  * Rujukan merah hanya diproses TKMKB; verifikator hanya kuning/hijau. Dicek di server dari skor tersimpan, bukan dari

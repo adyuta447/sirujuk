@@ -22,7 +22,11 @@ const (
 
 var (
 	ErrNotFound = errors.New("referral not found")
-	ErrLimit    = errors.New("limit reached")
+	// ErrExists means a referral with that number is already stored (Insert never overwrites).
+	ErrExists = errors.New("referral already exists")
+	ErrLimit  = errors.New("limit reached")
+	// ErrFinal means the referral already has its final human decision; it can no longer be decided again, edited or re-scored.
+	ErrFinal = errors.New("referral decision is final")
 	// ErrStorage means the change was NOT applied because it could not be saved durably.
 	ErrStorage = errors.New("storage unavailable")
 )
@@ -125,6 +129,11 @@ func (s *MemoryStore) freshest(ctx context.Context, id string) (*domain.StoredRe
 func (s *MemoryStore) change(id string, create, bestEffort bool, fn func(*domain.StoredReferral) error) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.changeLocked(id, create, bestEffort, fn)
+}
+
+// changeLocked is change for a caller that already holds s.mu.
+func (s *MemoryStore) changeLocked(id string, create, bestEffort bool, fn func(*domain.StoredReferral) error) error {
 	timeout := persistTimeout
 	if bestEffort {
 		timeout = bestEffortTimeout
@@ -179,9 +188,46 @@ func (s *MemoryStore) place(id string, item domain.StoredReferral) {
 	s.items[id] = &item
 }
 
+// Insert stores a brand new referral and never overwrites: if the number is taken, even by an archived referral or one
+// written by another instance a moment ago, it returns the stored one with ErrExists. Scoring a new referral must go
+// through here, so that a repeated or reused referral number cannot rewrite a referral that is already under review.
+// Like Upsert it is on the patient path: if storage is down the referral is kept in memory and ErrStorage is logged.
+func (s *MemoryStore) Insert(req domain.ReferralRequest, decision domain.RiskDecision) (domain.StoredReferral, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	err := s.changeLocked(req.ReferralID, true, true, func(r *domain.StoredReferral) error {
+		if r.Request.ReferralID != "" { // the zero value means "being created"
+			return ErrExists
+		}
+		r.Request, r.Decision = req, decision
+		r.Hold()
+		return nil
+	})
+	if errors.Is(err, ErrExists) {
+		ctx, cancel := context.WithTimeout(context.Background(), bestEffortTimeout)
+		defer cancel()
+		if fresh, _, ferr := s.freshest(ctx, req.ReferralID); ferr == nil && fresh != nil {
+			s.place(req.ReferralID, *fresh) // learn about it now, without waiting for the next sync
+			return clone(*fresh), ErrExists
+		}
+		if local, ok := s.items[req.ReferralID]; ok {
+			return clone(*local), ErrExists
+		}
+	}
+	if errors.Is(err, ErrStorage) {
+		return domain.StoredReferral{}, nil // kept in memory; already logged
+	}
+	return domain.StoredReferral{}, err
+}
+
 // Upsert stores a score. It is on the patient path, so a failed save is logged and the in-memory copy still serves.
 func (s *MemoryStore) Upsert(req domain.ReferralRequest, decision domain.RiskDecision) {
 	s.upsert(req, decision, false, "")
+}
+
+// UpsertSample stores a row imported from a historical data sample (never a live referral) and records which one.
+func (s *MemoryStore) UpsertSample(req domain.ReferralRequest, decision domain.RiskDecision, source string) {
+	s.upsert(req, decision, false, source)
 }
 
 // UpsertSynthetic stores a demo row and marks it synthetic. Only the seed calls it.
@@ -189,26 +235,27 @@ func (s *MemoryStore) UpsertSynthetic(req domain.ReferralRequest, decision domai
 	s.upsert(req, decision, true, "")
 }
 
-// UpsertSample stores a row imported from a historical data sample and records where it came from. Only the seed calls it.
-func (s *MemoryStore) UpsertSample(req domain.ReferralRequest, decision domain.RiskDecision, source string) {
-	s.upsert(req, decision, false, source)
-}
-
 func (s *MemoryStore) upsert(req domain.ReferralRequest, decision domain.RiskDecision, synthetic bool, source string) {
 	_ = s.change(req.ReferralID, true, true, func(r *domain.StoredReferral) error {
-		if prev := r.Decision; r.Request.ReferralID != "" && prev.Status == "SCORED" { // an existing referral: keep the old score
-			r.History = append(r.History, domain.ScoreSnapshot{Score: prev.Score, Decision: prev.Decision, ModelVersion: prev.ModelVersion, ScoredAt: prev.ScoredAt})
-			if len(r.History) > 20 {
-				r.History = r.History[len(r.History)-20:]
-			}
-		}
+		keepHistory(r)
 		r.Request, r.Decision = req, decision
+		r.Hold()
 		r.Synthetic = r.Synthetic || synthetic
 		if source != "" {
 			r.Source = source
 		}
 		return nil
 	})
+}
+
+// keepHistory moves an existing referral's current score into History (newest 20).
+func keepHistory(r *domain.StoredReferral) {
+	if prev := r.Decision; r.Request.ReferralID != "" && prev.Status == "SCORED" {
+		r.History = append(r.History, domain.ScoreSnapshot{Score: prev.Score, Decision: prev.Decision, ModelVersion: prev.ModelVersion, ScoredAt: prev.ScoredAt})
+		if len(r.History) > 20 {
+			r.History = r.History[len(r.History)-20:]
+		}
+	}
 }
 
 // mutate changes an existing, non archived referral. An audit or clarification is never acknowledged unless it is saved.
@@ -221,9 +268,30 @@ func (s *MemoryStore) mutate(id string, fn func(*domain.StoredReferral) error) e
 	})
 }
 
+// AddAudit appends an audit. A second final outcome is refused: checked inside the write, so two reviewers racing
+// (or on two instances) cannot both decide.
+// shortcut: no appeal flow yet, so a final decision can only be reopened by hand; add one when TKMKB defines it.
 func (s *MemoryStore) AddAudit(id string, audit domain.AuditReview) error {
 	return s.mutate(id, func(r *domain.StoredReferral) error {
+		if r.Derive(); r.Final && (audit.Outcome == domain.OutcomeValid || audit.Outcome == domain.OutcomeInvalid) {
+			return ErrFinal
+		}
 		r.Audits = append(r.Audits, audit)
+		return nil
+	})
+}
+
+// Rescore replaces the request and score of a stored referral (an operator edit or re-score) and keeps the old score in
+// History. Refused once the decision is final: changing the evidence after the verdict would leave the claim status
+// pointing at a decision about other data.
+func (s *MemoryStore) Rescore(req domain.ReferralRequest, decision domain.RiskDecision) error {
+	return s.mutate(req.ReferralID, func(r *domain.StoredReferral) error {
+		if r.Derive(); r.Final {
+			return ErrFinal
+		}
+		keepHistory(r)
+		r.Request, r.Decision = req, decision
+		r.Hold()
 		return nil
 	})
 }
@@ -248,13 +316,26 @@ func (s *MemoryStore) AddClarification(id string, c domain.Clarification) error 
 }
 
 // Get returns a copy with derived fields, so callers can encode it while writers append.
+// A referral not in memory is looked up in the database: another instance may have created it since the last sync.
 func (s *MemoryStore) Get(id string) (domain.StoredReferral, bool) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
 	item, ok := s.items[id]
+	s.mu.RUnlock()
+	if !ok && s.persist != nil {
+		s.mu.Lock()
+		ctx, cancel := context.WithTimeout(context.Background(), bestEffortTimeout)
+		if fresh, _, err := s.freshest(ctx, id); err == nil && fresh != nil {
+			s.place(id, *fresh)
+			item, ok = s.items[id], true
+		}
+		cancel()
+		s.mu.Unlock()
+	}
 	if !ok {
 		return domain.StoredReferral{}, false
 	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	out := clone(*item)
 	out.Derive()
 	return out, true
@@ -272,7 +353,13 @@ func (s *MemoryStore) List() []domain.StoredReferral {
 			out = append(out, c)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Decision.Score > out[j].Decision.Score })
+	// The id breaks ties, so the order is the same on every call: paged lists depend on it.
+	sort.Slice(out, func(i, j int) bool {
+		if a, b := out[i].Decision.Score, out[j].Decision.Score; a != b {
+			return a > b
+		}
+		return out[i].Request.ReferralID < out[j].Request.ReferralID
+	})
 	return out
 }
 

@@ -61,8 +61,15 @@ describe("isi yang diteruskan", () => {
     await putConfig(kirim("/api/v1/config/risk?dry_run=true", { ...KONFIG, updated_by: "orang-lain", admin: true }));
     expect(ke()[1]).toBe("/api/v1/config/risk?dry_run=true");
     expect(Object.keys(JSON.parse(ke()[2]?.body ?? "{}")).sort()).toEqual(["actions", "red_from", "version", "yellow_from"]);
-    await putConfig(kirim("/api/v1/config/risk?dry_run=1", KONFIG));
+    await putConfig(kirim("/api/v1/config/risk", KONFIG));
     expect(ke()[1]).toBe("/api/v1/config/risk");
+  });
+  it("PUT config menolak dry_run selain persis true, supaya pratinjau tidak berubah jadi simpan", async () => {
+    mockKeBackend.mockClear();
+    for (const nilai of ["TRUE", "1", "false", ""]) {
+      expect((await putConfig(kirim(`/api/v1/config/risk?dry_run=${nilai}`, KONFIG))).status).toBe(400);
+    }
+    expect(mockKeBackend).not.toHaveBeenCalled();
   });
   it("PUT config menolak bentuk salah dan versi bukan bilangan bulat", async () => {
     expect((await putConfig(kirim("/api/v1/config/risk", { ...KONFIG, version: "2" }))).status).toBe(400);
@@ -76,9 +83,9 @@ describe("isi yang diteruskan", () => {
   });
   it("simulate membuang narasi klinis dan field asing, menolak tipe salah", async () => {
     mockPeran = "verifikator";
-    const body = { inputs: { n90: 5, clinical_narrative: "teks bebas", admin: 1 }, destination: { distance_km: 10, facility_id: "rs-x" }, extra: 1 };
+    const body = { inputs: { n90: 5, sisrute_age_days: 9, clinical_narrative: "teks bebas", admin: 1 }, destination: { distance_km: 10, facility_id: "rs-x" }, extra: 1 };
     await simulate(req("/api/v1/simulate", { method: "POST", body: JSON.stringify(body) }));
-    expect(JSON.parse(ke()[2]?.body ?? "{}")).toEqual({ inputs: { n90: 5 }, destination: { distance_km: 10 } });
+    expect(JSON.parse(ke()[2]?.body ?? "{}")).toEqual({ inputs: { n90: 5, sisrute_age_days: 9 }, destination: { distance_km: 10 } });
     const salah = await simulate(req("/api/v1/simulate", { method: "POST", body: JSON.stringify({ inputs: { n90: "5" } }) }));
     expect(salah.status).toBe(400);
   });

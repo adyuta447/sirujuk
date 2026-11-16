@@ -11,6 +11,8 @@ export interface FormSimulasi {
   hhi180: string;
   dominan: string; // "" | "ya" | "tidak"
   sisrute: string; // "" | "ya" | "tidak"
+  umurSisrute: string; // hari
+  terdekat: string; // "" | "ya" | "tidak": RS tujuan adalah yang terdekat
   jarak: string; // km
   kompetensi: string; // "" | sesuai | sebagian | tidak
   alat: string; // "" | "ya" | "tidak"

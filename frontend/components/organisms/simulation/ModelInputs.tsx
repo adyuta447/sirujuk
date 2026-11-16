@@ -29,6 +29,10 @@ export function ModelInputs({ form, onChange }: ModelInputsProps) {
         <NumberField label="Konsentrasi HHI" value={form.hhi180} min={0} max={10000} onChange={(v) => onChange("hhi180", v)} />
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
+        <NumberField label="Umur data SISRUTE (hari)" value={form.umurSisrute} min={0} max={3650} onChange={(v) => onChange("umurSisrute", v)} />
+        <SelectField label="RS tujuan adalah yang terdekat" value={form.terdekat} options={PILIHAN_TRI} onChange={(v) => onChange("terdekat", v)} />
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
         <SelectField label="Menuju RS tujuan dominan" value={form.dominan} options={PILIHAN_TRI} onChange={(v) => onChange("dominan", v)} />
         <SelectField label="Alat/SDM tersedia di faskes asal (SISRUTE)" value={form.sisrute} options={PILIHAN_TRI} onChange={(v) => onChange("sisrute", v)} />
       </div>

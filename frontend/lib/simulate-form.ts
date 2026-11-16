@@ -17,7 +17,7 @@ export function bangunPermintaanSimulasi(f: FormSimulasi): { input: PermintaanSi
     return { galat: "Tanpa rujukan dasar, isi kode diagnosis dan kategori alasan." };
   }
   const ns90 = angkaForm(f.ns90, 0, 100);
-  const nilai = { n90: angkaForm(f.n90, 0, 1e6, true), n180: angkaForm(f.n180, 0, 1e6, true), hhi180: angkaForm(f.hhi180, 0, 10000), jarak: angkaForm(f.jarak, 0, 2000) };
+  const nilai = { n90: angkaForm(f.n90, 0, 1e6, true), n180: angkaForm(f.n180, 0, 1e6, true), hhi180: angkaForm(f.hhi180, 0, 10000), jarak: angkaForm(f.jarak, 0, 2000), umur: angkaForm(f.umurSisrute, 0, 3650) };
   if (Number.isNaN(ns90) || Object.values(nilai).some(Number.isNaN)) return { galat: "Ada angka di luar rentang yang diizinkan." };
 
   const inputs: MasukanModel = {
@@ -29,6 +29,8 @@ export function bangunPermintaanSimulasi(f: FormSimulasi): { input: PermintaanSi
     hhi180: nilai.hhi180,
     to_dominant_dest: YA[f.dominan],
     sisrute_available: YA[f.sisrute],
+    sisrute_age_days: nilai.umur,
+    dest_is_nearest: YA[f.terdekat],
   };
   const destination: TujuanSimulasi = {
     distance_km: nilai.jarak,

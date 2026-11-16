@@ -10,6 +10,8 @@ export const FORM_SIMULASI_KOSONG: FormSimulasi = {
   hhi180: "",
   dominan: "",
   sisrute: "",
+  umurSisrute: "",
+  terdekat: "",
   jarak: "",
   kompetensi: "",
   alat: "",

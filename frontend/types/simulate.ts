@@ -13,6 +13,8 @@ export interface MasukanModel {
   hhi180?: number;
   to_dominant_dest?: boolean;
   sisrute_available?: boolean;
+  sisrute_age_days?: number;
+  dest_is_nearest?: boolean;
 }
 
 /** Asumsi tentang RS tujuan. Bukan masukan model: hanya memengaruhi penilaian kesesuaian. */

@@ -11,6 +11,8 @@ const MASUKAN: Record<string, Tipe> = {
   hhi180: "number",
   to_dominant_dest: "boolean",
   sisrute_available: "boolean",
+  sisrute_age_days: "number",
+  dest_is_nearest: "boolean",
 };
 const TUJUAN: Record<string, Tipe> = { distance_km: "number", competency: "string", equipment_available: "boolean" };
 

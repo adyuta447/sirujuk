@@ -33,6 +33,11 @@ describe("bangunPermintaanSimulasi", () => {
     const h = bangunPermintaanSimulasi(form({ baseId: "r-1", ns90: "40", jarak: "15", kompetensi: "tidak", sisrute: "ya" }));
     expect(h).toEqual({ input: { base_referral_id: "r-1", inputs: { ns90: 0.4, sisrute_available: true }, destination: { distance_km: 15, competency: "tidak" } } });
   });
+  it("meneruskan RS terdekat dan umur data SISRUTE sebagai masukan model", () => {
+    const h = bangunPermintaanSimulasi(form({ baseId: "r-1", umurSisrute: "45", terdekat: "tidak" }));
+    expect(h).toEqual({ input: { base_referral_id: "r-1", inputs: { sisrute_age_days: 45, dest_is_nearest: false } } });
+    expect(bangunPermintaanSimulasi(form({ baseId: "r-1", umurSisrute: "-1" }))).toHaveProperty("galat");
+  });
   it("menolak angka di luar rentang dan ID tidak valid", () => {
     expect(bangunPermintaanSimulasi(form({ baseId: "r-1", ns90: "140" }))).toHaveProperty("galat");
     expect(bangunPermintaanSimulasi(form({ baseId: "a b" }))).toHaveProperty("galat");

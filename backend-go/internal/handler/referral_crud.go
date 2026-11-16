@@ -58,6 +58,7 @@ func changedFields(a, b domain.ReferralRequest) []string {
 // auditLog records a state-changing action by the signed-in user. The stored audit rows live in memory only, so
 // this log line is the durable trail. detail is field names or an outcome, never patient text.
 func auditLog(r *http.Request, event, id string, detail []string) {
+	middleware.Note(r, id, append([]string{event}, detail...)) // the same facts, on the user activity log
 	actor, role := middleware.Actor(r)
 	log.Printf(`{"event":%q,"referral_id":%q,"actor":%q,"role":%q,"detail":%q}`, event, id, actor, role, strings.Join(detail, ","))
 }

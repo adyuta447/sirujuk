@@ -128,3 +128,34 @@ Semua bagian ini membaca keluaran model; tidak ada bobot yang diubah di backend.
 
 **Pencegahan dan efisiensi biaya.** `GET /api/v1/stats` membawa `prevention`: `kns_total` (diagnosis yang harus diselesaikan FKTP), `kns_flagged` (kuning atau merah di antaranya: kandidat), `kns_confirmed_invalid` (diputuskan tidak-valid oleh audit manusia: satu-satunya yang terbukti), `by_fktp` dan `by_fkrtl` (10 teratas). `prevention.cost` selalu berjenis `estimasi`. Tanpa asumsi dari pemilik (`ASSUMED_COST_PER_PREVENTED_REFERRAL_IDR` dan `ASSUMED_PREVENTION_PERCENT`) tidak ada angka rupiah sama sekali; dengan asumsi, `assumptions[]` menuliskannya dan `disclaimer` menyatakan ini bukan penghematan aktual.
 
+## Log aktivitas pengguna
+
+Setiap aksi pengguna yang tercatat di sini sudah dicatat backend sendiri; frontend hanya **membaca**. Yang dicatat: login dan logout, buat/lihat/daftar/ubah/hitung ulang/arsipkan rujukan, klarifikasi, audit, simulasi, dan lihat/ubah konfigurasi risiko. Penolakan (peran tidak boleh, rujukan tidak ada, validasi gagal) ikut tercatat dengan `outcome` yang sesuai. Tidak dicatat: pemeriksaan sesi, label, statistik, daftar RS, dan pembacaan log itu sendiri.
+
+`GET /api/v1/activity` (semua peran; header `X-Actor` wajib). TKMKB membaca entri semua orang; peran lain hanya entri akunnya sendiri (parameter `actor` diabaikan). Terbaru dulu.
+
+| Query | Arti |
+|---|---|
+| `limit` | 1-200, default 50 |
+| `cursor` | nilai `next` dari halaman sebelumnya |
+| `actor` | email (hanya berlaku untuk TKMKB) |
+| `resource` | `referral` `clarification` `audit` `simulation` `config` `session` |
+| `action` | `create` `read` `list` `update` `delete` `rescore` `simulate` `login` `logout` |
+| `outcome` | `ok` (2xx) · `denied` (401/403/429) · `rejected` (4xx lain) · `failed` (5xx) |
+| `referral_id` | semua aksi pada satu rujukan |
+
+```json
+{ "items": [ {
+    "id": "9f2c...", "at": "2026-11-16T13:07:02.538Z",
+    "actor": "tkmkb@x.id", "role": "tkmkb",
+    "action": "update", "resource": "referral", "resource_id": "r-1",
+    "outcome": "ok", "status": 200,
+    "detail": ["referral_updated", "clinical_narrative", "reason"],
+    "correlation_id": "" } ],
+  "next": "2026-11-16T13:07:02.538Z|9f2c..." }
+```
+
+`next` kosong di halaman terakhir. `actor` kosong = tidak ada yang masuk (login gagal; email yang diketik sengaja tidak disimpan). `detail` hanya nama kolom atau kata hasil, **tidak pernah** teks pasien. Tampilkan semua teks entri sebagai teks biasa (bukan HTML). 503 `ACTIVITY_UNAVAILABLE` bila penyimpanan log tidak tersedia.
+
+Batas yang perlu diketahui: pembacaan melihat 1000 entri terbaru (filter bekerja di dalam jendela itu); semua entri tetap tersimpan. Entri juga dicetak sebagai baris log `{"event":"activity",...}` di log platform, sehingga tetap ada bila Firestore sedang gangguan.
+

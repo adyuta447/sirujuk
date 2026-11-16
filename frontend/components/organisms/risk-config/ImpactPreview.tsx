@@ -1,4 +1,5 @@
 import { KATEGORI_RISIKO } from "../../../data/kategori-risiko";
+import { RiskBadge } from "../../atoms/RiskBadge";
 import type { DampakRisiko } from "../../../types/risk-config";
 
 interface ImpactPreviewProps {
@@ -22,7 +23,7 @@ export function ImpactPreview({ dampak }: ImpactPreviewProps) {
         <tbody>
           {KATEGORI_RISIKO.map((k) => (
             <tr key={k.key} className="border-t border-[#DCE3EC]">
-              <td className="py-1.5">{k.label}</td>
+              <td className="py-1.5"><RiskBadge level={k.level} /></td>
               <td className="py-1.5 font-mono">{dampak.current[k.key]}</td>
               <td className="py-1.5 font-mono font-bold">{dampak.proposed[k.key]}</td>
             </tr>

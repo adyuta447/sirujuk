@@ -32,6 +32,19 @@ describe("RiskConfigForm", () => {
   });
 });
 
+describe("kategori di Pengaturan Risiko", () => {
+  it("memakai lencana risiko yang sama dengan seluruh app, di daftar rekomendasi dan di pratinjau dampak", () => {
+    render(bungkus(<RiskConfigForm konfig={KONFIG} bisaUbah={false} />));
+    expect(screen.getByText("Risiko Tinggi")).toBeInTheDocument();
+    expect(screen.getAllByText(/Peringatan aktif|Tanpa peringatan/)).toHaveLength(3);
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+  it("TKMKB mengisi rekomendasi lewat kolom berlabel per kategori", () => {
+    render(bungkus(<RiskConfigForm konfig={KONFIG} bisaUbah />));
+    expect(screen.getByLabelText("Rekomendasi tindakan Merah (tinggi)")).toHaveValue("Periksa");
+  });
+});
+
 describe("CostEstimate", () => {
   it("dengan asumsi: angka berlabel estimasi dan daftar asumsinya", () => {
     render(<CostEstimate biaya={{ available: true, kind: "estimasi", amount_idr: 5000000, prevented_referrals: 4, assumptions: ["Asumsi A"], disclaimer: "x" }} />);

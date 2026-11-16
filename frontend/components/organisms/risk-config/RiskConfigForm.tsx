@@ -1,11 +1,12 @@
 import { KATEGORI_RISIKO } from "../../../data/kategori-risiko";
 import { useRiskConfigForm } from "../../../hooks/useRiskConfigForm";
 import type { KonfigRisiko } from "../../../types/risk-config";
+import { Card } from "../../atoms/Card";
 import { PrimaryButton } from "../../atoms/PrimaryButton";
 import { SecondaryButton } from "../../atoms/SecondaryButton";
 import { TitledCard } from "../../molecules/TitledCard";
 import { BandPreview } from "./BandPreview";
-import { CategoryActionField } from "./CategoryActionField";
+import { CategoryActionRow } from "./CategoryActionRow";
 import { ConfigMeta } from "./ConfigMeta";
 import { CutoffFields } from "./CutoffFields";
 import { ImpactPreview } from "./ImpactPreview";
@@ -26,13 +27,17 @@ export function RiskConfigForm({ konfig, bisaUbah }: RiskConfigFormProps) {
           <BandPreview yellow={Number(f.yellow)} red={Number(f.red)} />
         </div>
       </TitledCard>
-      <TitledCard title="Rekomendasi tindakan">
-        <div className="mt-4 space-y-5">
-          {KATEGORI_RISIKO.map((k) => (
-            <CategoryActionField key={k.key} label={k.label} aksi={f.actions[k.key]} disabled={!bisaUbah} onChange={(a) => f.setAksi(k.key, a)} />
-          ))}
+      <Card className="overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#DCE3EC]">
+          <div className="font-bold text-[#0E1B2A]">Rekomendasi tindakan</div>
+          <div className="text-xs text-[#56657A] mt-0.5">Yang disarankan sistem untuk tiap kategori, dan apakah kategori itu memunculkan peringatan.</div>
         </div>
-      </TitledCard>
+        <ul className="divide-y divide-[#EEF1F5]">
+          {KATEGORI_RISIKO.map((k) => (
+            <CategoryActionRow key={k.key} label={k.label} level={k.level} aksi={f.actions[k.key]} bisaUbah={bisaUbah} onChange={(a) => f.setAksi(k.key, a)} />
+          ))}
+        </ul>
+      </Card>
       {f.dampak && <ImpactPreview dampak={f.dampak} />}
       {f.galat && <p role="alert" className="text-sm text-[#9B1C1C]">{f.galat}</p>}
       {f.tersimpan && <p role="status" className="text-sm font-semibold text-[#17803F]">Pengaturan disimpan.</p>}

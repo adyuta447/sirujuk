@@ -14,7 +14,7 @@ export function RiskConfig() {
 
   return (
     <PageScroll>
-      <PageHead title="Pengaturan Risiko" sub="Batas kategori hijau, kuning, dan merah berlaku untuk seluruh sistem." />
+      <PageHead title="Pengaturan Risiko" art="audit" sub="Batas kategori hijau, kuning, dan merah berlaku untuk seluruh sistem." />
       {isLoading && <LoadingState label="Memuat pengaturan risiko" />}
       {isError && <ErrorState message="Pengaturan risiko gagal dimuat." onRetry={() => refetch()} />}
       {data && <RiskConfigForm konfig={data} bisaUbah={sesi?.role === "tkmkb"} />}

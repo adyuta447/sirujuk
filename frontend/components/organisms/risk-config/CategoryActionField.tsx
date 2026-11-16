@@ -17,7 +17,7 @@ export function CategoryActionField({ label, aksi, disabled, onChange }: Categor
         <input value={aksi.recommendation} maxLength={200} onChange={(e) => onChange({ ...aksi, recommendation: e.target.value })} className={`${FIELD_CLASS} mt-1`} />
       </label>
       <label className="flex items-center gap-2 text-sm text-[#0E1B2A]">
-        <input type="checkbox" checked={aksi.alert} onChange={(e) => onChange({ ...aksi, alert: e.target.checked })} className="size-4" />
+        <input type="checkbox" checked={aksi.alert} onChange={(e) => onChange({ ...aksi, alert: e.target.checked })} className="size-4 accent-[#1E3A5F]" />
         Munculkan peringatan untuk kategori ini
       </label>
     </fieldset>

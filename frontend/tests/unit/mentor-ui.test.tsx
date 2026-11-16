@@ -55,10 +55,10 @@ describe("PreventionPanel", () => {
     mockData = d;
     render(<PreventionPanel />);
   };
-  it("selalu membawa disclaimer estimasi, dan satu keadaan kosong bila belum ada faskes yang ditandai", () => {
+  it("selalu membawa disclaimer estimasi, dan keadaan kosong ada di dalam kartu faskes", () => {
     tampil(data({}));
     expect(screen.getByText(/bukan penghematan aktual/)).toBeInTheDocument();
-    expect(screen.getByText("Belum ada rujukan yang ditandai")).toBeInTheDocument();
+    expect(screen.getAllByText("Belum ada rujukan yang ditandai.")).toHaveLength(2);
   });
   it("menampilkan faskes yang ditandai dengan jumlahnya", () => {
     tampil(data({ by_fktp: [{ id: "FKTP-A", total: 8, flagged: 3, red: 1, flagged_percent: 37.5 }] }));

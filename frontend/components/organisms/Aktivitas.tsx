@@ -1,47 +1,50 @@
 "use client";
 
 import { useAktivitas } from "../../hooks/useAktivitas";
+import { useSession } from "../../hooks/useSession";
 import { Card } from "../atoms/Card";
 import { EmptyState } from "../atoms/EmptyState";
-import { FilterChip } from "../atoms/FilterChip";
+import { ErrorState } from "../atoms/ErrorState";
+import { LoadingState } from "../atoms/LoadingState";
 import { PageHead } from "../atoms/PageHead";
 import { SecondaryButton } from "../atoms/SecondaryButton";
 import { PageScroll } from "../molecules/PageScroll";
+import { AktivitasFilter } from "./aktivitas/AktivitasFilter";
 import { AktivitasRow } from "./aktivitas/AktivitasRow";
 
 export function Aktivitas() {
+  const { data: sesi } = useSession();
   const a = useAktivitas();
+  const semua = sesi?.role === "tkmkb"; // ditentukan backend dari sesi; ini hanya untuk teks dan kolom pelaku
+  const kosong = !a.isLoading && !a.isError && a.items.length === 0;
+
   return (
     <PageScroll>
       <PageHead
         title="Aktivitas"
         art="audit"
-        sub="Aksi yang Anda lakukan di sesi ini. Tersimpan di browser ini sampai Anda keluar atau menutup tab."
+        sub={semua ? "Aksi semua pengguna di sistem, dicatat oleh server." : "Aksi yang dilakukan lewat akun Anda, dicatat oleh server."}
       />
-      {a.jumlah.semua === 0 ? (
-        <EmptyState art="antrean-kosong" title="Belum ada aktivitas" body="Menyimpan, mengarsipkan, mengaudit, atau menjalankan simulasi akan tercatat di sini." />
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <FilterChip label="Semua" count={a.jumlah.semua} active={a.filter === "semua"} onClick={() => a.setFilter("semua")} />
-              <FilterChip label="Berhasil" count={a.jumlah.berhasil} dotColor="#17803F" active={a.filter === "berhasil"} onClick={() => a.setFilter("berhasil")} />
-              <FilterChip label="Gagal" count={a.jumlah.gagal} dotColor="#C42222" active={a.filter === "gagal"} onClick={() => a.setFilter("gagal")} />
-            </div>
-            <SecondaryButton onClick={a.kosongkan}>Hapus semua</SecondaryButton>
-          </div>
-          {a.tampak.length === 0 ? (
-            <EmptyState art="tidak-ditemukan" title="Tidak ada aktivitas yang cocok" body="Pilih filter lain untuk melihat aktivitas lain." />
-          ) : (
-            <Card className="overflow-hidden">
-              <ul className="divide-y divide-[#EEF1F5]">
-                {a.tampak.map((x) => (
-                  <AktivitasRow key={x.id} aktivitas={x} />
-                ))}
-              </ul>
-            </Card>
-          )}
-        </>
+      <AktivitasFilter a={a} />
+      {a.isLoading && <LoadingState label="Memuat aktivitas" />}
+      {a.belumTersedia && <EmptyState art="tidak-ditemukan" title="Log aktivitas belum tersedia" body="Server ini belum menyediakan log aktivitas. Hubungi pengelola sistem." />}
+      {a.isError && !a.belumTersedia && <ErrorState message="Aktivitas gagal dimuat." onRetry={a.ulangi} />}
+      {kosong && <EmptyState art="antrean-kosong" title="Belum ada aktivitas" body="Aksi yang tercatat, atau yang cocok dengan filter, akan tampil di sini." />}
+      {a.items.length > 0 && (
+        <Card className="overflow-hidden">
+          <ul className="divide-y divide-[#EEF1F5]">
+            {a.items.map((e) => (
+              <AktivitasRow key={e.id} entri={e} tampilkanPelaku={semua} />
+            ))}
+          </ul>
+        </Card>
+      )}
+      {a.adaLanjut && (
+        <div className="flex justify-center">
+          <SecondaryButton onClick={a.muatLagi} disabled={a.memuatLagi}>
+            {a.memuatLagi ? "Memuat…" : "Muat lebih banyak"}
+          </SecondaryButton>
+        </div>
       )}
     </PageScroll>
   );

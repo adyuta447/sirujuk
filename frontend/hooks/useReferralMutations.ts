@@ -20,9 +20,9 @@ export function useReferralMutations() {
   const refresh = useRefresh();
   const options = { onSuccess: refresh };
   return {
-    update: useMutation({ mutationFn: ({ id, edit }: { id: string; edit: ReferralEdit }) => denganProses("ubah", () => updateReferral(id, edit), id.toUpperCase()), ...options }),
-    rescore: useMutation({ mutationFn: (id: string) => denganProses("hitung-ulang", () => rescoreReferral(id), id.toUpperCase()), ...options }),
-    archive: useMutation({ mutationFn: ({ id, note }: { id: string; note: string }) => denganProses("arsip", () => archiveReferral(id, note), id.toUpperCase()), ...options }),
-    clarify: useMutation({ mutationFn: ({ id, text }: { id: string; text: string }) => denganProses("klarifikasi", () => submitClarification(id, text), id.toUpperCase()), ...options }),
+    update: useMutation({ mutationFn: ({ id, edit }: { id: string; edit: ReferralEdit }) => denganProses("ubah", () => updateReferral(id, edit)), ...options }),
+    rescore: useMutation({ mutationFn: (id: string) => denganProses("hitung-ulang", () => rescoreReferral(id)), ...options }),
+    archive: useMutation({ mutationFn: ({ id, note }: { id: string; note: string }) => denganProses("arsip", () => archiveReferral(id, note)), ...options }),
+    clarify: useMutation({ mutationFn: ({ id, text }: { id: string; text: string }) => denganProses("klarifikasi", () => submitClarification(id, text)), ...options }),
   };
 }

@@ -1,103 +1,125 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { Aktivitas } from "../../components/organisms/Aktivitas";
-import { SidebarProfile } from "../../components/organisms/app-shell/SidebarProfile";
-import { PROSES } from "../../data/proses-dialog";
-import { bolehAkses, PERAN } from "../../lib/akses";
-import { denganProses } from "../../lib/dengan-proses";
-import { waktuAktivitas } from "../../lib/waktu-aktivitas";
-import { useAktivitasStore } from "../../store/useAktivitasStore";
-import { useProsesStore } from "../../store/useProsesStore";
+import { AktivitasRow } from "../../components/organisms/aktivitas/AktivitasRow";
+import { useAktivitasBelumDibaca } from "../../hooks/useAktivitasBelumDibaca";
+import { kalimatAktivitas } from "../../lib/kalimat-aktivitas";
+import { ApiError } from "../../services/api";
+import { getActivity } from "../../services/activity.service";
+import { useAktivitasDilihat } from "../../store/useAktivitasDilihat";
+import type { EntriAktivitas } from "../../types/activity";
 
-const catat = (o: Partial<Parameters<ReturnType<typeof useAktivitasStore.getState>["catat"]>[0]> = {}) =>
-  useAktivitasStore.getState().catat({ kunci: "arsip", jenis: "berhasil", judul: "Rujukan diarsipkan", ...o });
-const daftar = () => useAktivitasStore.getState().daftar;
+jest.mock("../../services/activity.service", () => ({ getActivity: jest.fn() }));
+let mockRole = "tkmkb";
+jest.mock("../../hooks/useSession", () => ({ useSession: () => ({ data: { nama: "N", role: mockRole } }) }));
+const ambil = getActivity as jest.Mock;
+
+const E = (o: Partial<EntriAktivitas> = {}): EntriAktivitas => ({
+  id: "i" + Math.random(), at: "2026-11-16T13:00:00.000Z", actor: "tkmkb@demo.sirujuk.id", role: "tkmkb",
+  action: "update", resource: "referral", resource_id: "r-1", outcome: "ok", status: 200, ...o,
+});
+const klien = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const bungkus = (c = klien()) => ({ children }: { children: ReactNode }) => <QueryClientProvider client={c}>{children}</QueryClientProvider>;
 
 beforeEach(() => {
-  sessionStorage.clear();
-  useAktivitasStore.setState({ daftar: [] });
-  useProsesStore.setState({ antrean: [], hasil: null });
+  ambil.mockReset();
+  mockRole = "tkmkb";
+  useAktivitasDilihat.setState({ dilihat: null });
 });
 
-describe("store aktivitas", () => {
-  it("mencatat yang terbaru di depan, belum dibaca, dengan id dan waktu", () => {
-    catat({ judul: "Pertama" });
-    catat({ judul: "Kedua" });
-    expect(daftar().map((a) => a.judul)).toEqual(["Kedua", "Pertama"]);
-    expect(daftar().every((a) => !a.dibaca && a.id && !Number.isNaN(Date.parse(a.waktu)))).toBe(true);
-    expect(new Set(daftar().map((a) => a.id)).size).toBe(2);
-  });
-  it("menyimpan paling banyak 100, tandai dibaca, dan kosongkan", () => {
-    for (let i = 0; i < 105; i++) catat({ judul: `n${i}` });
-    expect(daftar()).toHaveLength(100);
-    expect(daftar()[0].judul).toBe("n104");
-    useAktivitasStore.getState().tandaiDibaca();
-    expect(daftar().every((a) => a.dibaca)).toBe(true);
-    useAktivitasStore.getState().kosongkan();
-    expect(daftar()).toEqual([]);
+describe("kalimatAktivitas", () => {
+  it("memetakan pasangan resource dan aksi, dan jatuh ke teks apa adanya bila belum dikenal", () => {
+    expect(kalimatAktivitas({ resource: "referral", action: "delete" })).toBe("Mengarsipkan rujukan");
+    expect(kalimatAktivitas({ resource: "session", action: "login" })).toBe("Masuk");
+    expect(kalimatAktivitas({ resource: "baru", action: "ekspor" })).toBe("ekspor baru");
   });
 });
 
-describe("denganProses mencatat aktivitas", () => {
-  it("mencatat berhasil dengan konteksnya, juga untuk aksi tanpa pop-up berhasil", async () => {
-    await denganProses("arsip", async () => "ok", "R-001");
-    await denganProses("simulasi", async () => "ok");
-    expect(daftar().map((a) => [a.judul, a.konteks, a.jenis])).toEqual([
-      [PROSES.simulasi.aktivitas, undefined, "berhasil"],
-      [PROSES.arsip.aktivitas, "R-001", "berhasil"],
-    ]);
+describe("AktivitasRow", () => {
+  it("menampilkan hasil bukan-ok dengan labelnya, nomor rujukan huruf besar, dan pelaku hanya bila diminta", () => {
+    const { rerender } = render(<ul><AktivitasRow entri={E({ outcome: "denied", status: 403 })} tampilkanPelaku /></ul>);
+    expect(screen.getByText("Tidak diizinkan")).toBeInTheDocument();
+    expect(screen.getByText("R-1")).toBeInTheDocument();
+    expect(screen.getByText(/tkmkb@demo.sirujuk.id · Anggota TKMKB/)).toBeInTheDocument();
+    rerender(<ul><AktivitasRow entri={E()} tampilkanPelaku={false} /></ul>);
+    expect(screen.queryByText(/tkmkb@demo/)).toBeNull();
+    expect(screen.queryByText("Berhasil")).toBeNull();
   });
-  it("mencatat gagal dengan pesan galatnya, dan galat tetap dilempar", async () => {
-    await expect(denganProses("ubah", async () => { throw new Error("Rujukan sudah final."); }, "R-002")).rejects.toThrow();
-    expect(daftar()[0]).toMatchObject({ jenis: "gagal", judul: PROSES.ubah.gagal, konteks: "R-002", pesan: "Rujukan sudah final." });
+  it("login gagal tanpa email tampil sebagai 'Belum masuk'", () => {
+    render(<ul><AktivitasRow entri={E({ actor: "", role: "", resource: "session", action: "login", resource_id: undefined, outcome: "denied" })} tampilkanPelaku /></ul>);
+    expect(screen.getByText("Belum masuk")).toBeInTheDocument();
+  });
+  it("menampilkan teks dari server sebagai teks biasa, tidak pernah sebagai HTML", () => {
+    const { container } = render(<ul><AktivitasRow entri={E({ detail: ['<img src=x onerror="alert(1)">', "reason"] })} tampilkanPelaku={false} /></ul>);
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByText(/<img src=x onerror="alert\(1\)"> · reason/)).toBeInTheDocument();
   });
 });
 
 describe("halaman Aktivitas", () => {
-  it("menampilkan keadaan kosong berilustrasi bila belum ada aktivitas", () => {
-    render(<Aktivitas />);
-    expect(screen.getByText("Belum ada aktivitas")).toBeInTheDocument();
+  it("menampilkan baris dan pelaku untuk TKMKB, dan memuat halaman berikutnya dengan kursor dari server", async () => {
+    ambil.mockResolvedValueOnce({ items: [E({ id: "a", resource_id: "r-1" })], next: "kursor-1" });
+    ambil.mockResolvedValueOnce({ items: [E({ id: "b", resource_id: "r-2" })], next: "" });
+    render(<Aktivitas />, { wrapper: bungkus() });
+    expect(await screen.findByText("R-1")).toBeInTheDocument();
+    expect(screen.getByText(/Aksi semua pengguna/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Muat lebih banyak" }));
+    expect(await screen.findByText("R-2")).toBeInTheDocument();
+    expect(ambil).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: "kursor-1" }));
+    expect(screen.queryByRole("button", { name: "Muat lebih banyak" })).toBeNull();
   });
-  it("menampilkan baris, memfilter berhasil dan gagal, dan menandai semuanya dibaca", () => {
-    catat({ judul: "Rujukan diarsipkan", konteks: "R-001" });
-    catat({ jenis: "gagal", judul: "Perubahan gagal disimpan", pesan: "Rujukan sudah final." });
-    render(<Aktivitas />);
-    expect(screen.getByText("Rujukan diarsipkan")).toBeInTheDocument();
-    expect(screen.getByText("R-001")).toBeInTheDocument();
-    expect(daftar().every((a) => a.dibaca)).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: /Gagal/ }));
-    expect(screen.getByText("Rujukan sudah final.")).toBeInTheDocument();
-    expect(screen.queryByText("Rujukan diarsipkan")).toBeNull();
+  it("peran lain tidak melihat kolom pelaku dan mendapat teks 'akun Anda'", async () => {
+    mockRole = "dokter";
+    ambil.mockResolvedValue({ items: [E()], next: "" });
+    render(<Aktivitas />, { wrapper: bungkus() });
+    expect(await screen.findByText("R-1")).toBeInTheDocument();
+    expect(screen.getByText(/lewat akun Anda/)).toBeInTheDocument();
+    expect(screen.queryByText(/tkmkb@demo/)).toBeNull();
   });
-  it("aktivitas baru yang masuk selagi halaman terbuka langsung ditandai dibaca, dan Hapus semua mengosongkan", () => {
-    catat();
-    render(<Aktivitas />);
-    act(() => { catat({ judul: "Baru" }); });
-    expect(daftar().every((a) => a.dibaca)).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Hapus semua" }));
-    expect(screen.getByText("Belum ada aktivitas")).toBeInTheDocument();
+  it("filter hasil mengirim outcome ke server", async () => {
+    ambil.mockResolvedValue({ items: [], next: "" });
+    render(<Aktivitas />, { wrapper: bungkus() });
+    await screen.findByText("Belum ada aktivitas");
+    fireEvent.click(screen.getByRole("button", { name: "Ditolak" }));
+    await waitFor(() => expect(ambil).toHaveBeenLastCalledWith(expect.objectContaining({ outcome: "rejected" })));
+  });
+  it("backend yang belum punya endpoint-nya (404) tampil sebagai 'belum tersedia', bukan galat umum", async () => {
+    ambil.mockRejectedValue(new ApiError("x", 404));
+    render(<Aktivitas />, { wrapper: bungkus() });
+    expect(await screen.findByText("Log aktivitas belum tersedia")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Coba lagi" })).toBeNull();
+  });
+  it("galat lain menawarkan coba lagi", async () => {
+    ambil.mockRejectedValue(new ApiError("x", 500));
+    render(<Aktivitas />, { wrapper: bungkus() });
+    expect(await screen.findByRole("button", { name: "Coba lagi" })).toBeInTheDocument();
+  });
+  it("membuka daftar tanpa filter menandai yang terbaru sudah dilihat", async () => {
+    ambil.mockResolvedValue({ items: [E({ at: "2026-11-16T13:30:00.000Z" })], next: "" });
+    render(<Aktivitas />, { wrapper: bungkus() });
+    await screen.findByText("R-1");
+    expect(useAktivitasDilihat.getState().dilihat).toBe("2026-11-16T13:30:00.000Z");
   });
 });
 
-describe("lonceng di sidebar", () => {
-  it("menampilkan jumlah belum dibaca (maksimal 9+) dan membuka halaman aktivitas", () => {
-    const buka = jest.fn();
-    const { rerender } = render(<SidebarProfile nama="Demo" peran="tkmkb" belumDibaca={0} onAktivitas={buka} />);
-    expect(screen.getByRole("button", { name: "Aktivitas" })).toBeInTheDocument();
-    rerender(<SidebarProfile nama="Demo" peran="tkmkb" belumDibaca={3} onAktivitas={buka} />);
-    fireEvent.click(screen.getByRole("button", { name: "Aktivitas, 3 belum dibaca" }));
-    expect(buka).toHaveBeenCalled();
-    rerender(<SidebarProfile nama="Demo" peran="tkmkb" belumDibaca={12} onAktivitas={buka} />);
-    expect(screen.getByText("9+")).toBeInTheDocument();
-  });
-});
-
-describe("waktu dan akses", () => {
-  it("menulis 'Hari ini' untuk hari ini dan tanggal untuk hari lain", () => {
-    const sekarang = new Date("2026-11-16T15:00:00");
-    expect(waktuAktivitas("2026-11-16T14:03:00", sekarang)).toMatch(/^Hari ini, 14[.:]03$/);
-    expect(waktuAktivitas("2026-11-15T09:30:00", sekarang)).toMatch(/^15 Nov(ember)?, 09[.:]30$/);
-  });
-  it("semua peran boleh membuka halaman aktivitas", () => {
-    for (const peran of PERAN) expect(bolehAkses(peran, "/aktivitas")).toBe(true);
+describe("useAktivitasBelumDibaca", () => {
+  it("entri yang sudah ada saat dibuka tidak dihitung; sesudahnya hanya yang ditolak atau gagal", async () => {
+    const klienIni = klien();
+    ambil.mockResolvedValueOnce({ items: [E({ at: "2026-11-16T13:00:00.000Z", outcome: "failed" })], next: "" });
+    const { result } = renderHook(() => useAktivitasBelumDibaca(), { wrapper: bungkus(klienIni) });
+    await waitFor(() => expect(useAktivitasDilihat.getState().dilihat).toBe("2026-11-16T13:00:00.000Z"));
+    expect(result.current).toBe(0);
+    ambil.mockResolvedValueOnce({
+      items: [
+        E({ at: "2026-11-16T13:05:00.000Z", outcome: "ok" }),
+        E({ at: "2026-11-16T13:04:00.000Z", outcome: "denied", status: 403 }),
+        E({ at: "2026-11-16T13:03:00.000Z", outcome: "failed", status: 500 }),
+        E({ at: "2026-11-16T13:00:00.000Z", outcome: "failed" }),
+      ],
+      next: "",
+    });
+    await act(async () => { await klienIni.invalidateQueries({ queryKey: ["activity", "terbaru"] }); });
+    await waitFor(() => expect(result.current).toBe(2));
   });
 });

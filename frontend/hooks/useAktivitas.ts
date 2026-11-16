@@ -1,27 +1,58 @@
 "use client";
 
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { useAktivitasStore } from "../store/useAktivitasStore";
+import { ApiError } from "../services/api";
+import { getActivity } from "../services/activity.service";
+import { useAktivitasDilihat } from "../store/useAktivitasDilihat";
+import type { HasilAktivitas } from "../types/activity";
+import { useDebounced } from "./useDebounced";
 
-export type FilterAktivitas = "semua" | "berhasil" | "gagal";
+export type AktivitasState = ReturnType<typeof useAktivitas>;
 
-/** Daftar aktivitas dengan filter dan jumlah per jenis. Membuka halaman ini menandai semuanya sudah dibaca. */
+const UKURAN_HALAMAN = 25;
+
+/** Log aktivitas dari backend dengan filter dan "muat lebih banyak" (kursor dari server). Membukanya menandai terbaca. */
 export function useAktivitas() {
-  const daftar = useAktivitasStore((s) => s.daftar);
-  const tandaiDibaca = useAktivitasStore((s) => s.tandaiDibaca);
-  const kosongkan = useAktivitasStore((s) => s.kosongkan);
-  const [filter, setFilter] = useState<FilterAktivitas>("semua");
+  const [outcome, setOutcome] = useState<HasilAktivitas | "">("");
+  const [resource, setResource] = useState("");
+  const [noRujukan, setNoRujukan] = useState("");
+  const referralId = useDebounced(noRujukan.trim().toLowerCase());
+  const filter = { outcome: outcome || undefined, resource: resource || undefined, referral_id: referralId || undefined };
 
-  // Juga saat aktivitas baru masuk selagi halaman ini terbuka.
+  const q = useInfiniteQuery({
+    queryKey: ["activity", "log", filter],
+    queryFn: ({ pageParam }) => getActivity({ ...filter, cursor: pageParam, limit: UKURAN_HALAMAN }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (terakhir) => terakhir.next || undefined,
+    staleTime: 15 * 1000,
+    retry: false,
+  });
+  const items = q.data?.pages.flatMap((p) => p.items) ?? [];
+
+  // Daftar tanpa filter yang terbuka berarti yang terbaru sudah dilihat.
+  const terbaru = items[0]?.at;
+  const tandai = useAktivitasDilihat((s) => s.tandai);
+  const tanpaFilter = !outcome && !resource && !referralId;
   useEffect(() => {
-    tandaiDibaca();
-  }, [daftar, tandaiDibaca]);
+    if (tanpaFilter && terbaru) tandai(terbaru);
+  }, [tanpaFilter, terbaru, tandai]);
 
-  const jumlah = {
-    semua: daftar.length,
-    berhasil: daftar.filter((a) => a.jenis === "berhasil").length,
-    gagal: daftar.filter((a) => a.jenis === "gagal").length,
+  return {
+    items,
+    outcome,
+    setOutcome,
+    resource,
+    setResource,
+    noRujukan,
+    setNoRujukan,
+    isLoading: q.isLoading,
+    isError: q.isError,
+    // Backend lama belum punya endpoint-nya (404), atau penyimpanan lognya sedang tidak tersedia (503).
+    belumTersedia: q.error instanceof ApiError && (q.error.status === 404 || q.error.status === 503),
+    adaLanjut: !!q.hasNextPage,
+    memuatLagi: q.isFetchingNextPage,
+    muatLagi: () => void q.fetchNextPage(),
+    ulangi: () => void q.refetch(),
   };
-  const tampak = filter === "semua" ? daftar : daftar.filter((a) => a.jenis === filter);
-  return { tampak, jumlah, filter, setFilter, kosongkan };
 }

@@ -5,7 +5,7 @@ import type { Peran } from "../../lib/akses";
 import { bolehMenu } from "../../lib/navigation";
 import { NAVY } from "../../lib/sirujuk-data";
 import type { View } from "../../lib/sirujuk-data";
-import { useAktivitasStore } from "../../store/useAktivitasStore";
+import { useAktivitasBelumDibaca } from "../../hooks/useAktivitasBelumDibaca";
 import { useSwipeDown } from "../../hooks/useSwipeDown";
 import { BrandMark } from "../atoms/BrandMark";
 import { NAV } from "../../data/nav-items";
@@ -34,7 +34,7 @@ export function Sidebar({
   onClose,
 }: SidebarProps) {
   const swipe = useSwipeDown(onClose);
-  const belumDibaca = useAktivitasStore((s) => s.daftar.filter((a) => !a.dibaca).length);
+  const belumDibaca = useAktivitasBelumDibaca();
   const visibility = open
     ? "translate-y-0 visible"
     : "translate-y-full invisible";

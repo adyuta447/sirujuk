@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAktivitasStore } from "../store/useAktivitasStore";
+import { useAktivitasDilihat } from "../store/useAktivitasDilihat";
 import { PATHS } from "../lib/navigation";
 import { slugDokter } from "../lib/sirujuk-data";
 import type { RujukanCase, View } from "../lib/sirujuk-data";
@@ -26,7 +26,7 @@ export function useAppNavigation() {
     keluar: async () => {
       await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
       queryClient.clear();
-      useAktivitasStore.getState().kosongkan();
+      useAktivitasDilihat.getState().reset();
       router.push("/login");
       router.refresh();
     },

@@ -1,25 +1,30 @@
-import { JENIS_RS } from "../../../data/jenis-rs";
 import type { Rs } from "../../../types/hospital";
+import { Chip } from "../../atoms/Chip";
+import { KindBadge } from "../../atoms/KindBadge";
 
 interface HospitalRowProps {
   rs: Rs;
 }
 
 export function HospitalRow({ rs }: HospitalRowProps) {
-  const jenis = JENIS_RS.find((j) => j.key === rs.kind)?.label ?? rs.kind;
+  const lokasi = [rs.class && `Kelas ${rs.class}`, rs.wilayah || "Wilayah tidak tercatat"].filter(Boolean).join(" · ");
   return (
-    <li className="px-5 py-4 space-y-1">
-      <div className="flex flex-wrap items-baseline gap-x-3">
-        <span className="font-bold text-sm text-[#0E1B2A]">{rs.name}</span>
-        <span className="font-mono text-xs text-[#64748B]">{rs.id}</span>
+    <li className="grid grid-cols-1 sm:grid-cols-[1.4fr_1.2fr_8rem] gap-2 sm:gap-4 items-start sm:items-center px-5 py-3.5">
+      <div className="min-w-0">
+        <div className="font-semibold text-sm text-[#0E1B2A]">{rs.name}</div>
+        <div className="text-xs text-[#56657A]">{lokasi}</div>
+        {rs.id !== rs.name && <div className="font-mono text-xs text-[#64748B]">{rs.id}</div>}
       </div>
-      <p className="text-xs text-[#56657A]">
-        {jenis}
-        {rs.class ? ` · Kelas ${rs.class}` : ""} · {rs.wilayah || "Wilayah tidak tercatat"}
-      </p>
-      <p className="text-xs text-[#56657A]">
-        Spesialisasi: {rs.specialization?.length ? rs.specialization.join(", ") : "tidak tercatat"} · Sumber: {rs.source}
-      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {rs.specialization?.length ? (
+          rs.specialization.map((s) => <Chip key={s}>{s}</Chip>)
+        ) : (
+          <span className="text-xs text-[#64748B]">Belum tercatat</span>
+        )}
+      </div>
+      <div>
+        <KindBadge kind={rs.kind} />
+      </div>
     </li>
   );
 }

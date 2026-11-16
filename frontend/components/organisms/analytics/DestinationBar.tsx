@@ -1,8 +1,7 @@
 import { NAVY } from "../../../lib/sirujuk-data";
-import type { Ringkasan } from "../../../lib/ringkasan";
 
 interface DestinationBarProps {
-  tujuan: Ringkasan["tujuanTerbanyak"][number];
+  tujuan: { nama: string; jumlah: number | string; porsi: number };
 }
 
 export function DestinationBar({ tujuan: f }: DestinationBarProps) {

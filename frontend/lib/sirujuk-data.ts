@@ -1,5 +1,5 @@
 export type RiskLevel = 'tinggi' | 'sedang' | 'rendah'
-export type View = 'landing' | 'dashboard' | 'masuk' | 'queue' | 'detail' | 'audit' | 'analytics' | 'dokter' | 'klarifikasi' | 'dinkes' | 'skor' | 'pengaturan' | 'rumahsakit' | 'simulasi'
+export type View = 'landing' | 'dashboard' | 'masuk' | 'queue' | 'detail' | 'audit' | 'analytics' | 'dokter' | 'klarifikasi' | 'dinkes' | 'skor' | 'pengaturan' | 'rumahsakit' | 'simulasi' | 'aktivitas'
 export interface FaktorSkor { layer: string; label: string; persen: number }
 export interface RincianSkor { ringkasan: string; faktor: FaktorSkor[]; dominan?: string; dasar: string; sumber: 'model' | 'turunan' }
 export interface Alasan { judul: string; penjelasan: string }

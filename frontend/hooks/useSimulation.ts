@@ -3,6 +3,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { FORM_SIMULASI_KOSONG } from "../data/form-simulasi-kosong";
+import { denganProses } from "../lib/dengan-proses";
 import { bangunPermintaanSimulasi } from "../lib/simulate-form";
 import { simulate } from "../services/simulate.service";
 import type { FormSimulasi } from "../types/simulate-form";
@@ -13,7 +14,7 @@ export type SimulationState = ReturnType<typeof useSimulation>;
 export function useSimulation() {
   const [form, setForm] = useState<FormSimulasi>(FORM_SIMULASI_KOSONG);
   const [galat, setGalat] = useState<string | null>(null);
-  const jalan = useMutation({ mutationFn: simulate });
+  const jalan = useMutation({ mutationFn: (input: Parameters<typeof simulate>[0]) => denganProses("simulasi", () => simulate(input)) });
 
   return {
     form,

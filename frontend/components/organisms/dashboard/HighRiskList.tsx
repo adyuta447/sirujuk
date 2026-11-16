@@ -2,7 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { NAVY } from "../../../lib/sirujuk-data";
 import type { RujukanCase } from "../../../lib/sirujuk-data";
 import { Card } from "../../atoms/Card";
-import { Illustration } from "../../atoms/Illustration";
+import { EmptyState } from "../../atoms/EmptyState";
 import { CaseRow } from "../../molecules/CaseRow";
 
 
@@ -27,12 +27,7 @@ export function HighRiskList({ items, onSelect, onSeeAll }: HighRiskListProps) {
         </button>
       </div>
       <div className="divide-y divide-[#EEF1F5]">
-        {items.length === 0 && (
-          <div className="px-5 py-8 flex flex-col items-center text-center">
-            <Illustration name="selesai" className="w-40 h-28" />
-            <p className="text-sm text-[#56657A] mt-2">Tidak ada rujukan berisiko tinggi yang menunggu.</p>
-          </div>
-        )}
+        {items.length === 0 && <EmptyState embedded art="selesai" title="Tidak ada rujukan berisiko tinggi yang menunggu" />}
         {items.map((c) => (
           <CaseRow key={c.id} kasus={c} onSelect={onSelect} />
         ))}

@@ -5,6 +5,7 @@ import { periodeSekarang } from "../../lib/formatters";
 import { bangunKartuStat } from "../../lib/kartu-stat";
 import type { RujukanCase, View } from "../../lib/sirujuk-data";
 import { useDashboard } from "../../hooks/useDashboard";
+import { EmptyState } from "../atoms/EmptyState";
 import { PageHead } from "../atoms/PageHead";
 import { PageScroll } from "../molecules/PageScroll";
 import { ReferralSourceBanner } from "../molecules/ReferralSourceBanner";
@@ -30,9 +31,7 @@ export function Dashboard({ go, onSelect }: DashboardProps) {
       />
       <ReferralSourceBanner referrals={referrals} />
       {!isLoading && !isError && ringkasan.total === 0 && (
-        <p role="status" className="text-sm text-[#56657A]">
-          Belum ada rujukan.
-        </p>
+        <EmptyState art="antrean-kosong" title="Belum ada rujukan" body="Rujukan yang masuk akan tampil di sini." />
       )}
       {isError && (
         <p role="alert" className="text-sm text-[#9B1C1C]">

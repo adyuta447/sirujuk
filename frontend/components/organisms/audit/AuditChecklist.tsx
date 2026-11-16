@@ -1,6 +1,7 @@
 import { AUDIT_CHECKLIST, RISK } from "../../../lib/sirujuk-data";
 import { Card } from "../../atoms/Card";
-import { AuditChecklistItem } from "./AuditChecklistItem";
+import { CheckField } from "../../molecules/CheckField";
+
 
 interface AuditChecklistProps {
   checks: boolean[];
@@ -18,7 +19,7 @@ export function AuditChecklist({ checks, onToggle }: AuditChecklistProps) {
       </div>
       <div className="space-y-1">
         {AUDIT_CHECKLIST.map((item, i) => (
-          <AuditChecklistItem key={item} label={item} checked={checks[i]} onToggle={() => onToggle(i)} />
+          <CheckField key={item} label={item} checked={checks[i]} onChange={() => onToggle(i)} />
         ))}
       </div>
     </Card>

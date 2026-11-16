@@ -5,11 +5,11 @@ import { useReferrals } from "./useReferral";
 
 /** Rujukan yang belum selesai diaudit, berhalaman. */
 export function usePendingAudits() {
-  const { data: referrals = [], isError } = useReferrals();
+  const { data: referrals = [], isError, isLoading } = useReferrals();
   const pagination = usePagination(
     referrals.filter((c) => c.status !== "selesai"),
     "",
   );
 
-  return { isError, ...pagination };
+  return { isError, isLoading, ...pagination };
 }

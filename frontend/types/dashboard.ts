@@ -9,6 +9,9 @@ export interface Shortcut {
   isi: string;
 }
 
+/** Kartu statistik tanpa tujuan klik, mis. di Analitik. */
+export type KartuStat = Omit<StatCardData, "to">;
+
 export interface StatCardData {
   to: View;
   art: IllustrationName;

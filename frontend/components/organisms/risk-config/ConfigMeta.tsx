@@ -10,7 +10,7 @@ export function ConfigMeta({ konfig }: ConfigMetaProps) {
     <div className="text-xs text-[#56657A] leading-relaxed space-y-1">
       <p>
         {konfig.source === "configured"
-          ? `Versi ${konfig.version}, diubah oleh ${konfig.updated_by ?? "tidak tercatat"}${konfig.updated_at ? ` pada ${new Date(konfig.updated_at).toLocaleString("id-ID")}` : ""}.`
+          ? `Versi ${konfig.version}${konfig.updated_by ? `, diubah oleh ${konfig.updated_by}` : ""}${konfig.updated_at ? ` pada ${new Date(konfig.updated_at).toLocaleString("id-ID")}` : ""}.`
           : "Belum pernah diatur: memakai batas bawaan model."}
       </p>
       <p>

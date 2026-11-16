@@ -2,6 +2,7 @@
 
 import { useDinkes } from "../../hooks/useDinkes";
 import { BannerSintetis } from "../atoms/BannerSintetis";
+import { EmptyState } from "../atoms/EmptyState";
 import { PageHead } from "../atoms/PageHead";
 import { PageScroll } from "../molecules/PageScroll";
 import { RegionCard } from "./dinkes/RegionCard";
@@ -29,10 +30,7 @@ export function Dinkes({ onWilayah }: DinkesProps) {
       )}
       {isError && <RegionLoadError onRetry={() => refetch()} />}
       {!isLoading && !isError && kosong && (
-        <p className="text-sm text-[#56657A]">
-          Belum ada rujukan yang dinilai. Rujukan yang sudah dinilai akan muncul
-          di sini per wilayah.
-        </p>
+        <EmptyState art="dinkes" title="Belum ada rujukan yang dinilai" body="Rujukan yang sudah dinilai akan muncul di sini per wilayah." />
       )}
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {terurut.map((w) => (

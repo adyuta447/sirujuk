@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { BandPreview } from "../../components/organisms/risk-config/BandPreview";
 import { CheckField } from "../../components/molecules/CheckField";
 import { CostEstimate } from "../../components/organisms/analytics/CostEstimate";
 import { PreventionPanel } from "../../components/organisms/analytics/PreventionPanel";
@@ -55,6 +56,25 @@ describe("ModelInputs", () => {
       expect(screen.getByPlaceholderText(contoh)).toBeInTheDocument();
     }
     expect(screen.queryByPlaceholderText("Tidak diubah")).toBeNull();
+  });
+});
+
+describe("BandPreview", () => {
+  it("memberi patok di batas kuning dan merah, dan meringkas skalanya untuk pembaca layar", () => {
+    render(<BandPreview yellow={50} red={80} />);
+    expect(screen.getByRole("img")).toHaveAccessibleName(/hijau di bawah 50, kuning 50 sampai di bawah 80, merah 80 ke atas/);
+    for (const angka of ["50", "80", "0", "100"]) expect(screen.getByText(angka)).toBeInTheDocument();
+  });
+  it("lebar segmen mengikuti batasnya dan tidak menggambar apa pun bila batas tidak sah", () => {
+    const { container, rerender } = render(<BandPreview yellow={30} red={90} />);
+    const lebar = Array.from(container.querySelectorAll<HTMLElement>("[style*='width']")).map((e) => e.style.width);
+    expect(lebar).toEqual(["30%", "60%", "10%"]);
+    rerender(<BandPreview yellow={5} red={95} />);
+    expect(screen.queryByText("0")).toBeNull();
+    expect(screen.queryByText("100")).toBeNull();
+    expect(screen.getByText("95")).toBeInTheDocument();
+    rerender(<BandPreview yellow={80} red={50} />);
+    expect(container).toBeEmptyDOMElement();
   });
 });
 

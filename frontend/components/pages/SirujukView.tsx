@@ -1,5 +1,6 @@
 import type { AppNavigation } from "../../hooks/useAppNavigation";
 import type { RujukanCase, View } from "../../lib/sirujuk-data";
+import { Aktivitas } from "../organisms/Aktivitas";
 import { AnalyticsView } from "../organisms/Analytics";
 import { AuditView } from "../organisms/AuditView";
 import { Hospitals } from "../organisms/Hospitals";
@@ -48,6 +49,8 @@ export function SirujukView({ view, id, kasus, memuat, nav, wilayah, query, onWi
       return <SkorBaru />;
     case "rumahsakit":
       return <Hospitals wilayah={wilayah} query={query} />;
+    case "aktivitas":
+      return <Aktivitas />;
     case "simulasi":
       return <Simulation />;
     case "pengaturan":

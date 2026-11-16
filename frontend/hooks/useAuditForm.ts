@@ -38,7 +38,7 @@ export function useAuditForm(kasus: RujukanCase, onDone: () => void) {
     setMenyimpan(true);
     try {
       // Layar sukses hanya setelah server benar-benar menyimpan.
-      await denganProses("audit", () => submitAudit(kasus.id, keputusan, catatan.trim()));
+      await denganProses("audit", () => submitAudit(kasus.id, keputusan, catatan.trim()), kasus.noRujukan);
       queryClient.invalidateQueries({ queryKey: ["referrals"] });
       setSubmitted(true);
     } catch (e) {

@@ -9,6 +9,8 @@ export interface TampilanProses {
   isi: string;
   /** Pop-up sesudah berhasil. Dihilangkan untuk aksi yang hasilnya langsung terlihat di halaman dan dijalankan berulang. */
   berhasil?: { judul: string; isi: string };
+  /** Kalimat di daftar aktivitas bila berhasil (lampau). Dicatat untuk semua aksi, juga yang tanpa pop-up berhasil. */
+  aktivitas: string;
   /** Judul pop-up bila gagal; isinya pesan galat dari server. */
   gagal: string;
 }

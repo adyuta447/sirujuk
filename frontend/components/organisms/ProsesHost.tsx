@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { PROSES } from "../../data/proses-dialog";
 import { useProsesTampil } from "../../hooks/useProsesTampil";
 import { useTutupOtomatis } from "../../hooks/useTutupOtomatis";
+import { useAktivitasStore } from "../../store/useAktivitasStore";
 import { useProsesStore } from "../../store/useProsesStore";
 import { StatusDialog } from "../molecules/StatusDialog";
 
@@ -13,6 +15,10 @@ export function ProsesHost() {
   const kunci = useProsesTampil();
   const hasil = useProsesStore((s) => s.hasil);
   const tutup = useProsesStore((s) => s.tutupHasil);
+  // Memulihkan daftar aktivitas dari sessionStorage sekali, sesudah mount.
+  useEffect(() => {
+    void useAktivitasStore.persist.rehydrate();
+  }, []);
   // Berhasil menutup sendiri begitu terlihat; gagal menunggu pengguna menutupnya.
   useTutupOtomatis(!kunci && hasil?.jenis === "berhasil", BERHASIL_TUTUP_MS, tutup);
 

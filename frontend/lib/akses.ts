@@ -35,6 +35,8 @@ const AKSES: [string, Peran[]][] = [
   ["/pengaturan-risiko", ["dinkes", ...PETUGAS]],
   ["/rumah-sakit", ["dinkes", ...PETUGAS]],
   ["/simulasi", PETUGAS],
+  // Daftar aksi pengguna sendiri di sesi ini: semua peran.
+  ["/aktivitas", PERAN],
 ];
 
 export const HALAMAN_PUBLIK = ["/", "/login", "/daftar"];

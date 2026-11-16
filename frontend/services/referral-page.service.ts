@@ -2,7 +2,7 @@ import { PAGE_SIZE } from "../lib/constants";
 import type { FilterRujukan, HalamanRujukan } from "../types/referral-page";
 import type { StoredReferral } from "../types/referral";
 import { api } from "./api";
-import { mapStored } from "./referral.service";
+import { mapStored } from "./referral-mapper";
 
 type Mentah = Omit<HalamanRujukan, "items"> & { items: StoredReferral[] };
 

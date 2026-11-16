@@ -1,6 +1,7 @@
 // Pesan 409 untuk pengguna. Kode dari backend; kode yang belum dikenal jatuh ke pesan umum, bukan teks mentah backend.
 const PESAN_409: Record<string, string> = {
   IDEMPOTENCY_CONFLICT: "Nomor rujukan ini sudah dipakai untuk isi yang berbeda. Gunakan nomor rujukan baru.",
+  CONFIG_STALE: "Pengaturan sudah diubah orang lain. Muat ulang halaman, lalu coba lagi.",
   LIMIT_REACHED: "Batas untuk rujukan ini sudah tercapai.",
 };
 const UMUM_409 = "Rujukan sudah final atau baru saja berubah. Muat ulang halaman, lalu coba lagi.";

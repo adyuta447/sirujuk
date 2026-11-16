@@ -2,7 +2,7 @@
 import { halamanDikenal } from "../../lib/akses";
 import { pesan409 } from "../../lib/pesan-galat";
 import { validateContent } from "../../lib/validate";
-import { mapStored } from "../../services/referral.service";
+import { mapStored } from "../../services/referral-mapper";
 import type { StoredReferral } from "../../types/referral";
 
 describe("pesan409", () => {

@@ -22,7 +22,7 @@ export function ScoreBadgeLarge({ level, score, dummy }: ScoreBadgeLargeProps) {
       </div>
       <div className="mt-2 text-xs font-semibold text-[#D5DFEC]">
         {r.label}
-        {dummy && " · skor dummy"}
+        {dummy && " · skor sementara"}
       </div>
     </div>
   );

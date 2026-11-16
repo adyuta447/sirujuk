@@ -4,6 +4,8 @@ import type { RujukanCase } from "../../../lib/sirujuk-data";
 import { Card } from "../../atoms/Card";
 import { ClaimBadge } from "../../atoms/ClaimBadge";
 import { StatusBadge } from "../../atoms/StatusBadge";
+import { LABEL_SKOR_SEMENTARA } from "../../../data/skor-sementara";
+import { DominantFactor } from "./DominantFactor";
 import { QueueCardAction } from "./QueueCardAction";
 
 interface QueueCardProps {
@@ -30,6 +32,7 @@ export function QueueCard({ kasus: c, onSelect }: QueueCardProps) {
           {c.usia ? `${c.usia} tahun, ` : ""}dari {c.wilayah}, dirujuk ke{" "}
           <span className="font-semibold text-[#0E1B2A]">{c.fasalTujuan}</span>
         </p>
+        {c.skorDummy && <p className="text-sm text-[#56657A] mt-4">{LABEL_SKOR_SEMENTARA}.</p>}
         {c.alasan.length > 0 && (
           <p className="text-sm text-[#56657A] mt-4 leading-relaxed">
             <span className="font-semibold text-[#0E1B2A]">Kenapa perlu dicek: </span>
@@ -37,6 +40,7 @@ export function QueueCard({ kasus: c, onSelect }: QueueCardProps) {
             {c.alasan.length > 1 ? `, dan ${c.alasan.length - 1} alasan lain` : ""}
           </p>
         )}
+        {!c.skorDummy && <DominantFactor rincian={c.rincianSkor} />}
       </div>
       <div className="shrink-0 w-full sm:w-auto">
         <QueueCardAction kasus={c} onSelect={onSelect} />

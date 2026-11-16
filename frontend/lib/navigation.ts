@@ -12,6 +12,9 @@ export const PATHS: Partial<Record<View, string>> = {
   klarifikasi: "/klarifikasi",
   dinkes: "/dinkes",
   skor: "/skor",
+  pengaturan: "/pengaturan-risiko",
+  rumahsakit: "/rumah-sakit",
+  simulasi: "/simulasi",
 };
 
 export function bolehMenu(peran: Peran | undefined, id: View): boolean {

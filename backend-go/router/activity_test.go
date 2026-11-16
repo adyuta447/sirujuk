@@ -195,3 +195,88 @@ func TestActivityRejectsBadQueriesAndUnknownCallers(t *testing.T) {
 		t.Errorf("a service call with no user must get 403, got %d", w.Code)
 	}
 }
+
+func refuse(h http.Handler, body string, who map[string]string) *httptest.ResponseRecorder {
+	return send(h, "POST", "/api/v1/activity/refusal", body, who)
+}
+
+func TestProxyRefusalsAreLoggedUnderTheVerifiedActorAndMarkedAsProxy(t *testing.T) {
+	h, mem := activityRouter(t)
+	ver, dok, tk := as("ver@x.id", "verifikator"), as("dok@x.id", "dokter"), as("tkmkb@x.id", "tkmkb")
+	for body, who := range map[string]map[string]string{
+		`{"resource":"audit","action":"create","resource_id":"r-1","status":403,"code":"FORBIDDEN_LEVEL"}`:  ver,
+		`{"resource":"config","action":"update","status":403,"code":"FORBIDDEN_ROLE"}`:                      ver,
+		`{"resource":"referral","action":"read","resource_id":"r-1","status":400,"code":"INVALID_REQUEST"}`: dok,
+	} {
+		if w := refuse(h, body, who); w.Code != http.StatusNoContent || w.Body.Len() != 0 {
+			t.Fatalf("%s: %d %s", body, w.Code, w.Body)
+		}
+	}
+	got, _ := mem.Recent(context.Background(), 10)
+	if len(got) != 3 {
+		t.Fatalf("one entry per report, and the endpoint itself is not logged: %+v", got)
+	}
+	type row struct {
+		actor, role, resource, action, id, outcome, source, detail string
+		status                                                     int
+	}
+	want := []row{
+		{"dok@x.id", "dokter", "referral", "read", "r-1", "rejected", "proxy", "INVALID_REQUEST", 400},
+		{"ver@x.id", "verifikator", "config", "update", "", "denied", "proxy", "FORBIDDEN_ROLE", 403},
+		{"ver@x.id", "verifikator", "audit", "create", "r-1", "denied", "proxy", "FORBIDDEN_LEVEL", 403},
+	}
+	for i, w := range want {
+		g := got[i]
+		if (row{g.Actor, g.Role, g.Resource, g.Action, g.ResourceID, g.Outcome, g.Source, strings.Join(g.Detail, ","), g.Status}) != w || g.ID == "" || g.At == "" {
+			t.Errorf("entry %d: got %+v, want %+v", i, g, w)
+		}
+	}
+	// They show up in the log like any other entry, and a doctor still sees only their own.
+	if all, _ := logOf(t, h, tk, "?outcome=denied"); len(all) != 2 {
+		t.Fatalf("TKMKB sees both denied refusals: %+v", all)
+	}
+	if own, _ := logOf(t, h, dok, ""); len(own) != 1 || own[0].Source != "proxy" {
+		t.Fatalf("a doctor sees only their own report: %+v", own)
+	}
+	// Entries the backend records itself say so.
+	send(h, "GET", "/api/v1/referrals", "", ver)
+	if all, _ := logOf(t, h, ver, "?action=list"); len(all) != 1 || all[0].Source != "backend" {
+		t.Fatalf("backend entries carry source backend: %+v", all)
+	}
+}
+
+func TestProxyRefusalCannotNameTheActorOrCarryFreeText(t *testing.T) {
+	h, mem := activityRouter(t)
+	ver := as("ver@x.id", "verifikator")
+	const ok = `"resource":"audit","action":"create","status":403,"code":"FORBIDDEN_LEVEL"`
+	bad := map[string]string{
+		"actor in the body":    `{` + ok + `,"actor":"tkmkb@x.id"}`,
+		"role in the body":     `{` + ok + `,"role":"tkmkb"}`,
+		"free text":            `{` + ok + `,"detail":"Bambang Sutrisno"}`,
+		"unknown resource":     `{"resource":"patients","action":"create","status":403,"code":"X"}`,
+		"unknown action":       `{"resource":"audit","action":"purge","status":403,"code":"X"}`,
+		"status 200":           `{"resource":"audit","action":"create","status":200,"code":"X"}`,
+		"status 500":           `{"resource":"audit","action":"create","status":500,"code":"X"}`,
+		"code in lower case":   `{"resource":"audit","action":"create","status":403,"code":"forbidden"}`,
+		"code with a sentence": `{"resource":"audit","action":"create","status":403,"code":"NOT ALLOWED FOR BAMBANG"}`,
+		"code too long":        `{"resource":"audit","action":"create","status":403,"code":"` + strings.Repeat("A", 41) + `"}`,
+		"id with spaces":       `{` + ok + `,"resource_id":"r 1"}`,
+		"id too long":          `{` + ok + `,"resource_id":"` + strings.Repeat("a", 65) + `"}`,
+		"not json":             `nope`,
+		"empty":                ``,
+	}
+	for name, body := range bad {
+		if w := refuse(h, body, ver); w.Code != http.StatusBadRequest {
+			t.Errorf("%s: want 400, got %d", name, w.Code)
+		}
+	}
+	if w := refuse(h, `{`+ok+`}`, bearerOnly()); w.Code != http.StatusForbidden {
+		t.Errorf("no signed-in actor: want 403, got %d", w.Code)
+	}
+	if w := send(h, "POST", "/api/v1/activity/refusal", `{`+ok+`}`, map[string]string{"Content-Type": "application/json"}); w.Code != http.StatusUnauthorized {
+		t.Errorf("no service token: want 401, got %d", w.Code)
+	}
+	if got, _ := mem.Recent(context.Background(), 10); len(got) != 0 {
+		t.Fatalf("a refused report leaves nothing in the log: %+v", got)
+	}
+}

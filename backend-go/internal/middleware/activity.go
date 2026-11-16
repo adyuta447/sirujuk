@@ -50,6 +50,14 @@ func NoteActor(r *http.Request, email, role string) {
 	}
 }
 
+// Stamp gives an entry its id and time.
+func Stamp(e *domain.Activity) {
+	e.At = time.Now().UTC().Format(domain.OrderedTime)
+	var id [12]byte
+	_, _ = rand.Read(id[:])
+	e.ID = hex.EncodeToString(id[:])
+}
+
 const maxActivityDetail, maxActivityID = 20, 64
 
 // Activity records every tagged request once it is answered: who (X-Actor), what (the tag), on which record, and
@@ -73,12 +81,9 @@ func Activity(sink ActivitySink) func(http.Handler) http.Handler {
 			}
 			e.ResourceID = e.ResourceID[:min(len(e.ResourceID), maxActivityID)]
 			e.Detail = e.Detail[:min(len(e.Detail), maxActivityDetail)]
-			e.Status, e.Outcome = sw.code, domain.ActivityOutcome(sw.code)
+			e.Status, e.Outcome, e.Source = sw.code, domain.ActivityOutcome(sw.code), domain.ActivityFromBackend
 			e.CorrelationID = w.Header().Get("X-Correlation-ID")
-			e.At = time.Now().UTC().Format(domain.OrderedTime)
-			var id [12]byte
-			_, _ = rand.Read(id[:])
-			e.ID = hex.EncodeToString(id[:])
+			Stamp(e)
 			sink.Record(*e)
 		})
 	}

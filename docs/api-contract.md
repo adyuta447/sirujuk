@@ -151,7 +151,7 @@ Setiap aksi pengguna yang tercatat di sini sudah dicatat backend sendiri; fronte
     "action": "update", "resource": "referral", "resource_id": "r-1",
     "outcome": "ok", "status": 200,
     "detail": ["referral_updated", "clinical_narrative", "reason"],
-    "correlation_id": "" } ],
+    "correlation_id": "", "source": "backend" } ],
   "next": "2026-11-16T13:07:02.538Z|9f2c..." }
 ```
 
@@ -159,3 +159,18 @@ Setiap aksi pengguna yang tercatat di sini sudah dicatat backend sendiri; fronte
 
 Batas yang perlu diketahui: pembacaan melihat 1000 entri terbaru (filter bekerja di dalam jendela itu); semua entri tetap tersimpan. Entri juga dicetak sebagai baris log `{"event":"activity",...}` di log platform, sehingga tetap ada bila Firestore sedang gangguan.
 
+### Penolakan yang dibuat proxy
+
+Proxy Next.js menolak sebagian permintaan sendiri (peran atau tingkat tidak boleh, bentuk permintaan salah) tanpa memanggil backend, jadi ia melapor ke sini supaya tercatat. Entrinya bertanda `"source": "proxy"` (entri backend: `"backend"`).
+
+`POST /api/v1/activity/refusal` (token layanan + header aktor dan sesi seperti biasa), badan JSON, field lain ditolak:
+
+| Field | Aturan |
+|---|---|
+| `resource` | `referral` `clarification` `audit` `simulation` `config` `session` |
+| `action` | `create` `read` `list` `update` `delete` `rescore` `simulate` `login` `logout` |
+| `resource_id` | opsional, `^[A-Za-z0-9._:-]{1,64}$` |
+| `status` | 400-499; `outcome` dihitung darinya (403 → `denied`, 400 → `rejected`) |
+| `code` | `^[A-Z_]{1,40}$`, mis. `FORBIDDEN_LEVEL`; disimpan sebagai `detail` |
+
+Aktor dan peran hanya dari header yang diverifikasi (sesi bertanda tangan), tidak pernah dari badan. Jawaban: 204 tanpa isi; 400 bila bentuk salah; 403 tanpa aktor sah; 503 bila log tidak tersedia. Proxy melapor sekali per penolakan tanpa menunda jawaban ke pengguna, tidak melapor untuk sesi tidak sah (401), dan kegagalan lapor tidak mengubah jawabannya. Endpoint ini sendiri tidak dicatat. Penolakan di `GET /hospitals`, `/stats`, dan `/activity` tidak dilaporkan (rute itu memang tidak dicatat).

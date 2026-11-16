@@ -14,7 +14,14 @@ type Activity struct {
 	Status        int      `json:"status"`                // HTTP status the caller got
 	Detail        []string `json:"detail,omitempty"`
 	CorrelationID string   `json:"correlation_id,omitempty"`
+	Source        string   `json:"source,omitempty"` // backend: seen by this service; proxy: a refusal the Next.js proxy reported
 }
+
+// Activity sources.
+const (
+	ActivityFromBackend = "backend"
+	ActivityFromProxy   = "proxy"
+)
 
 // Activity outcomes, from the HTTP status: 2xx ok; 401, 403 and 429 denied (not allowed); other 4xx rejected (the
 // request was wrong or conflicted); 5xx failed (nothing was changed).

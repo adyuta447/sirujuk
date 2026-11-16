@@ -25,7 +25,8 @@ func New(h handler.ReferralHandler, a handler.AuthHandler, token, corsOrigin str
 	api.HandleFunc("GET /api/v1/config/risk", tag("config", "read", h.RiskConfig))
 	api.HandleFunc("PUT /api/v1/config/risk", tag("config", "update", h.UpdateRiskConfig))
 	api.HandleFunc("POST /api/v1/audits", tag("audit", "create", h.Audit))
-	api.HandleFunc("GET /api/v1/activity", h.ActivityLog) // reading the log is not logged: it would feed itself
+	api.HandleFunc("POST /api/v1/activity/refusal", h.ActivityRefusal) // untagged: it writes its own entry
+	api.HandleFunc("GET /api/v1/activity", h.ActivityLog)              // reading the log is not logged: it would feed itself
 	api.HandleFunc("GET /api/v1/labels", h.Labels)
 	api.HandleFunc("GET /api/v1/auth/session", a.Session)
 	api.HandleFunc("POST /api/v1/auth/verify", tag("session", "login", a.Verify))

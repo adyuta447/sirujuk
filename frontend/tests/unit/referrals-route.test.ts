@@ -4,6 +4,7 @@ jest.mock("../../lib/auth/guard", () => ({
   wajibPeran: async () => ({ sesi: { sub: "a", nama: "A", role: "verifikator", sid: "s".repeat(20), exp: 0 } }),
   keBackendSebagai: (...a: unknown[]) => keBackendSebagai(...(a as [])),
   json: (status: number, code: string, message: string) => Response.json({ code, message }, { status }),
+  tolak: (_sesi: unknown, _jejak: unknown, status: number, code: string, message: string) => Response.json({ code, message }, { status }),
 }));
 import { GET } from "../../app/api/v1/referrals/route";
 

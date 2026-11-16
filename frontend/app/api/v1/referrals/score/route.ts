@@ -2,11 +2,13 @@
 import { cookies } from "next/headers";
 import { asalSama } from "../../../../../lib/auth/origin";
 import { bolehSkor } from "../../../../../lib/akses";
+import { laporkanPenolakan } from "../../../../../lib/auth/laporan-penolakan";
 import { COOKIE, sesiDariCookie } from "../../../../../lib/auth/session";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8080";
 const MAX_BODY = 32 * 1024;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/;
+const JEJAK = { resource: "referral", action: "create" } as const;
 
 export async function POST(request: Request) {
   // Hanya petugas yang sudah masuk. Tanpa ini, token backend akan dipakai untuk siapa saja.
@@ -16,13 +18,16 @@ export async function POST(request: Request) {
       { code: "UNAUTHORIZED", message: "Silakan masuk dulu" },
       { status: 401 },
     );
-  if (!bolehSkor(sesi.role))
+  if (!bolehSkor(sesi.role)) {
+    laporkanPenolakan(sesi, JEJAK, 403, "FORBIDDEN");
     return Response.json(
       { code: "FORBIDDEN", message: "Peran ini tidak boleh menghitung skor" },
       { status: 403 },
     );
+  }
   // Same-origin only; a cross-site form/fetch cannot spend the server token.
   if (!asalSama(request)) {
+    laporkanPenolakan(sesi, JEJAK, 403, "FORBIDDEN");
     return Response.json(
       { code: "FORBIDDEN", message: "Origin tidak diizinkan" },
       { status: 403 },
@@ -30,12 +35,14 @@ export async function POST(request: Request) {
   }
   const key = request.headers.get("idempotency-key") ?? "";
   if (!SAFE_ID.test(key)) {
+    laporkanPenolakan(sesi, JEJAK, 400, "INVALID_REQUEST");
     return Response.json(
       { code: "INVALID_REQUEST", message: "Permintaan tidak valid" },
       { status: 400 },
     );
   }
   if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY) {
+    laporkanPenolakan(sesi, JEJAK, 413, "PAYLOAD_TOO_LARGE");
     return Response.json(
       { code: "PAYLOAD_TOO_LARGE", message: "Permintaan terlalu besar" },
       { status: 413 },
@@ -43,6 +50,7 @@ export async function POST(request: Request) {
   }
   const body = await request.text();
   if (body.length > MAX_BODY) {
+    laporkanPenolakan(sesi, JEJAK, 413, "PAYLOAD_TOO_LARGE");
     return Response.json(
       { code: "PAYLOAD_TOO_LARGE", message: "Permintaan terlalu besar" },
       { status: 413 },

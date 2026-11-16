@@ -13,6 +13,7 @@ jest.mock("../../lib/auth/guard", () => {
     bacaBody: async (r: Request) => r.text(),
     keBackendSebagai: (...a: unknown[]) => mockKeBackend(...a),
     json: (status: number, code: string, message: string) => Response.json({ code, message }, { status }),
+    tolak: (_sesi: unknown, _jejak: unknown, status: number, code: string, message: string) => Response.json({ code, message }, { status }),
   };
 });
 import { GET as hospitals } from "../../app/api/v1/hospitals/route";

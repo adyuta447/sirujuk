@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { bolehSkor } from "../akses";
 import type { Peran } from "../akses";
+import { laporkanPenolakan } from "./laporan-penolakan";
+import type { Jejak } from "./laporan-penolakan";
 import { asalSama } from "./origin";
 import { COOKIE, sesiDariCookie } from "./session";
 import type { Sesi } from "./token";
@@ -14,17 +16,27 @@ export const ID_AMAN = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/;
 
 type Hasil = { sesi: Sesi } | { galat: Response };
 
-/** Pengguna yang sudah masuk dengan peran yang diizinkan. Untuk request yang mengubah data, Origin juga harus sama. */
-export async function wajibPeran(request: Request, izinkan: (peran: Peran) => boolean, ubahData: boolean): Promise<Hasil> {
+/** Menolak dengan `json` dan melaporkannya ke log aktivitas backend (satu kali). Hanya dipakai setelah sesi sah. */
+export function tolak(sesi: Sesi, jejak: Jejak | undefined, status: number, code: string, message: string, resourceId?: string): Response {
+  if (jejak) laporkanPenolakan(sesi, jejak, status, code, resourceId);
+  return json(status, code, message);
+}
+
+/**
+ * Pengguna yang sudah masuk dengan peran yang diizinkan. Untuk request yang mengubah data, Origin juga harus sama.
+ * Dengan `jejak`, penolakan 403 dilaporkan ke log aktivitas; tanpa sesi sah (401) tidak ada yang dilaporkan.
+ */
+export async function wajibPeran(request: Request, izinkan: (peran: Peran) => boolean, ubahData: boolean, jejak?: Jejak, resourceId?: string): Promise<Hasil> {
   const sesi = await sesiDariCookie((await cookies()).get(COOKIE)?.value);
   if (!sesi) return { galat: json(401, "UNAUTHORIZED", "Silakan masuk dulu") };
-  if (!izinkan(sesi.role)) return { galat: json(403, "FORBIDDEN", "Peran ini tidak boleh melakukan aksi ini") };
-  if (ubahData && !asalSama(request)) return { galat: json(403, "FORBIDDEN", "Origin tidak diizinkan") };
+  if (!izinkan(sesi.role)) return { galat: tolak(sesi, jejak, 403, "FORBIDDEN", "Peran ini tidak boleh melakukan aksi ini", resourceId) };
+  if (ubahData && !asalSama(request)) return { galat: tolak(sesi, jejak, 403, "FORBIDDEN", "Origin tidak diizinkan", resourceId) };
   return { sesi };
 }
 
 /** Petugas (verifikator/TKMKB) yang sudah masuk. */
-export const wajibPetugas = (request: Request, ubahData: boolean) => wajibPeran(request, bolehSkor, ubahData);
+export const wajibPetugas = (request: Request, ubahData: boolean, jejak?: Jejak, resourceId?: string) =>
+  wajibPeran(request, bolehSkor, ubahData, jejak, resourceId);
 
 /** Isi body sebagai teks, atau null bila melebihi batas. Backend tetap memvalidasi isinya. */
 export async function bacaBody(request: Request, maksBytes: number): Promise<string | null> {
@@ -67,13 +79,13 @@ export const keBackendSebagai = (sesi: Sesi, path: string, init: RequestInit = {
  * Rujukan merah hanya diproses TKMKB; verifikator hanya kuning/hijau. Dicek di server dari skor tersimpan, bukan dari
  * body. Mengembalikan Response galat, atau null bila boleh. Gagal membaca rujukan = ditolak (fail closed).
  */
-export async function wajibTingkat(sesi: Sesi, id: string): Promise<Response | null> {
+export async function wajibTingkat(sesi: Sesi, id: string, jejak?: Jejak): Promise<Response | null> {
   if (sesi.role === "tkmkb") return null;
   const res = await keBackendSebagai(sesi, `/api/v1/referrals/${encodeURIComponent(id)}`);
   if (!res.ok) return res;
   const d = await res.json().catch(() => null);
   if (!d?.decision) return json(502, "UPSTREAM_INVALID", "Data rujukan tidak dapat diverifikasi");
-  if (d.decision.decision === "red") return json(403, "FORBIDDEN_LEVEL", "Rujukan berisiko tinggi hanya boleh diproses anggota TKMKB");
+  if (d.decision.decision === "red") return tolak(sesi, jejak, 403, "FORBIDDEN_LEVEL", "Rujukan berisiko tinggi hanya boleh diproses anggota TKMKB", id);
   return null;
 }
 

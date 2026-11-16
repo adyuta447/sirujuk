@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { RangeField } from "../../components/molecules/RangeField";
 import { BandPreview } from "../../components/organisms/risk-config/BandPreview";
 import { CheckField } from "../../components/molecules/CheckField";
 import { CostEstimate } from "../../components/organisms/analytics/CostEstimate";
@@ -56,6 +57,21 @@ describe("ModelInputs", () => {
       expect(screen.getByPlaceholderText(contoh)).toBeInTheDocument();
     }
     expect(screen.queryByPlaceholderText("Tidak diubah")).toBeNull();
+  });
+});
+
+describe("RangeField", () => {
+  it("menampilkan nilai sebagai chip, mengisi trek sesuai nilai, dan bisa diatur ulang", () => {
+    const onChange = jest.fn();
+    const { rerender } = render(<RangeField label="Jarak" value="" onChange={onChange} min={0} max={500} step={5} satuan="km" />);
+    expect(screen.getByText("Belum diatur")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Atur ulang" })).toBeNull();
+    rerender(<RangeField label="Jarak" value="125" onChange={onChange} min={0} max={500} step={5} satuan="km" />);
+    const slider = screen.getByLabelText("Jarak");
+    expect(slider).toHaveStyle({ "--isi": "25%" });
+    expect(slider).toHaveAttribute("aria-valuetext", "125 km");
+    fireEvent.click(screen.getByRole("button", { name: "Atur ulang" }));
+    expect(onChange).toHaveBeenCalledWith("");
   });
 });
 

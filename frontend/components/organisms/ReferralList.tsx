@@ -4,10 +4,10 @@ import { PAGE_SIZE } from "../../lib/constants";
 import type { RujukanCase } from "../../lib/sirujuk-data";
 import { useReferralList } from "../../hooks/useReferralList";
 import { Card } from "../atoms/Card";
+import { EmptyState } from "../atoms/EmptyState";
 import { PageHead } from "../atoms/PageHead";
 import { PageScroll } from "../molecules/PageScroll";
 import { PagerKursor } from "../molecules/PagerKursor";
-import { ReferralListEmpty } from "./referral-list/ReferralListEmpty";
 import { ReferralRow } from "./referral-list/ReferralRow";
 
 interface ReferralListProps {
@@ -37,7 +37,7 @@ export function ReferralList({ onSelect, wilayah, query }: ReferralListProps) {
         </p>
       )}
       {!list.isLoading && !list.isError && list.total === 0 && (
-        <ReferralListEmpty />
+        <EmptyState art="tidak-ditemukan" title="Tidak ada rujukan yang cocok" body="Ubah kata kunci atau wilayah." />
       )}
       <Card className="overflow-hidden">
         <div className="hidden sm:grid grid-cols-[1.2fr_1.4fr_auto] gap-4 px-5 py-3 border-b border-[#DCE3EC] text-[11px] font-bold uppercase tracking-wider text-[#64748B]">

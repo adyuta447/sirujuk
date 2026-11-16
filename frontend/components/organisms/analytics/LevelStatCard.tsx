@@ -1,4 +1,5 @@
 import type { StatFaskes } from "../../../types/prevention";
+import { EmptyState } from "../../atoms/EmptyState";
 import { Card } from "../../atoms/Card";
 import { DestinationBar } from "./DestinationBar";
 
@@ -16,7 +17,7 @@ export function LevelStatCard({ title, rows }: LevelStatCardProps) {
         <div className="text-xs text-[#56657A] mt-0.5">Rujukan kuning atau merah dari seluruh rujukan faskes.</div>
       </div>
       <div className="p-5 space-y-3.5">
-        {rows.length === 0 && <p className="text-sm text-[#56657A]">Belum ada rujukan yang ditandai.</p>}
+        {rows.length === 0 && <EmptyState embedded art="antrean-kosong" title="Belum ada rujukan yang ditandai" />}
         {rows.map((r) => (
           <DestinationBar key={r.id} tujuan={{ nama: r.id, jumlah: `${r.flagged} dari ${r.total}`, porsi: r.flagged_percent }} />
         ))}

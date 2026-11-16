@@ -14,6 +14,7 @@ describe("EmptyState", () => {
   it("names the cause and the next action", () => {
     render(
       <EmptyState
+        art="antrean-kosong"
         title="Tidak ada rujukan di antrean ini"
         body="Pilih kategori lain untuk melihat rujukan lain."
       />,
@@ -24,6 +25,23 @@ describe("EmptyState", () => {
     expect(
       screen.getByText("Pilih kategori lain untuk melihat rujukan lain."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("EmptyState layout", () => {
+  it("menaruh ilustrasi lebih dulu, lalu judul, penjelasan, dan langkah berikutnya", () => {
+    const { container } = render(
+      <EmptyState art="tidak-ditemukan" title="Judul" body="Penjelasan">
+        <button type="button">Langkah</button>
+      </EmptyState>,
+    );
+    const urut = Array.from(container.querySelectorAll("img, p, button")).map((el) => el.tagName + (el.textContent ?? ""));
+    expect(urut).toEqual(["IMG", "PJudul", "PPenjelasan", "BUTTONLangkah"]);
+    expect(container.querySelector("img")).toHaveAttribute("src", "/illustrations/tidak-ditemukan.svg");
+  });
+  it("tetap berilustrasi saat dipakai di dalam kartu lain", () => {
+    const { container } = render(<EmptyState embedded art="selesai" title="Kosong" />);
+    expect(container.querySelector("img")).toBeInTheDocument();
   });
 });
 

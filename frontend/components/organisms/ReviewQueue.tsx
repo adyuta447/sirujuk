@@ -3,11 +3,11 @@
 import { PAGE_SIZE } from "../../lib/constants";
 import type { RujukanCase } from "../../lib/sirujuk-data";
 import { useReviewQueue } from "../../hooks/useReviewQueue";
+import { EmptyState } from "../atoms/EmptyState";
 import { PageHead } from "../atoms/PageHead";
 import { PageScroll } from "../molecules/PageScroll";
 import { PagerKursor } from "../molecules/PagerKursor";
 import { QueueCard } from "./review-queue/QueueCard";
-import { QueueEmpty } from "./review-queue/QueueEmpty";
 import { RiskFilter } from "./review-queue/RiskFilter";
 
 interface ReviewQueueProps {
@@ -42,7 +42,7 @@ export function ReviewQueue({ onSelect, wilayah, query }: ReviewQueueProps) {
         </p>
       )}
       {!queue.isLoading && queue.total === 0 ? (
-        <QueueEmpty />
+        <EmptyState art="antrean-kosong" title="Tidak ada rujukan" body="Coba kategori lain atau pilih Semua." />
       ) : (
         <div className="space-y-4">
           {queue.tampak.map((c) => (

@@ -33,7 +33,7 @@ export function Hospitals({ wilayah, query }: HospitalsProps) {
       <KindFilter active={kind} onChange={setKind} />
       {isLoading && <LoadingState label="Memuat direktori rumah sakit" />}
       {isError && <ErrorState message="Direktori rumah sakit gagal dimuat." onRetry={() => refetch()} />}
-      {data && tampak.length === 0 && <EmptyState title="Tidak ada rumah sakit yang cocok" body="Ubah jenis, wilayah, atau kata pencarian." />}
+      {data && tampak.length === 0 && <EmptyState art="tidak-ditemukan" title="Tidak ada rumah sakit yang cocok" body="Ubah jenis, wilayah, atau kata pencarian." />}
       {tampak.length > 0 && (
         <Card className="overflow-hidden">
           <HospitalListHeader />

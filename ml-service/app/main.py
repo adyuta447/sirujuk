@@ -1,3 +1,5 @@
+import hmac
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -14,6 +16,23 @@ async def lifespan(_: FastAPI):
 # Private service (Cloud Run IAM): no interactive docs or schema, so nothing advertises the API surface.
 app = FastAPI(title="SIRUJUK ML Inference", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 app.include_router(router, prefix="/v1")
+
+
+@app.middleware("http")
+async def bearer_token(request: Request, call_next):
+    # Shared secret with the backend (ML_API_TOKEN) for hosts where the ingress is public (Azure Container Apps Express).
+    # /health stays open for probes. Unset = no check (tests, Cloud Run behind IAM); app.serve refuses to start http mode without it.
+    token = os.getenv("ML_API_TOKEN", "")
+    if token and request.url.path != "/health":
+        sent = request.headers.get("authorization", "")
+        if not hmac.compare_digest(sent.encode(), f"Bearer {token}".encode()):
+            return JSONResponse({"detail": "unauthorized"}, status_code=401, headers={"WWW-Authenticate": "Bearer"})
+    return await call_next(request)
+
+
+@app.get("/health")
+def health() -> dict:
+    return {"status": "ok"}
 
 
 @app.exception_handler(RequestValidationError)

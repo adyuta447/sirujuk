@@ -127,19 +127,28 @@ with TestClient(app) as c:
             proc.wait(10)
         except subprocess.TimeoutExpired:
             proc.kill()
-    proc, p = launch(ML_SERVE="http")
+    tok = "t" * 40; auth = {"Authorization": f"Bearer {tok}"}
+    proc, _ = launch(ML_SERVE="http")  # no token: must stop, never serve an open /v1/predict
+    assert proc.wait(30) != 0, "ML_SERVE=http without ML_API_TOKEN must stop the container"
+    proc, p = launch(ML_SERVE="http", ML_API_TOKEN=tok)
     try:
         for _ in range(120):  # the model loads before the first request is accepted
             try:
-                info_http = json.load(urllib.request.urlopen(f"http://127.0.0.1:{p}/v1/model", timeout=2)); break
+                info_http = json.load(urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{p}/v1/model", headers=auth), timeout=2)); break
             except OSError:
                 assert proc.poll() is None, "ML_SERVE=http exited"; time.sleep(0.25)
         else:
             raise AssertionError("ML_SERVE=http never answered")
         assert info_http == info, (info_http, info)
         req = urllib.request.Request(f"http://127.0.0.1:{p}/v1/predict", data=json.dumps(dict(base, sisrute_available=True, sisrute_age_days=2, n90=60, ns90=0.6, n180=80,
-                                     hhi180=6000, to_dominant_dest=True, dest_is_nearest=False)).encode(), headers={"Content-Type": "application/json"})
+                                     hhi180=6000, to_dominant_dest=True, dest_is_nearest=False)).encode(), headers={"Content-Type": "application/json", **auth})
         assert json.load(urllib.request.urlopen(req, timeout=5)) == bad, "a real uvicorn process must answer like the TestClient"
+        for path, hdrs in (("/v1/model", {}), ("/v1/model", {"Authorization": "Bearer wrong"}), ("/v1/predict", {})):  # 401 without the right token
+            try:
+                urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{p}{path}", headers=hdrs), timeout=5); raise AssertionError(f"{path} open without a token")
+            except urllib.error.HTTPError as e:
+                assert e.code == 401, e.code
+        assert json.load(urllib.request.urlopen(f"http://127.0.0.1:{p}/health", timeout=5)) == {"status": "ok"}
     finally:
         stop(proc)
     from app.serve import mode_from

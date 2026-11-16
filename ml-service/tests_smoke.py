@@ -1,4 +1,5 @@
 """Run with the trained model present: python tests_smoke.py"""
+import os
 import sys
 import numpy as np
 from fastapi.testclient import TestClient
@@ -85,7 +86,75 @@ with TestClient(app) as c:
         raise AssertionError("invalid reason accepted")
     except grpc.RpcError as e:
         assert e.code() == grpc.StatusCode.INVALID_ARGUMENT and base["clinical_narrative"] not in e.details(), e.details()
+    # an invalid request is refused naming the fields only, never echoing the input (the narrative is clinical text), on both transports
+    secret = "NIK-3173-RAHASIA " * 400  # over the 4000-character limit
+    refused = c.post("/v1/predict", json=dict(base, clinical_narrative=secret, reason="bribe"))
+    assert refused.status_code == 422 and "RAHASIA" not in refused.text and refused.json() == {"detail": "invalid fields: reason, clinical_narrative"}, refused.text[:200]
+    assert c.post("/v1/predict", content=b'{"referral_id": ', headers={"Content-Type": "application/json"}).status_code == 422
+    try:
+        stub.Predict(pb.PredictRequest(**dict(rpc_base, clinical_narrative=secret, reason="bribe")))
+        raise AssertionError("invalid narrative accepted")
+    except grpc.RpcError as e:
+        assert e.code() == grpc.StatusCode.INVALID_ARGUMENT and "RAHASIA" not in e.details() and e.details() == refused.json()["detail"], e.details()  # the same message on both transports
+    # strict parity: the reply over HTTP and over gRPC carry the same fields with the same values, not just the headline ones
+    proto_fields = {("indicators" if f.name == "indicators_json" else f.name) for f in pb.PredictResponse.DESCRIPTOR.fields}
+    parity_cases = [
+        (bad, dict(sisrute_available=True, sisrute_age_days=2, n90=60, ns90=0.6, n180=80, hhi180=6000, to_dominant_dest=True, dest_is_nearest=False)),
+        (cold, dict(reason="clinical", clinical_narrative="tekanan darah tinggi sakit kepala tengkuk pusing hipertensi")),
+        (unk, dict(diagnosis_code="K30", reason="clinical", n180=80, hhi180=6000, n90=60, ns90=0.1, to_dominant_dest=True)),
+        (blank, dict(reason="clinical", clinical_narrative="")),
+        (junk, dict(diagnosis_code="ZZZ.99", reason="clinical")),
+    ]
+    for http, kw in parity_cases:
+        assert set(http) == proto_fields, (set(http) ^ proto_fields)  # a field added to one side only would drift silently
+        g = stub.Predict(pb.PredictRequest(**dict(rpc_base, **kw)))
+        for k in proto_fields - {"reasons", "indicators"}:
+            assert getattr(g, k) == http[k], (k, getattr(g, k), http[k])
+        assert [(x.code, x.detail, x.contribution) for x in g.reasons] == [(x["code"], x["detail"], x["contribution"]) for x in http["reasons"]]
+        assert json.loads(g.indicators_json) == http["indicators"]
     srv.stop(0)
+    # the container entry point (app/serve.py): ML_SERVE picks the transport, the default stays gRPC, a bad value stops the container
+    import socket, subprocess, time, urllib.request
+    def launch(**env):
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0)); p = s.getsockname()[1]
+        e = {k: v for k, v in os.environ.items() if k != "ML_SERVE"}  # whatever the caller's shell has must not leak into the case under test
+        proc = subprocess.Popen([sys.executable, "-m", "app.serve"], env={**e, "PORT": str(p), **env}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return proc, p
+    def stop(proc):
+        proc.terminate()
+        try:
+            proc.wait(10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+    proc, p = launch(ML_SERVE="http")
+    try:
+        for _ in range(120):  # the model loads before the first request is accepted
+            try:
+                info_http = json.load(urllib.request.urlopen(f"http://127.0.0.1:{p}/v1/model", timeout=2)); break
+            except OSError:
+                assert proc.poll() is None, "ML_SERVE=http exited"; time.sleep(0.25)
+        else:
+            raise AssertionError("ML_SERVE=http never answered")
+        assert info_http == info, (info_http, info)
+        req = urllib.request.Request(f"http://127.0.0.1:{p}/v1/predict", data=json.dumps(dict(base, sisrute_available=True, sisrute_age_days=2, n90=60, ns90=0.6, n180=80,
+                                     hhi180=6000, to_dominant_dest=True, dest_is_nearest=False)).encode(), headers={"Content-Type": "application/json"})
+        assert json.load(urllib.request.urlopen(req, timeout=5)) == bad, "a real uvicorn process must answer like the TestClient"
+    finally:
+        stop(proc)
+    from app.serve import mode_from
+    assert [mode_from(e) for e in ({}, {"ML_SERVE": ""}, {"ML_SERVE": " HTTP "}, {"ML_SERVE": "grpc"})] == ["grpc", "grpc", "http", "grpc"]
+    proc, p = launch()  # ML_SERVE unset: the default stays gRPC, so Cloud Run is unchanged
+    try:
+        ch = grpc.insecure_channel(f"127.0.0.1:{p}")
+        grpc.channel_ready_future(ch).result(timeout=30)
+        g = pb_grpc.InferenceStub(ch).Predict(pb.PredictRequest(**dict(rpc_base, sisrute_available=True, sisrute_age_days=2, n90=60, ns90=0.6, n180=80, hhi180=6000,
+                                                                       to_dominant_dest=True, dest_is_nearest=False)))
+        assert g.score == bad["score"] and g.model_version == bad["model_version"]
+    finally:
+        stop(proc)
+    proc, _ = launch(ML_SERVE="websocket")
+    assert proc.wait(30) != 0, "an unknown ML_SERVE must stop the container, not fall back"
     # retrain on real audit labels: too few -> no model; enough -> judged on the newest labels, never on its own training rows
     import retrain
     from app.core.model_loader import load_models

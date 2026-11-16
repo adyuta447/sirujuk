@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { CostEstimate } from "../../components/organisms/analytics/CostEstimate";
 import { PreventionPanel } from "../../components/organisms/analytics/PreventionPanel";
+import { FORM_SIMULASI_KOSONG } from "../../data/form-simulasi-kosong";
+import { ModelInputs } from "../../components/organisms/simulation/ModelInputs";
 import { RiskConfigForm } from "../../components/organisms/risk-config/RiskConfigForm";
 import { SimulationResult } from "../../components/organisms/simulation/SimulationResult";
 import type { KonfigRisiko } from "../../types/risk-config";
@@ -42,6 +44,16 @@ describe("kategori di Pengaturan Risiko", () => {
   it("TKMKB mengisi rekomendasi lewat kolom berlabel per kategori", () => {
     render(bungkus(<RiskConfigForm konfig={KONFIG} bisaUbah />));
     expect(screen.getByLabelText("Rekomendasi tindakan Merah (tinggi)")).toHaveValue("Periksa");
+  });
+});
+
+describe("ModelInputs", () => {
+  it("setiap isian teks dan angka memberi contoh nilai, bukan teks generik", () => {
+    render(<ModelInputs form={FORM_SIMULASI_KOSONG} onChange={() => {}} />);
+    for (const contoh of ["Contoh: r-001", "Contoh: J06.9", "Contoh: 25", "Contoh: 40", "Contoh: 45", "Contoh: 2500", "Contoh: 7"]) {
+      expect(screen.getByPlaceholderText(contoh)).toBeInTheDocument();
+    }
+    expect(screen.queryByPlaceholderText("Tidak diubah")).toBeNull();
   });
 });
 

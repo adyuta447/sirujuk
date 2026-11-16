@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"github.com/sirujuk/backend-go/domain"
 	"log"
 	"net/http"
@@ -52,12 +53,9 @@ func main() {
 	}
 	cancelPing()
 
-	ml, err := client.NewMLClient(env("ML_SERVICE_URL", "http://localhost:8000"))
+	ml, err := newML(env("ML_SERVICE_URL", "http://localhost:8000"), env("ML_TRANSPORT", "grpc"), os.Getenv("ML_AUTH") == "cloudrun")
 	if err != nil {
 		log.Fatal(err)
-	}
-	if os.Getenv("ML_AUTH") == "cloudrun" {
-		ml.IDToken = client.CloudRunIDToken(ml.BaseURL)
 	}
 	prod := env("APP_ENV", "development") == "production"
 	dummy := os.Getenv("DUMMY_SCORING") == "true"
@@ -230,6 +228,33 @@ func costAssumption() *handler.CostAssumption {
 		return nil
 	}
 	return &handler.CostAssumption{PerPreventedReferralIDR: cost, PreventionPercent: pct}
+}
+
+// newML builds the ML client. ML_TRANSPORT=grpc (the default: Cloud Run, compose) needs HTTP/2 end to end; "http" calls
+// POST /v1/predict instead, for hosts without it (Azure Container Apps Express). Both return the same scores.
+func newML(baseURL, transport string, cloudRunAuth bool) (service.MLServiceClient, error) {
+	switch transport {
+	case "grpc":
+		c, err := client.NewMLClient(baseURL)
+		if err != nil {
+			return nil, err
+		}
+		if cloudRunAuth {
+			c.IDToken = client.CloudRunIDToken(c.BaseURL)
+		}
+		return c, nil
+	case "http":
+		c, err := client.NewHTTPMLClient(baseURL)
+		if err != nil {
+			return nil, err
+		}
+		if cloudRunAuth {
+			c.IDToken = client.CloudRunIDToken(c.BaseURL)
+		}
+		log.Print("ML transport: http (POST /v1/predict)")
+		return c, nil
+	}
+	return nil, fmt.Errorf("ML_TRANSPORT %q: want grpc or http", transport)
 }
 
 // minRedLayers reads MIN_RED_LAYERS (default 1 = trust the model). 2 is recommended before claims are really held.

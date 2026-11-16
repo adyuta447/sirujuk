@@ -28,8 +28,9 @@ func RunBPJS(store *repository.MemoryStore, path string, eval func(context.Conte
 	if err := json.Unmarshal(data, &reqs); err != nil {
 		return 0, fmt.Errorf("%s: %w", path, err)
 	}
+	score := scorer(eval)
 	for _, req := range reqs {
-		store.UpsertSample(req, score(req, eval), BPJSSource)
+		store.UpsertSample(req, score(req), BPJSSource)
 	}
 	return len(reqs), nil
 }

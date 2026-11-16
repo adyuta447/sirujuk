@@ -4,12 +4,14 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/sirujuk/backend-go/domain"
+	"github.com/sirujuk/backend-go/internal/middleware"
 	"github.com/sirujuk/backend-go/internal/repository"
 )
 
@@ -91,4 +93,45 @@ func matchOr(want, got string) bool { return want == "" || want == got }
 func validActivityTime(s string) bool {
 	_, err := time.Parse(domain.OrderedTime, s)
 	return err == nil
+}
+
+var (
+	refusalResources = map[string]bool{"referral": true, "clarification": true, "audit": true, "simulation": true, "config": true, "session": true}
+	refusalActions   = map[string]bool{"create": true, "read": true, "list": true, "update": true, "delete": true, "rescore": true, "simulate": true, "login": true, "logout": true}
+	refusalIDRe      = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,64}$`)
+	refusalCodeRe    = regexp.MustCompile(`^[A-Z_]{1,40}$`)
+)
+
+// ActivityRefusal: POST /activity/refusal. The Next.js proxy refuses some requests itself (a role or level that may
+// not, a malformed request) and never calls the backend for them, so it reports the refusal here to keep them in the
+// log. Who it was comes only from the verified X-Actor headers, never from the body, and the body is a closed set of
+// words, so it cannot carry free text.
+// shortcut: any signed-in user's session could report entries about itself and none are rate limited, as only the
+// proxy holds the service token; add a per-actor limit if that stops being true.
+func (h ReferralHandler) ActivityRefusal(w http.ResponseWriter, r *http.Request) {
+	actor, role, ok := actorIn(w, r, roleTKMKB, roleVerifikator, roleDinkes, roleDokter)
+	if !ok {
+		return
+	}
+	var body struct {
+		Resource   string `json:"resource"`
+		Action     string `json:"action"`
+		ResourceID string `json:"resource_id"`
+		Status     int    `json:"status"`
+		Code       string `json:"code"`
+	}
+	if err := decodeStrict(w, r, 1<<10, &body); err != nil || !refusalResources[body.Resource] || !refusalActions[body.Action] ||
+		(body.ResourceID != "" && !refusalIDRe.MatchString(body.ResourceID)) || body.Status < 400 || body.Status > 499 || !refusalCodeRe.MatchString(body.Code) {
+		badRequest(w)
+		return
+	}
+	if h.ActivitySink == nil {
+		writeJSON(w, http.StatusServiceUnavailable, apiError{"ACTIVITY_UNAVAILABLE", "The activity log is not available", ""})
+		return
+	}
+	e := domain.Activity{Actor: actor, Role: role, Action: body.Action, Resource: body.Resource, ResourceID: body.ResourceID,
+		Outcome: domain.ActivityOutcome(body.Status), Status: body.Status, Detail: []string{body.Code}, Source: domain.ActivityFromProxy}
+	middleware.Stamp(&e)
+	h.ActivitySink.Record(e)
+	w.WriteHeader(http.StatusNoContent)
 }

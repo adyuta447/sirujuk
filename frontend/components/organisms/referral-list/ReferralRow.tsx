@@ -13,7 +13,7 @@ export function ReferralRow({ kasus: c, onSelect }: ReferralRowProps) {
     <button
       type="button"
       onClick={() => onSelect(c)}
-      className="w-full grid grid-cols-1 sm:grid-cols-[1.2fr_1.4fr_auto] gap-2 sm:gap-4 items-start sm:items-center px-5 py-3.5 hover:bg-[#F8FAFC] transition-colors text-left"
+      className="w-full grid grid-cols-1 sm:grid-cols-[1.2fr_1.4fr_10rem] gap-2 sm:gap-4 items-start sm:items-center px-5 py-3.5 hover:bg-[#F8FAFC] transition-colors text-left"
     >
       <div className="min-w-0">
         <div className="font-semibold text-sm text-[#0E1B2A]">{tampilPasien(c)}</div>
@@ -26,7 +26,9 @@ export function ReferralRow({ kasus: c, onSelect }: ReferralRowProps) {
           <span className="text-sm font-semibold text-[#0E1B2A] truncate leading-snug">{c.fasalTujuan}</span>
         </div>
       </div>
-      <RiskBadge level={c.risk} score={c.riskScore} />
+      <div className="sm:justify-self-end">
+        <RiskBadge level={c.risk} score={c.riskScore} />
+      </div>
     </button>
   );
 }

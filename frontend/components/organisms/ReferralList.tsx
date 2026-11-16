@@ -40,10 +40,10 @@ export function ReferralList({ onSelect, wilayah, query }: ReferralListProps) {
         <EmptyState art="tidak-ditemukan" title="Tidak ada rujukan yang cocok" body="Ubah kata kunci atau wilayah." />
       )}
       <Card className="overflow-hidden">
-        <div className="hidden sm:grid grid-cols-[1.2fr_1.4fr_auto] gap-4 px-5 py-3 border-b border-[#DCE3EC] text-[11px] font-bold uppercase tracking-wider text-[#64748B]">
+        <div className="hidden sm:grid grid-cols-[1.2fr_1.4fr_10rem] gap-4 px-5 py-3 border-b border-[#DCE3EC] text-[11px] font-bold uppercase tracking-wider text-[#64748B]">
           <span>Pasien dan rujukan</span>
           <span>Faskes asal dan tujuan</span>
-          <span>Risiko</span>
+          <span className="text-right">Risiko</span>
         </div>
         <div className="divide-y divide-[#EEF1F5]">
           {list.tampak.map((c) => (

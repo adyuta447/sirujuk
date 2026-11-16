@@ -15,7 +15,7 @@ interface CategoryActionRowProps {
 /** Satu baris: kategori (lencana risiko yang sama dengan di seluruh app), rekomendasi tindakan, dan penanda peringatan. */
 export function CategoryActionRow({ label, level, aksi, bisaUbah, onChange }: CategoryActionRowProps) {
   return (
-    <li className="grid grid-cols-1 sm:grid-cols-[9rem_1fr_auto] gap-2 sm:gap-4 items-start sm:items-center px-5 py-4">
+    <li className="grid grid-cols-1 sm:grid-cols-[9rem_1fr_9rem] gap-2 sm:gap-4 items-start sm:items-center px-5 py-4">
       <div>
         <RiskBadge level={level} className="sm:w-full sm:justify-center" />
       </div>
@@ -31,12 +31,14 @@ export function CategoryActionRow({ label, level, aksi, bisaUbah, onChange }: Ca
         <p className="text-sm text-[#0E1B2A] leading-relaxed">{aksi.recommendation}</p>
       )}
       {bisaUbah ? (
-        <label className="inline-flex items-center gap-2 text-sm text-[#0E1B2A] whitespace-nowrap">
+        <label className="inline-flex items-center gap-2 text-sm text-[#0E1B2A] whitespace-nowrap sm:justify-self-end">
           <input type="checkbox" checked={aksi.alert} onChange={(e) => onChange({ ...aksi, alert: e.target.checked })} className="size-4 accent-[#1E3A5F]" />
           Peringatan
         </label>
       ) : (
-        <Chip>{aksi.alert ? "Peringatan aktif" : "Tanpa peringatan"}</Chip>
+        <div className="sm:justify-self-end">
+          <Chip>{aksi.alert ? "Peringatan aktif" : "Tanpa peringatan"}</Chip>
+        </div>
       )}
     </li>
   );

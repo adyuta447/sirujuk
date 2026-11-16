@@ -20,7 +20,7 @@ export function ModelInputs({ form, onChange }: ModelInputsProps) {
   return (
     <TitledCard title="Masukan model">
       <p className="mt-1 text-sm text-[#56657A]">Kosongkan isian untuk memakai nilai dari rujukan dasar.</p>
-      <div className="mt-5 space-y-5">
+      <div className="mt-5 space-y-6">
         <FieldGroup title="Rujukan">
           <FieldGrid kolom={4}>
             <LabeledField label="ID rujukan dasar (opsional)" value={form.baseId} onChange={(v) => onChange("baseId", v)} maxLength={64} />

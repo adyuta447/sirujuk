@@ -53,15 +53,17 @@ jobs:
           az containerapp env show --name sirujuk-azure-env --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1 ||
             az containerapp env create --name sirujuk-azure-env --resource-group "$AZURE_RESOURCE_GROUP" --location "$AZURE_LOCATION"
 
+          # Express environments have no HTTP/2 ingress, so the ML image serves HTTP here (ML_SERVE=http) and the
+          # backend calls POST /v1/predict (ML_TRANSPORT=http). Cloud Run keeps the gRPC default.
           if az containerapp show --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
             az containerapp update --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
-              --image "$REGISTRY/ml:${GITHUB_SHA}"
+              --image "$REGISTRY/ml:${GITHUB_SHA}" --set-env-vars "ML_SERVE=http"
           else
             az containerapp create --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
               --environment sirujuk-azure-env --image "$REGISTRY/ml:${GITHUB_SHA}" \
               --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
               --ingress internal --target-port 8000 --transport http \
-              --min-replicas 1 --max-replicas 1
+              --min-replicas 1 --max-replicas 1 --env-vars "ML_SERVE=http"
           fi
 
           ML_FQDN=$(az containerapp show --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -70,7 +72,7 @@ jobs:
             az containerapp update --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \
               --image "$REGISTRY/backend:${GITHUB_SHA}" \
               --set-env-vars "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
-                "ML_SERVICE_URL=https://$ML_FQDN" "REDIS_URL=$REDIS_URL" \
+                "ML_SERVICE_URL=https://$ML_FQDN" "ML_TRANSPORT=http" "REDIS_URL=$REDIS_URL" \
                 "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
           else
             az containerapp create --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -79,7 +81,7 @@ jobs:
               --ingress external --target-port 8080 --transport http \
               --min-replicas 1 --max-replicas 1 \
               --env-vars "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
-                "ML_SERVICE_URL=https://$ML_FQDN" "REDIS_URL=$REDIS_URL" \
+                "ML_SERVICE_URL=https://$ML_FQDN" "ML_TRANSPORT=http" "REDIS_URL=$REDIS_URL" \
                 "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
           fi
 

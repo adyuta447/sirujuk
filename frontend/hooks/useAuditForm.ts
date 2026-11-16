@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AUDIT_CHECKLIST } from "../lib/sirujuk-data";
 import type { Keputusan, RujukanCase } from "../lib/sirujuk-data";
+import { denganProses } from "../lib/dengan-proses";
 import { submitAudit } from "../services/referral.service";
 
 export type AuditFormState = ReturnType<typeof useAuditForm>;
@@ -37,7 +38,7 @@ export function useAuditForm(kasus: RujukanCase, onDone: () => void) {
     setMenyimpan(true);
     try {
       // Layar sukses hanya setelah server benar-benar menyimpan.
-      await submitAudit(kasus.id, keputusan, catatan.trim());
+      await denganProses("audit", () => submitAudit(kasus.id, keputusan, catatan.trim()));
       queryClient.invalidateQueries({ queryKey: ["referrals"] });
       setSubmitted(true);
     } catch (e) {

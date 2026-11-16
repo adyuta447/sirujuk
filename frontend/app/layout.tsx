@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { connection } from "next/server";
 import "./tailwind.css";
+import { ProsesHost } from "../components/organisms/ProsesHost";
 import { QueryProvider } from "../providers/QueryProvider";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -21,7 +22,7 @@ export default async function Layout({ children }: Readonly<{ children: React.Re
   await connection();
   return (
     <html lang="id" className={jakarta.variable}>
-      <body><QueryProvider>{children}</QueryProvider></body>
+      <body><QueryProvider>{children}<ProsesHost /></QueryProvider></body>
     </html>
   );
 }

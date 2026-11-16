@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { denganProses } from "../lib/dengan-proses";
 import {
   archiveReferral,
   rescoreReferral,
@@ -19,9 +20,9 @@ export function useReferralMutations() {
   const refresh = useRefresh();
   const options = { onSuccess: refresh };
   return {
-    update: useMutation({ mutationFn: ({ id, edit }: { id: string; edit: ReferralEdit }) => updateReferral(id, edit), ...options }),
-    rescore: useMutation({ mutationFn: (id: string) => rescoreReferral(id), ...options }),
-    archive: useMutation({ mutationFn: ({ id, note }: { id: string; note: string }) => archiveReferral(id, note), ...options }),
-    clarify: useMutation({ mutationFn: ({ id, text }: { id: string; text: string }) => submitClarification(id, text), ...options }),
+    update: useMutation({ mutationFn: ({ id, edit }: { id: string; edit: ReferralEdit }) => denganProses("ubah", () => updateReferral(id, edit)), ...options }),
+    rescore: useMutation({ mutationFn: (id: string) => denganProses("hitung-ulang", () => rescoreReferral(id)), ...options }),
+    archive: useMutation({ mutationFn: ({ id, note }: { id: string; note: string }) => denganProses("arsip", () => archiveReferral(id, note)), ...options }),
+    clarify: useMutation({ mutationFn: ({ id, text }: { id: string; text: string }) => denganProses("klarifikasi", () => submitClarification(id, text)), ...options }),
   };
 }

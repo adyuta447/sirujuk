@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { denganProses } from "../lib/dengan-proses";
 import { bacaFormKonfig } from "../lib/risk-config-form";
 import { previewRiskConfig, saveRiskConfig } from "../services/risk-config.service";
 import type { AksiKategori, DampakRisiko, KategoriRisiko, KonfigRisiko } from "../types/risk-config";
@@ -16,9 +17,9 @@ export function useRiskConfigForm(konfig: KonfigRisiko) {
   const [actions, setActions] = useState(konfig.actions);
   const [galat, setGalat] = useState<string | null>(null);
   const [dampak, setDampak] = useState<DampakRisiko | null>(null);
-  const pratinjau = useMutation({ mutationFn: previewRiskConfig, onSuccess: (h) => setDampak(h.impact) });
+  const pratinjau = useMutation({ mutationFn: (input: Parameters<typeof previewRiskConfig>[0]) => denganProses("dampak", () => previewRiskConfig(input)), onSuccess: (h) => setDampak(h.impact) });
   const simpan = useMutation({
-    mutationFn: saveRiskConfig,
+    mutationFn: (input: Parameters<typeof saveRiskConfig>[0]) => denganProses("pengaturan", () => saveRiskConfig(input)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["risk-config"] }),
   });
 

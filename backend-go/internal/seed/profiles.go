@@ -114,6 +114,7 @@ func Run(store *repository.MemoryStore, n int, eval func(context.Context, domain
 	kns := loadDiagnoses(sources.KNS, fallbackKNS)
 	specialist := loadDiagnoses(sources.Specialist, fallbackSpecialist)
 	origins, originWilayah, dests, patients := loadFacilities()
+	score := scorer(eval)
 	rng := rand.New(rand.NewSource(42))
 	ps := profiles()
 	doctorIndex := map[string]int{}
@@ -152,21 +153,46 @@ func Run(store *repository.MemoryStore, n int, eval func(context.Context, domain
 			DiagnosisCode: dx.code, Reason: p.reason, ReasonCategory: p.reasonCategory, ClinicalNarrative: narrative,
 			IssuedAt: time.Now().Add(-time.Duration(rng.Intn(90*24)) * time.Hour), Context: ctx,
 		}
-		store.UpsertSynthetic(req, score(req, eval))
+		store.UpsertSynthetic(req, score(req))
 	}
 }
 
-func score(req domain.ReferralRequest, eval func(context.Context, domain.ReferralRequest) (domain.RiskDecision, error)) domain.RiskDecision {
-	if eval != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		if d, err := eval(ctx, req); err == nil {
-			return d
+type evalFunc = func(context.Context, domain.ReferralRequest) (domain.RiskDecision, error)
+
+// scoreTries and retryPause: a seed row whose call to the model fails (a cold ML service times out on a call after the
+// warm-up probe answered) is tried again before it falls back to the dummy score, which would stay on that row.
+const scoreTries = 3
+
+var retryPause = 500 * time.Millisecond // a var so tests do not wait
+
+// scorer returns the function that scores one seed row. After a row used up all its tries (the model is down, not
+// slow), later rows get one try each, so a seed with the ML service off does not wait on every row.
+func scorer(eval evalFunc) func(domain.ReferralRequest) domain.RiskDecision {
+	down := false
+	return func(req domain.ReferralRequest) domain.RiskDecision {
+		if eval != nil {
+			tries := scoreTries
+			if down {
+				tries = 1
+			}
+			for i := 0; i < tries; i++ {
+				if i > 0 {
+					time.Sleep(retryPause * time.Duration(i))
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				d, err := eval(ctx, req)
+				cancel()
+				if err == nil {
+					down = false
+					return d
+				}
+			}
+			down = true
 		}
+		d := service.DummyEngine.Decide(req.ReferralID, service.ScoreDummy(req))
+		d.SignalsSource = "backend-dummy"
+		return d
 	}
-	d := service.DummyEngine.Decide(req.ReferralID, service.ScoreDummy(req))
-	d.SignalsSource = "backend-dummy"
-	return d
 }
 
 // WaitForML blocks until eval answers once, or the timeout passes. A freshly started backend (or a cold ML service)

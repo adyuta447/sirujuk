@@ -83,6 +83,7 @@ func (h AuthHandler) Verify(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	if h.Limiter != nil && !h.allowLogin(ctx, in.Email, r.Header.Get("X-Client-IP")) {
 		w.Header().Set("Retry-After", "900")
+		middleware.Note(r, "", []string{"too_many_attempts"})
 		writeJSON(w, http.StatusTooManyRequests, apiError{"TOO_MANY_ATTEMPTS", "Too many login attempts", ""})
 		return
 	}
@@ -93,9 +94,11 @@ func (h AuthHandler) Verify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !ok {
+		middleware.Note(r, "", []string{"invalid_credentials"}) // the attempted email is not kept: it is whatever was typed
 		writeJSON(w, http.StatusUnauthorized, apiError{"INVALID_CREDENTIALS", "Invalid email or password", ""})
 		return
 	}
+	middleware.NoteActor(r, user.Email, user.Role)
 	writeJSON(w, http.StatusOK, struct {
 		Email string `json:"email"`
 		Nama  string `json:"nama"`

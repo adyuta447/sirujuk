@@ -89,6 +89,12 @@ func main() {
 	if project != "" {
 		riskStore = repository.NewFirestoreRiskConfig(project, client.MetadataAccessToken)
 	}
+	// User activity log (GET /api/v1/activity): Firestore in production, memory without FIRESTORE_PROJECT.
+	var activityStore repository.ActivityStore = &repository.MemoryActivity{}
+	if project != "" {
+		activityStore = repository.NewFirestoreActivity(project, client.MetadataAccessToken)
+	}
+	activity := repository.NewActivityWriter(activityStore)
 	cfgCtx, cancelCfg := context.WithTimeout(context.Background(), 3*time.Second)
 	riskLive.Refresh(cfgCtx, riskStore)
 	cancelCfg()
@@ -168,7 +174,7 @@ func main() {
 			"data_encryption": status(dataEncrypted),
 		}
 	}
-	h := handler.ReferralHandler{Regions: seed.Regions(), Ready: ready, Decisions: decisions, Queue: cache, Results: cache, Store: store, Users: users, Hospitals: hospitals, Cost: costAssumption(), ConfigLive: riskLive, ConfigStore: riskStore, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
+	h := handler.ReferralHandler{Regions: seed.Regions(), Ready: ready, Decisions: decisions, Queue: cache, Results: cache, Store: store, Users: users, Hospitals: hospitals, Cost: costAssumption(), ConfigLive: riskLive, ConfigStore: riskStore, ActivityStore: activityStore, ActivitySink: activity, AllowClientContext: os.Getenv("ALLOW_CLIENT_CONTEXT") == "true"}
 	// Revocation goes straight to Redis: the per-instance fallback would forget a logout another instance recorded.
 	auth := handler.AuthHandler{Auth: service.Authenticator{Users: users}, Limiter: cache, Sessions: redis}
 	port := env("GO_PORT", "8080")
@@ -190,15 +196,19 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second,
 		IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10,
 	}
+	drained := make(chan struct{})
 	go func() {
+		defer close(drained)
 		<-ctx.Done() // SIGTERM/SIGINT: stop accepting, let in-flight requests finish
 		sctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(sctx)
+		activity.Close() // no request is left to add entries; save the queued ones before the process exits
 	}()
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
+	<-drained // ListenAndServe returns as soon as Shutdown starts, not when it ends
 }
 
 // loadKNS reads the 144-diagnosis list from KNS_FILE (or the ML table mounted by compose). Without a file it uses the

@@ -40,7 +40,10 @@ type ReferralHandler struct {
 	Hospitals   repository.HospitalDirectory
 	ConfigLive  *service.LiveConfig
 	ConfigStore repository.RiskConfigRepository
-	Store       *repository.MemoryStore // demo list/detail/audit store; nil = those endpoints return empty/404
+	// ActivityStore serves GET /activity; ActivitySink receives every logged action (see middleware.Activity). nil = off.
+	ActivityStore repository.ActivityStore
+	ActivitySink  middleware.ActivitySink
+	Store         *repository.MemoryStore // demo list/detail/audit store; nil = those endpoints return empty/404
 	// AllowClientContext trusts request.Context (doctor history). Demo only: a real client could lower its own risk.
 	AllowClientContext bool
 }
@@ -93,6 +96,7 @@ func (h ReferralHandler) Score(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request.ReferralID = key // Idempotency-Key = referral_no
+	middleware.Note(r, key, nil)
 	if h.Regions != nil {
 		if region := h.Regions(request.OriginFacilityID); region != "" {
 			request.OriginWilayah = region

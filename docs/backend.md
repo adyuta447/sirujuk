@@ -80,7 +80,7 @@ Redis is optional in development. Without it the service still scores, but batch
 | `REDIS_URL` / `REDIS_PASSWORD` | recommended | Cache, queue, idempotency, login limiter. |
 | `STREAM_ENC_KEY` | yes in production | 64 hex characters. Encrypts queued referrals (AES-256-GCM). |
 | `DATA_ENC_KEY` | recommended in production | 64 hex characters. Seals each referral document (patient name, narrative, scores) before it is written to Firestore. |
-| `FIRESTORE_PROJECT` | yes in production | Stores accounts, referrals, audits and clarifications. |
+| `FIRESTORE_PROJECT` | yes in production | Stores accounts, referrals, audits, clarifications and the user activity log (`activity` collection). |
 | `ML_SERVICE_URL` | yes | Address of the ML service. |
 | `ML_TRANSPORT` | no | `grpc` (default: Cloud Run and compose, needs HTTP/2 end to end) or `http` (calls `POST {ML_SERVICE_URL}/v1/predict`; for hosts without HTTP/2 such as Azure Container Apps Express). Anything else stops the backend at start. Both return the same scores. Pair it with `ML_SERVE` on the ML image, and keep the ML ingress internal: the HTTP mode has no authentication of its own. |
 | `ML_AUTH` | Cloud Run | Set to `cloudrun` to call a private ML service with an ID token. |

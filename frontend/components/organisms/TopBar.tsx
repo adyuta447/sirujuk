@@ -9,15 +9,19 @@ interface TopBarProps {
   query: string;
   setQuery: (q: string) => void;
   pilihan: string[];
+  tampilFilter: boolean;
 }
 
+/** Bilah filter (cari dan wilayah). Hanya tampil di halaman yang memakainya, supaya kontrolnya tidak tampak berfungsi di tempat lain. */
 export function TopBar({
   wilayah,
   setWilayah,
   query,
   setQuery,
   pilihan,
+  tampilFilter,
 }: TopBarProps) {
+  if (!tampilFilter) return null;
   return (
     <div className="min-h-16 shrink-0 mx-3 sm:mx-4 mt-3 sm:mt-4 bg-white border border-[#DCE3EC] rounded-4xl flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 sticky top-3 sm:top-4 z-20">
       <SearchBar value={query} onChange={setQuery} />

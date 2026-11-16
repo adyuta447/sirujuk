@@ -1,6 +1,7 @@
 "use client";
 
 import type { View } from "../../lib/sirujuk-data";
+import { VIEW_DENGAN_FILTER } from "../../data/view-dengan-filter";
 import { useSirujukPage } from "../../hooks/useSirujukPage";
 import { BottomNav } from "../organisms/BottomNav";
 import { Landing } from "../organisms/Landing";
@@ -40,6 +41,7 @@ export function SirujukPage({ initialView = "landing", initialId }: SirujukPageP
           setWilayah={filter.setWilayah}
           query={filter.query}
           setQuery={filter.setQuery}
+          tampilFilter={VIEW_DENGAN_FILTER.includes(initialView)}
         />
         <main className="flex-1 flex flex-col overflow-hidden">
           <SirujukView

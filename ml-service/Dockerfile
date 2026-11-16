@@ -10,4 +10,6 @@ RUN mkdir -p models && python train.py --peer models/bpjs_peer.json > models/tra
  && sha256sum models/sirujuk.joblib | cut -d" " -f1 > models/sirujuk.joblib.sha256 \
  && useradd --system --no-create-home app && chmod -R a-w /app && chmod -R a+rX /app
 USER app
-CMD ["python", "-m", "app.grpc_server"]
+# grpc (default, Cloud Run) or http (hosts without HTTP/2 ingress, e.g. Azure Container Apps Express); see app/serve.py
+ENV ML_SERVE=grpc
+CMD ["python", "-m", "app.serve"]

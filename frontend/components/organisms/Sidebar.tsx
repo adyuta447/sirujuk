@@ -56,14 +56,14 @@ export function Sidebar({
         type="button"
         onClick={onHome}
         aria-label="Kembali ke halaman utama"
-        className="bg-[#F8FAFC] px-5 pt-6 pb-6 pr-20 lg:pr-5 flex items-center text-left rounded-tr-3xl"
+        className="bg-[#F8FAFC] px-5 pt-6 pb-6 lg:pt-4 lg:pb-4 pr-20 lg:pr-5 flex items-center text-left rounded-tr-3xl"
       >
         <BrandMark variant="light" shield={64} />
       </button>
       <div className="px-5 pt-5 pb-2 text-[11px] font-bold tracking-widest uppercase text-[#C9D6E6]">
         Menu utama
       </div>
-      <nav className="flex-1 px-4 lg:px-3 space-y-1 overflow-y-auto">
+      <nav className="scroll-area flex-1 px-4 lg:px-3 space-y-1 overflow-y-auto">
         {NAV.filter((n) => bolehMenu(peran, n.id)).map((item) => (
           <SidebarNavItem
             key={item.id}

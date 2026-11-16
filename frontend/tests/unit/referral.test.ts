@@ -1,4 +1,4 @@
-import { mapStored } from "../../services/referral.service";
+import { mapStored } from "../../services/referral-mapper";
 import type { StoredReferral } from "../../types/referral";
 
 const item = (decision: string, score: number): StoredReferral => ({

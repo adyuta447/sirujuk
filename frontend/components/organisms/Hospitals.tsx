@@ -1,0 +1,43 @@
+"use client";
+
+import { useState } from "react";
+import { useHospitals } from "../../hooks/useHospitals";
+import { Card } from "../atoms/Card";
+import { EmptyState } from "../atoms/EmptyState";
+import { ErrorState } from "../atoms/ErrorState";
+import { LoadingState } from "../atoms/LoadingState";
+import { PageHead } from "../atoms/PageHead";
+import { PageScroll } from "../molecules/PageScroll";
+import { HospitalRow } from "./hospitals/HospitalRow";
+import { KindFilter } from "./hospitals/KindFilter";
+
+interface HospitalsProps {
+  wilayah: string;
+  query: string;
+}
+
+export function Hospitals({ wilayah, query }: HospitalsProps) {
+  const [kind, setKind] = useState("");
+  const { data, isLoading, isError, refetch } = useHospitals(kind, wilayah);
+  const q = query.trim().toLowerCase();
+  const tampak = (data?.items ?? []).filter((rs) => !q || `${rs.name} ${rs.id}`.toLowerCase().includes(q));
+
+  return (
+    <PageScroll>
+      <PageHead title="Rumah Sakit Tujuan" sub="Jenis dan spesialisasi faskes yang dipakai untuk menilai kesesuaian tujuan rujukan." />
+      <KindFilter active={kind} onChange={setKind} />
+      {isLoading && <LoadingState label="Memuat direktori rumah sakit" />}
+      {isError && <ErrorState message="Direktori rumah sakit gagal dimuat." onRetry={() => refetch()} />}
+      {data && tampak.length === 0 && <EmptyState title="Tidak ada rumah sakit yang cocok" body="Ubah jenis, wilayah, atau kata pencarian." />}
+      {tampak.length > 0 && (
+        <Card className="divide-y divide-[#EEF1F5] overflow-hidden">
+          <ul className="divide-y divide-[#EEF1F5]">
+            {tampak.map((rs) => (
+              <HospitalRow key={rs.id} rs={rs} />
+            ))}
+          </ul>
+        </Card>
+      )}
+    </PageScroll>
+  );
+}

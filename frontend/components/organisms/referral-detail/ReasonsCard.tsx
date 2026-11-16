@@ -1,6 +1,7 @@
 import { TriangleAlert } from "lucide-react";
 import { RISK } from "../../../lib/sirujuk-data";
 import type { RujukanCase } from "../../../lib/sirujuk-data";
+import { DummyScoreNote } from "./DummyScoreNote";
 import { ReasonItem } from "./ReasonItem";
 
 interface ReasonsCardProps {
@@ -15,7 +16,9 @@ export function ReasonsCard({ kasus }: ReasonsCardProps) {
         <TriangleAlert size={16} />
         <span className="font-bold text-sm">Kenapa rujukan ini perlu dicek</span>
       </div>
-      {kasus.alasan.length > 0 ? (
+      {kasus.skorDummy ? (
+        <DummyScoreNote />
+      ) : kasus.alasan.length > 0 ? (
         <div className="divide-y divide-[#EEF1F5]">
           {kasus.alasan.map((a, i) => (
             <ReasonItem key={a.judul} nomor={i + 1} alasan={a} warna={r.solid} />

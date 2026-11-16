@@ -5,6 +5,7 @@ import { PageHead } from "../atoms/PageHead";
 import { PageScroll } from "../molecules/PageScroll";
 import { ReferralSourceBanner } from "../molecules/ReferralSourceBanner";
 import { DoctorRanking } from "./analytics/DoctorRanking";
+import { PreventionPanel } from "./analytics/PreventionPanel";
 import { KpiGrid } from "./analytics/KpiGrid";
 import { RiskDistribution } from "./analytics/RiskDistribution";
 import { TopDestinations } from "./analytics/TopDestinations";
@@ -25,6 +26,7 @@ export function AnalyticsView({ onDokter }: AnalyticsViewProps) {
       />
       <ReferralSourceBanner referrals={referrals} />
       <KpiGrid ringkasan={ringkasan} />
+      <PreventionPanel />
       <DoctorRanking dokterList={dokterList} onSelect={onDokter} />
       <div className="grid lg:grid-cols-2 gap-4">
         <TopDestinations tujuan={ringkasan.tujuanTerbanyak} />

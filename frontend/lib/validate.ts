@@ -1,5 +1,5 @@
-const ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/;
-const DIAGNOSIS = /^[A-Za-z][A-Za-z0-9.]{0,9}$/;
+export const ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/;
+export const DIAGNOSIS = /^[A-Za-z][A-Za-z0-9.]{0,9}$/;
 const FORBIDDEN = /[\p{Cc}\p{Cf}\p{Co}�]/u;
 
 export type ReferralInput = {

@@ -31,6 +31,10 @@ const AKSES: [string, Peran[]][] = [
   ["/dokter", PETUGAS],
   ["/dinkes", ["dinkes", ...PETUGAS]],
   ["/klarifikasi", ["dokter", ...PETUGAS]],
+  // Batas risiko dan direktori RS boleh dilihat Dinkes; mengubah batas hanya TKMKB (ditegakkan backend dan proxy).
+  ["/pengaturan-risiko", ["dinkes", ...PETUGAS]],
+  ["/rumah-sakit", ["dinkes", ...PETUGAS]],
+  ["/simulasi", PETUGAS],
 ];
 
 export const HALAMAN_PUBLIK = ["/", "/login", "/daftar"];

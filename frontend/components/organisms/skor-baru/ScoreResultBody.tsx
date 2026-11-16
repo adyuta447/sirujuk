@@ -1,5 +1,6 @@
 import type { RiskLevel } from "../../../lib/sirujuk-data";
 import type { RiskDecision } from "../../../types/referral";
+import { LABEL_SKOR_SEMENTARA } from "../../../data/skor-sementara";
 import { RiskBadge } from "../../atoms/RiskBadge";
 import { ScoreReasonList } from "./ScoreReasonList";
 
@@ -21,7 +22,11 @@ export function ScoreResultBody({ data, level }: ScoreResultBodyProps) {
           dari 100
         </span>
       </div>
-      {data.reasons && data.reasons.length > 0 && <ScoreReasonList reasons={data.reasons} />}
+      {data.signals_source === "backend-dummy" ? (
+        <p role="note" className="text-sm text-[#56657A]">{LABEL_SKOR_SEMENTARA}. Alasan dari model belum ada.</p>
+      ) : (
+        data.reasons && data.reasons.length > 0 && <ScoreReasonList reasons={data.reasons} />
+      )}
       {data.requires_human_review && (
         <p className="rounded-4xl px-4 py-3 text-sm bg-[#1E3A5F] text-white">
           Perlu ditinjau petugas. Skor ini prioritas peninjauan, bukan bukti kecurangan. Kinerja model baru diukur pada data sintetis.

@@ -18,6 +18,14 @@ export type RiskDecision = {
     sisrute_age_days: number;
   };
   scored_at?: string;
+  // Rincian kontribusi tiap lapisan indikator, dari model lewat backend (kosong untuk dokter). Persen dihitung di sana.
+  breakdown?: {
+    layers: { layer: string; label: string; code?: string; contribution: number; share: number }[];
+    dominant?: string;
+    summary: string;
+    basis: string;
+    source: "model" | "turunan";
+  };
   // Ambang kategori dan versi daftar diagnosis yang dipakai ML (dari backend, bukan dihitung frontend).
   yellow_from?: number;
   red_from?: number;
@@ -63,7 +71,10 @@ export type StoredReferral = {
 // Hanya isi klinis yang boleh diubah. Dokter dan faskes tidak: memindahkan rujukan ke dokter lain adalah celah fraud.
 export type ReferralEdit = Pick<StoredReferral["request"], "diagnosis_code" | "reason" | "clinical_narrative">;
 
+import type { Pencegahan } from "./prevention";
+
 export type Stats = {
+  prevention?: Pencegahan;
   synthetic?: boolean;
   source?: string;
   wilayah: {

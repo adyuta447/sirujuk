@@ -1,4 +1,4 @@
-import { BarChart3, Building2, ClipboardCheck, FilePlus2, Inbox, LayoutDashboard, ListChecks, MessageSquareText, Stethoscope } from "lucide-react";
+import { BarChart3, Building2, ClipboardCheck, FilePlus2, FlaskConical, Hospital, Inbox, LayoutDashboard, ListChecks, MessageSquareText, SlidersHorizontal, Stethoscope } from "lucide-react";
 import type { NavItem } from "../types/nav";
 
 export const NAV: NavItem[] = [
@@ -11,4 +11,7 @@ export const NAV: NavItem[] = [
   { id: "dinkes", label: "Pantauan Wilayah", Icon: Building2 },
   { id: "skor", label: "Skor Rujukan", Icon: FilePlus2 },
   { id: "analytics", label: "Analitik", Icon: BarChart3 },
+  { id: "rumahsakit", label: "Rumah Sakit", Icon: Hospital },
+  { id: "simulasi", label: "Simulasi Skor", Icon: FlaskConical },
+  { id: "pengaturan", label: "Pengaturan Risiko", Icon: SlidersHorizontal },
 ];

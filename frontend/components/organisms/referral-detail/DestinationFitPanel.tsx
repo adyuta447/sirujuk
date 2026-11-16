@@ -17,7 +17,7 @@ export function DestinationFitPanel({ id }: DestinationFitPanelProps) {
 
   return (
     <div className="pt-4 space-y-4">
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <span className="text-sm font-semibold text-[#0E1B2A]">Kesimpulan:</span>
         {data && <FitVerdict vonis={data.fit.verdict} />}
       </div>

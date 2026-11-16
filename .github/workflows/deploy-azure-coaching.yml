@@ -45,6 +45,7 @@ jobs:
           STREAM_ENC_KEY: ${{ secrets.SIRUJUK_STREAM_ENC_KEY }}
           REDIS_URL: ${{ secrets.SIRUJUK_REDIS_URL }}
           AUTH_SECRET: ${{ secrets.SIRUJUK_AUTH_SECRET }}
+          ML_API_TOKEN: ${{ secrets.SIRUJUK_ML_API_TOKEN }}
         run: |
           set -euo pipefail
           REGISTRY="$AZURE_CONTAINER_REGISTRY.azurecr.io"
@@ -55,23 +56,34 @@ jobs:
 
           # Express environments have no HTTP/2 ingress, so the ML image serves HTTP here (ML_SERVE=http) and the
           # backend calls POST /v1/predict (ML_TRANSPORT=http). Cloud Run keeps the gRPC default.
+          # On Express every app is reached through one public gateway, so an internal ingress is unreachable from the
+          # backend: ML ingress is external and protected by the shared bearer token ML_API_TOKEN (a Container Apps
+          # secret, referenced with secretref so the value never appears in env listings or logs).
           if az containerapp show --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
+            az containerapp secret set --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
+              --secrets "ml-api-token=$ML_API_TOKEN" >/dev/null
             az containerapp update --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
-              --image "$REGISTRY/ml:${GITHUB_SHA}" --set-env-vars "ML_SERVE=http"
+              --image "$REGISTRY/ml:${GITHUB_SHA}" --set-env-vars "ML_SERVE=http" "ML_API_TOKEN=secretref:ml-api-token"
+            # Only after the new revision (which checks the token) is in place.
+            az containerapp ingress update --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" --type external
           else
             az containerapp create --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
               --environment sirujuk-azure-env --image "$REGISTRY/ml:${GITHUB_SHA}" \
               --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
-              --ingress internal --target-port 8000 --transport http \
-              --min-replicas 1 --max-replicas 1 --env-vars "ML_SERVE=http"
+              --ingress external --target-port 8000 --transport http \
+              --min-replicas 1 --max-replicas 1 \
+              --secrets "ml-api-token=$ML_API_TOKEN" \
+              --env-vars "ML_SERVE=http" "ML_API_TOKEN=secretref:ml-api-token"
           fi
 
           ML_FQDN=$(az containerapp show --name sirujuk-ml --resource-group "$AZURE_RESOURCE_GROUP" \
             --query properties.configuration.ingress.fqdn -o tsv)
           if az containerapp show --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
+            az containerapp secret set --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \
+              --secrets "ml-api-token=$ML_API_TOKEN" >/dev/null
             az containerapp update --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \
               --image "$REGISTRY/backend:${GITHUB_SHA}" \
-              --set-env-vars "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
+              --set-env-vars "ML_API_TOKEN=secretref:ml-api-token" "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
                 "ML_SERVICE_URL=https://$ML_FQDN" "ML_TRANSPORT=http" "REDIS_URL=$REDIS_URL" \
                 "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
           else
@@ -80,7 +92,8 @@ jobs:
               --registry-server "$REGISTRY" --registry-username "$REGISTRY_USER" --registry-password "$REGISTRY_PASSWORD" \
               --ingress external --target-port 8080 --transport http \
               --min-replicas 1 --max-replicas 1 \
-              --env-vars "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
+              --secrets "ml-api-token=$ML_API_TOKEN" \
+              --env-vars "ML_API_TOKEN=secretref:ml-api-token" "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
                 "ML_SERVICE_URL=https://$ML_FQDN" "ML_TRANSPORT=http" "REDIS_URL=$REDIS_URL" \
                 "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
           fi

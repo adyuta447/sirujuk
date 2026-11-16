@@ -17,7 +17,7 @@ export function CategoryActionRow({ label, level, aksi, bisaUbah, onChange }: Ca
   return (
     <li className="grid grid-cols-1 sm:grid-cols-[9rem_1fr_auto] gap-2 sm:gap-4 items-start sm:items-center px-5 py-4">
       <div>
-        <RiskBadge level={level} />
+        <RiskBadge level={level} className="sm:w-full sm:justify-center" />
       </div>
       {bisaUbah ? (
         <input

@@ -15,7 +15,7 @@ export function ImpactPreview({ dampak }: ImpactPreviewProps) {
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-xs text-[#56657A]">
-            <th className="font-semibold py-1">Kategori</th>
+            <th className="font-semibold py-1 pr-4">Kategori</th>
             <th className="font-semibold py-1">Sekarang</th>
             <th className="font-semibold py-1">Usulan</th>
           </tr>
@@ -23,7 +23,7 @@ export function ImpactPreview({ dampak }: ImpactPreviewProps) {
         <tbody>
           {KATEGORI_RISIKO.map((k) => (
             <tr key={k.key} className="border-t border-[#DCE3EC]">
-              <td className="py-1.5"><RiskBadge level={k.level} /></td>
+              <td className="py-1.5 pr-4 w-44"><RiskBadge level={k.level} className="w-full justify-center" /></td>
               <td className="py-1.5 font-mono">{dampak.current[k.key]}</td>
               <td className="py-1.5 font-mono font-bold">{dampak.proposed[k.key]}</td>
             </tr>

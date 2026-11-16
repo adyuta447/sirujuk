@@ -5,9 +5,10 @@ import type { RiskLevel } from "../../lib/sirujuk-data";
 interface RiskBadgeProps {
   level: RiskLevel;
   score?: number;
+  className?: string;
 }
 
-export function RiskBadge({ level, score }: RiskBadgeProps) {
+export function RiskBadge({ level, score, className = "" }: RiskBadgeProps) {
   const color = RISK[level];
   const Icon = ICON[level];
 
@@ -15,7 +16,7 @@ export function RiskBadge({ level, score }: RiskBadgeProps) {
     <span
       role="status"
       aria-label={`${color.label}${score != null ? `, skor ${score}` : ""}`}
-      className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-4xl text-xs font-bold text-white whitespace-nowrap"
+      className={`inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-4xl text-xs font-bold text-white whitespace-nowrap ${className}`}
       style={{ backgroundColor: color.solid }}
     >
       <Icon aria-hidden="true" size={12} />

@@ -53,7 +53,7 @@ func main() {
 	}
 	cancelPing()
 
-	ml, err := newML(env("ML_SERVICE_URL", "http://localhost:8000"), env("ML_TRANSPORT", "grpc"), os.Getenv("ML_AUTH") == "cloudrun")
+	ml, err := newML(env("ML_SERVICE_URL", "http://localhost:8000"), env("ML_TRANSPORT", "grpc"), os.Getenv("ML_AUTH") == "cloudrun", os.Getenv("ML_API_TOKEN"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -232,7 +232,19 @@ func costAssumption() *handler.CostAssumption {
 
 // newML builds the ML client. ML_TRANSPORT=grpc (the default: Cloud Run, compose) needs HTTP/2 end to end; "http" calls
 // POST /v1/predict instead, for hosts without it (Azure Container Apps Express). Both return the same scores.
-func newML(baseURL, transport string, cloudRunAuth bool) (service.MLServiceClient, error) {
+func newML(baseURL, transport string, cloudRunAuth bool, apiToken string) (service.MLServiceClient, error) {
+	apiToken = strings.TrimSpace(apiToken) // a secret pasted with a trailing newline must still match
+	if apiToken != "" {
+		switch {
+		case transport != "http":
+			// gRPC does not send it, so a set token would look like protection that is not there.
+			return nil, errors.New("ML_API_TOKEN is only used with ML_TRANSPORT=http")
+		case cloudRunAuth:
+			return nil, errors.New("ML_API_TOKEN and ML_AUTH=cloudrun both set: they use the same header, pick one")
+		case len(apiToken) < 32 || strings.ContainsFunc(apiToken, func(r rune) bool { return r <= ' ' || r > '~' }):
+			return nil, errors.New("ML_API_TOKEN must be at least 32 printable characters without spaces")
+		}
+	}
 	switch transport {
 	case "grpc":
 		c, err := client.NewMLClient(baseURL)
@@ -251,7 +263,8 @@ func newML(baseURL, transport string, cloudRunAuth bool) (service.MLServiceClien
 		if cloudRunAuth {
 			c.IDToken = client.CloudRunIDToken(c.BaseURL)
 		}
-		log.Print("ML transport: http (POST /v1/predict)")
+		c.APIToken = apiToken
+		log.Printf("ML transport: http (POST /v1/predict), bearer token %t", apiToken != "")
 		return c, nil
 	}
 	return nil, fmt.Errorf("ML_TRANSPORT %q: want grpc or http", transport)

@@ -8,28 +8,54 @@ import (
 )
 
 func TestNewMLPicksTheTransportAndRefusesAnythingElse(t *testing.T) {
-	if c, err := newML("http://ml:8000", "grpc", false); err != nil {
+	if c, err := newML("http://ml:8000", "grpc", false, ""); err != nil {
 		t.Fatal(err)
 	} else if _, ok := c.(client.MLClient); !ok {
 		t.Fatalf("grpc: got %T", c)
 	}
-	if c, err := newML("https://ml.example", "http", false); err != nil {
+	if c, err := newML("https://ml.example", "http", false, ""); err != nil {
 		t.Fatal(err)
 	} else if _, ok := c.(client.HTTPMLClient); !ok {
 		t.Fatalf("http: got %T", c)
 	}
 	for _, transport := range []string{"", "HTTP", "http2", "rest"} {
-		if _, err := newML("http://ml:8000", transport, false); err == nil || !strings.Contains(err.Error(), "ML_TRANSPORT") {
+		if _, err := newML("http://ml:8000", transport, false, ""); err == nil || !strings.Contains(err.Error(), "ML_TRANSPORT") {
 			t.Errorf("%q: want a clear error naming ML_TRANSPORT, got %v", transport, err)
 		}
 	}
-	if _, err := newML("ml:8000", "http", false); err == nil {
+	if _, err := newML("ml:8000", "http", false, ""); err == nil {
 		t.Fatal("a URL without a scheme must be refused in http mode too")
 	}
-	if c, err := newML("https://ml.example", "http", true); err != nil || c.(client.HTTPMLClient).IDToken == nil {
+	if c, err := newML("https://ml.example", "http", true, ""); err != nil || c.(client.HTTPMLClient).IDToken == nil {
 		t.Fatalf("ML_AUTH=cloudrun must set the ID token in http mode: %v", err)
 	}
-	if c, err := newML("https://ml.example", "grpc", true); err != nil || c.(client.MLClient).IDToken == nil {
+	if c, err := newML("https://ml.example", "grpc", true, ""); err != nil || c.(client.MLClient).IDToken == nil {
 		t.Fatalf("ML_AUTH=cloudrun must set the ID token in grpc mode: %v", err)
+	}
+}
+
+func TestMLAPITokenIsHTTPOnlyAndRefusedWhenWeakOrAmbiguous(t *testing.T) {
+	good := "tok-0123456789abcdef0123456789abcdef"
+	c, err := newML("https://ml.example", "http", false, " "+good+"\n")
+	if err != nil || c.(client.HTTPMLClient).APIToken != good {
+		t.Fatalf("a pasted token is trimmed and set: %v", err)
+	}
+	if c, err := newML("https://ml.example", "http", false, ""); err != nil || c.(client.HTTPMLClient).APIToken != "" {
+		t.Fatalf("no token, none sent: %v", err)
+	}
+	for name, tc := range map[string]struct {
+		transport string
+		cloudRun  bool
+		token     string
+	}{
+		"grpc would ignore it": {"grpc", false, good},
+		"two auth headers":     {"http", true, good},
+		"too short":            {"http", false, "short"},
+		"space inside":         {"http", false, "tok 0123456789abcdef0123456789abcdef"},
+		"non-ASCII":            {"http", false, "tok-0123456789abcdef0123456789abcdéf"},
+	} {
+		if _, err := newML("https://ml.example", tc.transport, tc.cloudRun, tc.token); err == nil || strings.Contains(err.Error(), tc.token) {
+			t.Errorf("%s: want an error that does not repeat the token, got %v", name, err)
+		}
 	}
 }

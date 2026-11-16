@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -24,8 +26,12 @@ const maxMLResponse = 1 << 20
 type HTTPMLClient struct {
 	BaseURL string
 	IDToken func(context.Context) (string, error) // set when ml-service is a private Cloud Run service
-	Timeout time.Duration
-	HTTP    *http.Client
+	// APIToken is a shared secret sent as "Authorization: Bearer" (ML_API_TOKEN) when ml-service is reachable from
+	// outside, as on Azure Container Apps Express. Empty = no header. It is never logged or put in an error. Use it
+	// or IDToken, not both: they share the header.
+	APIToken string
+	Timeout  time.Duration
+	HTTP     *http.Client
 }
 
 // NewHTTPMLClient takes http(s)://host[:port], the same value MLClient takes.
@@ -72,39 +78,61 @@ func newMLJSONRequest(in domain.ScoringInput) mlJSONRequest {
 	return req
 }
 
+// Predict logs why a call failed (kind and status only, never the request, the answer or the token), because the
+// caller turns any error into the fallback and would otherwise hide a gateway answering 404 or a refused token.
 func (c HTTPMLClient) Predict(ctx context.Context, in domain.ScoringInput) (domain.MLScores, error) {
+	out, kind, status, err := c.predict(ctx, in)
+	if err != nil {
+		log.Printf(`{"event":"ml_call_failed","transport":"http","kind":%q,"status":%d}`, kind, status)
+	}
+	return out, err
+}
+
+// predict also says what kind of failure it was: request | token | timeout | canceled | network | status | decode.
+func (c HTTPMLClient) predict(ctx context.Context, in domain.ScoringInput) (out domain.MLScores, kind string, status int, err error) {
 	body, err := json.Marshal(newMLJSONRequest(in))
 	if err != nil {
-		return domain.MLScores{}, err
+		return out, "request", 0, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/v1/predict", bytes.NewReader(body))
 	if err != nil {
-		return domain.MLScores{}, err
+		return out, "request", 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if c.IDToken != nil {
+	switch {
+	case c.IDToken != nil:
 		tok, err := c.IDToken(ctx)
 		if err != nil {
-			return domain.MLScores{}, err
+			return out, "token", 0, err
 		}
 		req.Header.Set("Authorization", "Bearer "+tok)
+	case c.APIToken != "":
+		req.Header.Set("Authorization", "Bearer "+c.APIToken)
 	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return domain.MLScores{}, err
+		// err text is not returned as is: a *url.Error carries the URL, and nothing in it helps beyond the kind.
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			kind = "timeout"
+		case errors.Is(err, context.Canceled):
+			kind = "canceled"
+		default:
+			kind = "network"
+		}
+		return out, kind, 0, fmt.Errorf("ml-service unreachable: %s", kind)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		// The status only: a 422 body repeats the rejected input, which includes the clinical narrative.
-		return domain.MLScores{}, fmt.Errorf("ml-service status %d", resp.StatusCode)
+		return out, "status", resp.StatusCode, fmt.Errorf("ml-service status %d", resp.StatusCode)
 	}
-	var out domain.MLScores
 	if err := json.NewDecoder(io.LimitReader(resp.Body, maxMLResponse)).Decode(&out); err != nil {
-		return domain.MLScores{}, fmt.Errorf("ml-service answer unreadable: %w", err)
+		return domain.MLScores{}, "decode", resp.StatusCode, fmt.Errorf("ml-service answer unreadable: %w", err)
 	}
-	return out, nil
+	return out, "", resp.StatusCode, nil
 }
 
 var _ service.MLServiceClient = HTTPMLClient{}

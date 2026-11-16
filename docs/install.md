@@ -89,6 +89,7 @@ One rule covers most mistakes: nothing secret ever gets a `NEXT_PUBLIC_` prefix,
 | GO_PORT | 8080 | Port to listen on. |
 | ML_SERVICE_URL | http://localhost:8000 | Where the ML service lives. |
 | ML_AUTH | empty | Set to `cloudrun` to send a Google ID token, which is how the private ML service on Cloud Run accepts calls. |
+| ML_API_TOKEN | empty | With `ML_TRANSPORT=http`: a shared secret (32+ characters) sent as a Bearer token to the ML service, which must run with the same value. Needed whenever the ML service is reachable from outside. |
 | REDIS_URL | redis://localhost:6379/0 | Use `rediss://` for a TLS provider such as Upstash. |
 | STREAM_ENC_KEY | none | 64 hex characters. Encrypts referrals while they sit in the Redis queue. Required in production. |
 | FIRESTORE_PROJECT | empty | GCP project id. Turns on Firestore for accounts, referrals, audits and clarifications. Required in production. |

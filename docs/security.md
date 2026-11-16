@@ -252,6 +252,7 @@ The GCP bootstrap is in `infra/gcp/setup.sh` and the pipeline in `.github/workfl
 | FIRESTORE_PROJECT | backend | Yes in production | Empty means accounts live in memory, which is for local use only. |
 | ML_SERVICE_URL | backend | Yes | Set by compose and by the deploy pipeline. |
 | ML_AUTH | backend | Cloud Run | Set to `cloudrun` so the backend sends a Google ID token to the private ML service. |
+| ML_API_TOKEN | backend, ML service | Azure (ML over HTTP) | Same secret on both: the backend sends it as a Bearer token, the ML service compares it in constant time and answers 401 otherwise. Store it as a GitHub/Azure secret, not in the repo. |
 | CORS_ORIGIN | backend | Optional | The single dashboard origin allowed to call the API. Defaults to `http://localhost:3000`. |
 | ALLOW_CLIENT_CONTEXT | backend | Optional | Keep `false`. When true, the client can supply doctor history and lower its own risk score. Demo only. |
 | MIN_RED_LAYERS | backend | Optional | Number of independent layers that must agree before a claim is marked red. `1` trusts the model, `2` is recommended. |

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -199,5 +200,95 @@ func TestNewHTTPMLClientRejectsABadURL(t *testing.T) {
 	}
 	if c, err := NewHTTPMLClient("https://ml.internal.example/"); err != nil || c.BaseURL != "https://ml.internal.example" {
 		t.Fatalf("a trailing slash is trimmed: %+v %v", c, err)
+	}
+}
+
+const apiToken = "tok-0123456789abcdef0123456789abcdef"
+
+func TestHTTPSendsTheAPITokenAsBearerAndNothingWithoutOne(t *testing.T) {
+	seen := make(chan seenRequest, 2)
+	c := startHTTPFake(t, httpFake{body: sameAnswerJSON, seen: seen})
+	if _, err := c.Predict(context.Background(), parityInput); err != nil {
+		t.Fatal(err)
+	}
+	if got := (<-seen).auth; got != "" {
+		t.Fatalf("no ML_API_TOKEN: no Authorization header, got %q", got)
+	}
+	c.APIToken = apiToken
+	if _, err := c.Predict(context.Background(), parityInput); err != nil {
+		t.Fatal(err)
+	}
+	if got := (<-seen).auth; got != "Bearer "+apiToken {
+		t.Fatalf("Authorization = %q", got)
+	}
+}
+
+func TestHTTPCloudRunIDTokenWinsOverTheAPIToken(t *testing.T) {
+	seen := make(chan seenRequest, 1)
+	c := startHTTPFake(t, httpFake{body: sameAnswerJSON, seen: seen})
+	c.APIToken = apiToken
+	c.IDToken = func(context.Context) (string, error) { return "id-token", nil }
+	if _, err := c.Predict(context.Background(), parityInput); err != nil {
+		t.Fatal(err)
+	}
+	if got := (<-seen).auth; got != "Bearer id-token" {
+		t.Fatalf("one header only, from the Cloud Run token: %q", got)
+	}
+}
+
+// capture swaps the log output for a buffer, so a test can read what the client logged.
+func capture(t *testing.T) *strings.Builder {
+	t.Helper()
+	var b strings.Builder
+	old := log.Writer()
+	log.SetOutput(&b)
+	t.Cleanup(func() { log.SetOutput(old) })
+	return &b
+}
+
+func TestHTTPLogsWhyACallFailedWithoutTheRequestTheAnswerOrTheToken(t *testing.T) {
+	for name, tc := range map[string]struct {
+		f    httpFake
+		want []string
+	}{
+		"gateway 404":   {httpFake{status: 404, body: `{"error":"Not found"}`}, []string{`"kind":"status"`, `"status":404`}},
+		"token refused": {httpFake{status: 401, body: `{"detail":"RAHASIA-NARASI"}`}, []string{`"kind":"status"`, `"status":401`}},
+		"422 echo":      {httpFake{status: 422, body: `{"detail":[{"input":"RAHASIA-NARASI"}]}`}, []string{`"status":422`}},
+		"not json":      {httpFake{body: `<html>`}, []string{`"kind":"decode"`}},
+		"too slow":      {httpFake{body: sameAnswerJSON, delay: 400 * time.Millisecond}, []string{`"kind":"timeout"`}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			buf := capture(t)
+			c := startHTTPFake(t, tc.f)
+			c.APIToken = apiToken
+			c.Timeout = 150 * time.Millisecond
+			_, err := c.Predict(context.Background(), parityInput)
+			if err == nil {
+				t.Fatal("want an error")
+			}
+			logged := buf.String()
+			for _, w := range append(tc.want, `"event":"ml_call_failed"`) {
+				if !strings.Contains(logged, w) {
+					t.Errorf("log lacks %s: %s", w, logged)
+				}
+			}
+			for _, secret := range []string{apiToken, "RAHASIA-NARASI", "Bambang", "r-1"} {
+				if strings.Contains(logged, secret) || strings.Contains(err.Error(), secret) {
+					t.Errorf("%q leaked: log %s, error %v", secret, logged, err)
+				}
+			}
+		})
+	}
+}
+
+func TestHTTPLogsAnUnreachableServiceAndStaysQuietOnSuccess(t *testing.T) {
+	buf := capture(t)
+	c := startHTTPFake(t, httpFake{body: sameAnswerJSON})
+	if _, err := c.Predict(context.Background(), parityInput); err != nil || buf.Len() != 0 {
+		t.Fatalf("a good call logs nothing: %v %q", err, buf)
+	}
+	c.BaseURL = "http://127.0.0.1:1" // nothing listens
+	if _, err := c.Predict(context.Background(), parityInput); err == nil || !strings.Contains(buf.String(), `"kind":"network"`) || strings.Contains(err.Error(), "127.0.0.1") {
+		t.Fatalf("network failure: %v %s", err, buf)
 	}
 }

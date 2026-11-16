@@ -1,17 +1,18 @@
 import { Check } from "lucide-react";
-import { NAVY } from "../../../lib/sirujuk-data";
+import { NAVY } from "../../lib/sirujuk-data";
 
-interface AuditChecklistItemProps {
+interface CheckFieldProps {
   label: string;
   checked: boolean;
-  onToggle: () => void;
+  onChange: (checked: boolean) => void;
 }
 
-export function AuditChecklistItem({ label, checked, onToggle }: AuditChecklistItemProps) {
+/** Centang berlabel: lingkaran navy bila dipilih. Kotak centang asli disembunyikan tetapi tetap bisa difokus keyboard. */
+export function CheckField({ label, checked, onChange }: CheckFieldProps) {
   return (
     <label className="flex items-center gap-3 min-h-11 cursor-pointer">
-      {/* Kotak centang asli disembunyikan; penanda fokus keyboard dipindah ke lingkaran, bukan garis di sekeliling baris. */}
-      <input type="checkbox" className="peer sr-only" checked={checked} onChange={onToggle} />
+      {/* Penanda fokus keyboard ada di lingkaran, bukan garis di sekeliling baris. */}
+      <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <span
         className="w-5 h-5 rounded-4xl border-2 flex items-center justify-center shrink-0 transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#1E3A5F]"
         style={

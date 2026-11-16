@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { CheckField } from "../../components/molecules/CheckField";
 import { CostEstimate } from "../../components/organisms/analytics/CostEstimate";
 import { PreventionPanel } from "../../components/organisms/analytics/PreventionPanel";
 import { FORM_SIMULASI_KOSONG } from "../../data/form-simulasi-kosong";
@@ -54,6 +55,19 @@ describe("ModelInputs", () => {
       expect(screen.getByPlaceholderText(contoh)).toBeInTheDocument();
     }
     expect(screen.queryByPlaceholderText("Tidak diubah")).toBeNull();
+  });
+});
+
+describe("CheckField", () => {
+  it("bisa dicentang lewat labelnya dan melaporkan nilai barunya", () => {
+    const onChange = jest.fn();
+    render(<CheckField label="Peringatan" checked={false} onChange={onChange} />);
+    fireEvent.click(screen.getByLabelText("Peringatan"));
+    expect(onChange).toHaveBeenCalledWith(true);
+  });
+  it("TKMKB mengubah penanda peringatan lewat CheckField yang sama dengan daftar periksa Audit", () => {
+    render(bungkus(<RiskConfigForm konfig={KONFIG} bisaUbah />));
+    expect(screen.getAllByLabelText("Peringatan")).toHaveLength(3);
   });
 });
 

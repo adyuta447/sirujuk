@@ -2,6 +2,7 @@ import type { RiskLevel } from "../../../lib/sirujuk-data";
 import { FIELD_CLASS } from "../../../lib/ui-classes";
 import type { AksiKategori } from "../../../types/risk-config";
 import { Chip } from "../../atoms/Chip";
+import { CheckField } from "../../molecules/CheckField";
 import { RiskBadge } from "../../atoms/RiskBadge";
 
 interface CategoryActionRowProps {
@@ -31,10 +32,9 @@ export function CategoryActionRow({ label, level, aksi, bisaUbah, onChange }: Ca
         <p className="text-sm text-[#0E1B2A] leading-relaxed">{aksi.recommendation}</p>
       )}
       {bisaUbah ? (
-        <label className="inline-flex items-center gap-2 text-sm text-[#0E1B2A] whitespace-nowrap sm:justify-self-end">
-          <input type="checkbox" checked={aksi.alert} onChange={(e) => onChange({ ...aksi, alert: e.target.checked })} className="size-4 accent-[#1E3A5F]" />
-          Peringatan
-        </label>
+        <div className="sm:justify-self-end">
+          <CheckField label="Peringatan" checked={aksi.alert} onChange={(alert) => onChange({ ...aksi, alert })} />
+        </div>
       ) : (
         <div className="sm:justify-self-end">
           <Chip>{aksi.alert ? "Peringatan aktif" : "Tanpa peringatan"}</Chip>

@@ -6,11 +6,12 @@ interface PreventionFiguresProps {
 }
 
 export function PreventionFigures({ data }: PreventionFiguresProps) {
+  const persen = data.kns_percent.toLocaleString("id-ID", { maximumFractionDigits: 1 });
   return (
-    <div className="grid sm:grid-cols-3 gap-3 mt-3">
-      <KpiCard label="Diagnosis wajib FKTP" value={data.kns_total} sub={`${data.kns_percent.toLocaleString("id-ID", { maximumFractionDigits: 1 })}% dari ${data.total} rujukan dinilai`} />
-      <KpiCard label="Kandidat pencegahan" value={data.kns_flagged} sub="kuning atau merah, diagnosisnya wajib diselesaikan FKTP" />
-      <KpiCard label="Terkonfirmasi tidak valid" value={data.kns_confirmed_invalid} sub="satu-satunya yang didukung audit manusia" />
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <KpiCard label="Diagnosis wajib FKTP" value={data.kns_total} sub={`${persen}% dari ${data.total} rujukan dinilai`} />
+      <KpiCard label="Kandidat pencegahan" value={data.kns_flagged} sub="kuning atau merah" />
+      <KpiCard label="Terkonfirmasi tidak valid" value={data.kns_confirmed_invalid} sub="sudah diaudit petugas" />
     </div>
   );
 }

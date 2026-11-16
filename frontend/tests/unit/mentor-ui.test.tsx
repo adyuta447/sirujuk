@@ -2,10 +2,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { CostEstimate } from "../../components/organisms/analytics/CostEstimate";
+import { PreventionPanel } from "../../components/organisms/analytics/PreventionPanel";
 import { RiskConfigForm } from "../../components/organisms/risk-config/RiskConfigForm";
 import { SimulationResult } from "../../components/organisms/simulation/SimulationResult";
 import type { KonfigRisiko } from "../../types/risk-config";
 import type { HasilSimulasi } from "../../types/simulate";
+
+let mockData: object | null = null;
+jest.mock("../../hooks/usePrevention", () => ({ usePrevention: () => ({ data: mockData }) }));
 
 const AKSI = { recommendation: "Periksa", alert: true };
 const KONFIG: KonfigRisiko = {
@@ -29,16 +33,37 @@ describe("RiskConfigForm", () => {
 });
 
 describe("CostEstimate", () => {
-  it("menyebut estimasi dan asumsi, bukan penghematan aktual", () => {
-    render(<CostEstimate biaya={{ available: true, kind: "estimasi", amount_idr: 5000000, prevented_referrals: 4, assumptions: ["Asumsi A"], disclaimer: "Estimasi potensi efisiensi, bukan penghematan aktual." }} />);
+  it("dengan asumsi: angka berlabel estimasi dan daftar asumsinya", () => {
+    render(<CostEstimate biaya={{ available: true, kind: "estimasi", amount_idr: 5000000, prevented_referrals: 4, assumptions: ["Asumsi A"], disclaimer: "x" }} />);
     expect(screen.getByText("Estimasi potensi efisiensi biaya")).toBeInTheDocument();
     expect(screen.getByText("Asumsi A")).toBeInTheDocument();
-    expect(screen.getByText(/bukan penghematan aktual/)).toBeInTheDocument();
   });
-  it("tanpa asumsi pemilik, tidak ada angka rupiah", () => {
-    render(<CostEstimate biaya={{ available: false, kind: "estimasi", reason: "asumsi biaya belum ditetapkan", disclaimer: "Estimasi." }} />);
+  it("tanpa asumsi: tidak ada rupiah, dan nama variabel internal backend tidak tampil", () => {
+    render(<CostEstimate biaya={{ available: false, kind: "estimasi", reason: "Belum ada asumsi (ASSUMED_COST_PER_PREVENTED_REFERRAL_IDR)", disclaimer: "x" }} />);
     expect(screen.queryByText(/Rp/)).toBeNull();
-    expect(screen.getByText(/asumsi biaya belum ditetapkan/)).toBeInTheDocument();
+    expect(screen.queryByText(/ASSUMED_/)).toBeNull();
+    expect(screen.getByText(/pemilik sistem belum menetapkan asumsi biaya/)).toBeInTheDocument();
+  });
+});
+
+describe("PreventionPanel", () => {
+  const data = (o: object) => ({
+    total: 10, kns_total: 4, kns_percent: 40, kns_flagged: 2, kns_confirmed_invalid: 0, by_fktp: [], by_fkrtl: [],
+    cost: { available: false, kind: "estimasi", disclaimer: "Estimasi potensi efisiensi, bukan penghematan aktual." }, basis: "dasar", ...o,
+  });
+  const tampil = (d: object) => {
+    mockData = d;
+    render(<PreventionPanel />);
+  };
+  it("selalu membawa disclaimer estimasi, dan satu keadaan kosong bila belum ada faskes yang ditandai", () => {
+    tampil(data({}));
+    expect(screen.getByText(/bukan penghematan aktual/)).toBeInTheDocument();
+    expect(screen.getByText("Belum ada rujukan yang ditandai")).toBeInTheDocument();
+  });
+  it("menampilkan faskes yang ditandai dengan jumlahnya", () => {
+    tampil(data({ by_fktp: [{ id: "FKTP-A", total: 8, flagged: 3, red: 1, flagged_percent: 37.5 }] }));
+    expect(screen.getByText("FKTP-A")).toBeInTheDocument();
+    expect(screen.getByText("3 dari 8")).toBeInTheDocument();
   });
 });
 

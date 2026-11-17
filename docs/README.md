@@ -37,7 +37,7 @@ Mentor menilai tampilan sudah baik, sehingga perubahan difokuskan pada tiga hal:
 | 3 | P1 | **Dynamic Threshold Configuration**: hijau 0–49, kuning 50–79, merah 80–100; nasional; alert dan rekomendasi | Halaman Pengaturan Risiko: batas kuning/merah, rekomendasi dan alert per kategori, pratinjau dampak sebelum menyimpan, riwayat versi dan pengubah | Sebelum: ambang tersembunyi di model (kuning 2,56; merah 16,49), sehingga skor 20 tampil "risiko tinggi". Sesudah: skala **0–49 / 50–79 / 80–100** sesuai mentor; alert aktif untuk kuning dan merah. Hanya TKMKB yang bisa menyimpan (3 peran lain ditolak 403); 5 jenis nilai salah ditolak; perubahan bersamaan ditolak (409) |
 | 4 | P1 | **Hospital Competency Assessment**: kesesuaian diagnosis dengan kompetensi RS, spesialis, alat; jarak sebagai faktor sekunder | Panel "Kesesuaian RS tujuan" di detail rujukan: memeriksa kompetensi RS terhadap diagnosis, ketersediaan spesialis dan alat, lalu jarak | Setiap rujukan punya penilaian tujuan dengan rincian pemeriksaan. Penilaian ini ditandai tidak mengubah skor risiko (`affects_score: false`), sehingga jarak tidak bisa menaikkan atau menurunkan skor |
 | 5 | P2 | **Hospital Classification**: RS umum, RS khusus, penyesuaian evaluasi per kompetensi | Direktori RS dengan tipe dan spesialisasi; RS khusus dinilai berdasarkan spesialisasinya | 9 RS di direktori demo: **4 umum, 3 khusus, 2 klinik utama** |
-| 6 | P2 | **What-If Simulation**: slider jarak, kompetensi, alat dan tenaga, indikator rujukan; hasil hijau/kuning/merah | Simulation Center memakai model yang sama dengan skor asli. Tidak menyimpan apa pun | Rujukan r-030 (skor 96,8): jarak 200 km, kompetensi tidak sesuai, alat tidak ada → skor **tetap 96,8**, dengan keterangan bahwa faktor itu tidak dipakai model. NS diturunkan ke 0,05 → **96,2** (−0,6). Skor asli rujukan tidak berubah setelah simulasi |
+| 6 | P2 | **What-If Simulation**: slider jarak, kompetensi, alat dan tenaga, indikator rujukan; hasil hijau/kuning/merah | Simulation Center memakai model yang sama dengan skor asli. Tidak menyimpan apa pun | Rujukan r-030 (skor 96,8): jarak 200 km, kompetensi tidak sesuai, alat tidak ada → skor **tetap 96,8**, dengan keterangan bahwa faktor itu tidak dipakai model. NS diturunkan ke 0,05 → **96,2** (−0,6). Kualitas narasi generik/spesifik: pada **8 rujukan** berdiagnosis KNS di situs, narasi spesifik selalu menurunkan skor (r-030: 96,8 → **86,8**; r-026: generik 66,3 → spesifik **27,3**); di luar KNS ditolak karena tidak ada narasi acuan. Skor asli rujukan tidak berubah setelah simulasi |
 | 7 | P2 | **Referral Prevention & Cost Efficiency Analytics**: rujukan yang bisa dicegah, kasus yang bisa ditangani FKTP, estimasi efisiensi, statistik per FKTP/FKRTL | Blok pencegahan di Analytics: rujukan dengan diagnosis non-spesialistik (KNS 144, Permenkes 5/2014), yang ditandai model, dan rinciannya per FKTP/FKRTL | Dari 30 rujukan di situs: **8 (26,7%)** berdiagnosis yang seharusnya selesai di FKTP, **6** di antaranya ditandai kuning/merah. Puskesmas Kecamatan Gambir: **4 dari 4 (100%)** ditandai, semuanya merah. Estimasi potensi efisiensi: 6 kandidat × 50% = **3 rujukan × Rp373.000 = Rp1.119.000** (lihat [asumsi biaya](#asumsi-estimasi-biaya)) |
 
 ### 2.2 Tiga hal penting dari mentor
@@ -66,7 +66,6 @@ Catatan teknis mentor (kontribusi indikator harus konsisten dengan model, bobot 
 | Validasi model dengan data audit riil, evaluasi ulang bobot (Tahap 3) | Belum | Belum ada label audit riil. Jalurnya sudah siap: label dari jejak audit TKMKB dapat diekspor (`/api/v1/labels`) dan dilatih ulang (`retrain.py`) |
 | Ketersediaan spesialis dan alat secara nyata | Sebagian | Data SISRUTE belum tersambung, sehingga pemeriksaan ini tampil "belum terverifikasi", bukan ditebak |
 | Ambang atau aturan khusus per tipe RS | Sebagian, disengaja | Aturan kesesuaian per tipe RS sudah berjalan: RS khusus dan klinik utama dinilai dari spesialisasinya (diagnosis di luar spesialisasi dinyatakan tidak sesuai), RS umum dari ketersediaan spesialis. Ambang skor risiko per tipe sengaja tidak dibuat agar penilaian risiko tetap berasal dari satu model yang sama, sesuai catatan teknis mentor |
-| Simulasi kualitas narasi (indikator NLP) | Dibangun, belum aktif di situs | Pilihan narasi generik/spesifik sudah dibuat dan lolos uji dengan model asli (pada 13 rujukan berdiagnosis KNS, narasi spesifik selalu menurunkan skor, misalnya 58 menjadi 16,5). Kodenya sudah digabung ke main (PR #50 dan #52), tetapi backend di situs belum di-deploy ulang. Teks klinis bebas tetap tidak dikirim dari simulator |
 
 ---
 
@@ -111,7 +110,7 @@ Buka https://sirujuk.vercel.app dan masuk dengan akun demo ([demo.md](demo.md)).
 | Keputusan final TKMKB dapat ditimpa | Bisa | **Tidak** (ditolak, kode 409) |
 | Klaim merah yang skornya diturunkan lewat edit | Langsung dilepas tanpa audit | **Tetap ditahan** setelah 28 kali edit/hitung ulang, sampai TKMKB memutuskan |
 | Layanan ML di Azure | Tidak terjangkau backend | **Terjangkau backend dengan token; panggilan tanpa token ditolak (401)** |
-| Tes otomatis | — | Backend **222** fungsi tes (12 paket); frontend **185** tes (26 suite); smoke test ML lolos |
+| Tes otomatis | — | Backend **222** fungsi tes (12 paket); frontend **191** tes (27 suite); smoke test ML lolos |
 
 Keamanan dan privasi yang diuji: verifikator hanya melihat inisial pasien di semua halaman, dokter hanya melihat rujukannya sendiri, pencarian tidak bisa menebak nama pasien, log aktivitas tidak memuat nama pasien atau isi klinis, dan login terkunci setelah 5 percobaan salah.
 
@@ -119,4 +118,30 @@ Keamanan dan privasi yang diuji: verifikator hanya melihat inisial pasien di sem
 
 ## 6. Bisnis model dan rencana
 
+### 6.1 Bisnis model
+
 <!-- Diisi tim. -->
+
+### 6.2 Rencana
+
+**Posisi sekarang: TKT 4 pada data sintetis.** Seluruh komponen (antarmuka, backend, layanan ML, Redis) berjalan ujung ke ujung di cloud dan teruji otomatis (225 fungsi tes backend, 191 tes antarmuka). Pada data sintetis dengan semua lapis aktif, model memenuhi target proposal: precision merah **77,7%** (target ≥ 60%), recall kuning + merah **90,9%** (≥ 70%), FDR merah **22,3%** (≤ 40%). Validasi di lingkungan nyata (TKT 5 ke atas) baru bisa dimulai dengan data rujukan asli.
+
+| Tahap | Kegiatan | Kriteria keluar | Status |
+|---|---|---|---|
+| 1. Simulasi (bulan 1–2) | Model dan alur kerja diuji pada data sintetis | Precision simulasi ≥ 60% | **Lulus** (77,7%) |
+| 2. Pilot mode bayangan (bulan 3–5) | Skor dihitung pada rujukan nyata tanpa mengubah status klaim; TKMKB mengaudit sampel | Precision merah tervalidasi audit manual ≥ 50% pada ≥ 5.000 episode | Belum mulai; butuh mitra pilot |
+| 3. Evaluasi ulang | Audit acak sampel hijau 0,5–1%; bobot model dilatih ulang dari label audit TKMKB | Ditetapkan bersama BPJS setelah pilot | Alatnya sudah ada: audit acak (`RANDOM_AUDIT_PERMILLE`, kini 3%), ekspor label (`/api/v1/labels`), latih ulang (`retrain.py`) |
+
+**Prasyarat sebelum pilot memakai data nyata**
+
+| Prasyarat | Status | Pelaksana |
+|---|---|---|
+| Enkripsi data pasien di basis data | Kode ada (`DATA_ENC_KEY`), belum aktif di cloud | Tim |
+| Hosting di wilayah Indonesia | Belum; sekarang Azure East Asia | Tim |
+| Akun demo dihapus | Belum; sengaja aktif untuk peragaan | Tim |
+| Mode bayangan (skor tidak memengaruhi keputusan) | Belum ada di kode | Tim |
+| Laporan enam ukuran dampak pilot | Belum ada | Tim |
+| Penghapusan NIK dan nomor telepon di semua format | Diperbaiki dan di-deploy 17 Nov | Tim |
+| Kredensial antar-layanan per layanan, bukan satu token bersama | Belum | Tim |
+| Tinjauan dokter atas daftar 144 diagnosis non-spesialistik dan teks panduan | Belum | Dokter peninjau |
+| Akses SISRUTE (spesialis, alat, tempat tidur), data jarak faskes, PCare/VClaim | Belum | BPJS Kesehatan dan Kemenkes |

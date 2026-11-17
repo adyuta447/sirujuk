@@ -1,10 +1,34 @@
 # Kriteria proposal vs sistem
 
-Status per **11 Oktober 2026**. Acuannya proposal final `docs/Proposal Healthkathon.docx` (bagian 1 sampai 9, Limitasi, Referensi); draf awalnya ada di berkas sebelahnya. Dokumen ini dibaca bersama `proposal-gaps.md` (selisih desain proposal dan kode, sisi backend) dan `ml-service/MODEL_CARD.md` (sisi model).
+Status per **11 Oktober 2026**, dengan pembaruan 17 November di bagian 0 yang menggantikan baris lama bila berbeda. Acuannya proposal final `docs/Proposal Healthkathon.docx` (bagian 1 sampai 9, Limitasi, Referensi); draf awalnya ada di berkas sebelahnya. Dokumen ini dibaca bersama `proposal-gaps.md` (selisih desain proposal dan kode, sisi backend) dan `ml-service/MODEL_CARD.md` (sisi model).
 
 Legenda: ✅ terpenuhi dan ada buktinya · 🟡 sebagian · ❌ belum ada · 🗓 janji untuk pilot, memang belum waktunya.
 
 Semua angka kinerja model berasal dari **data sintetis**. Itu bukti bahwa jalur kerjanya benar, bukan kinerja di dunia nyata.
+
+## 0. Pembaruan 17 November 2026
+
+Dicek pada kode `main` dan situs https://sirujuk.vercel.app (backend dan ML di Azure Container Apps, East Asia). Tabel di bawah menggantikan baris yang sama di bagian 1 sampai 4; angka model tidak dilatih ulang, hanya dibaca dari laporan latih yang ter-commit.
+
+| Hal | 11 Okt | 17 Nov | Status |
+|---|---|---|---|
+| Skor dari model di cloud | semua skor cadangan, ML tidak terjangkau | 30 dari 30 rujukan dinilai model (tanpa alasan `DUMMY_`) | ✅ |
+| Redis (antrean dan riwayat dokter) | `redis: down` | `/ready` melaporkan `redis: ok` | ✅ |
+| Cabang `feat/hardening-and-deploy` belum bergabung | 4 konflik | sudah digabung ke `main` (PR #37) | ✅ |
+| Layanan skoring privat, hanya backend yang bisa memanggil | Cloud Run privat (IAM) | Di Azure Express tidak ada jalur internal, jadi ML dapat dijangkau dari internet dan dilindungi satu token bersama (401 tanpa token). Tidak lagi "privat" | 🟡 |
+| Audit acak sampel hijau | tidak ada | ada: 3% rujukan hijau (`RANDOM_AUDIT_PERMILLE=30`), ditandai `random_audit`; label audit dapat diekspor lewat `GET /api/v1/labels` | ✅ (laporan ukuran dampaknya belum) |
+| Tujuh fitur mentor (breakdown skor, pengaturan risiko, kesesuaian RS, direktori RS, simulasi, pencegahan, log aktivitas) | tidak ada | ada dan berjalan; lihat [README.md](README.md) | ✅ |
+| Jumlah tes | 112 backend, 59 jest | 225 fungsi tes backend, 191 tes jest (27 suite) | ✅ |
+| Enkripsi data di basis data | `data_encryption: down` | tetap `down`; backend Azure berjalan tanpa Firestore (`firestore: down`) | ❌ |
+| Hosting wilayah Indonesia | `us-east4` | East Asia (Azure); project GCP ditangguhkan | ❌ |
+| Penghapusan NIK dan telepon | hanya format polos | tetap hanya format polos: `3171 2345 6789 0001`, `3171-2345-6789-0001`, `0812-3456-7890`, `+62 812 3456 7890`, `6281234567890` lolos tanpa dihapus (diuji 17 Nov) | 🟡 |
+| `sisrute_available` | backend mengirim `false` | tetap `false`, bukan `null` | 🟡 |
+| `MIN_RED_LAYERS` | default 1 | tetap 1 (keputusan tim) | 🟡 |
+| Mode bayangan; laporan enam ukuran dampak | tidak ada | tetap tidak ada | ❌ |
+| Teks landing "Memakai data SISRUTE" | klaim berlebih | diganti "Dirancang memakai", dengan catatan bukan produk resmi (PR #56) | ✅ setelah merge |
+| Tes backend tidak stabil | tidak tercatat | satu tes (`TestProxyRefusals…`) gagal acak ±1 dari 15 kali karena iterasi map; diperbaiki di PR #55 | ✅ setelah merge |
+
+Akun demo empat peran sengaja dipertahankan aktif untuk peragaan (`DEMO_ACCOUNTS=true` di Azure); itu keputusan sadar, bukan kelalaian, dan harus dihapus sebelum data nyata.
 
 ## 1. Ringkasan untuk keputusan
 

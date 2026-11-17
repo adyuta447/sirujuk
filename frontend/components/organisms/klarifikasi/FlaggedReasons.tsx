@@ -8,14 +8,14 @@ interface FlaggedReasonsProps {
 export function FlaggedReasons({ alasan }: FlaggedReasonsProps) {
   return (
     <TitledCard title="Kenapa rujukan ini ditandai">
-      <div className="mt-4 grid sm:grid-cols-2 gap-x-6 gap-y-4">
+      <ul className="mt-3 divide-y divide-[#EEF1F5]">
         {alasan.map((a) => (
-          <div key={a.judul}>
-            <div className="font-semibold text-[#0E1B2A]">{a.judul}</div>
-            <p className="text-sm text-[#56657A] mt-0.5 leading-relaxed">{a.penjelasan}</p>
-          </div>
+          <li key={a.judul} className="py-3">
+            <div className="font-semibold text-sm text-[#0E1B2A]">{a.judul}</div>
+            <p className="text-xs text-[#56657A] mt-0.5 leading-relaxed">{a.penjelasan}</p>
+          </li>
         ))}
-      </div>
+      </ul>
     </TitledCard>
   );
 }

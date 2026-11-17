@@ -14,6 +14,7 @@ const MASUKAN: Record<string, Tipe> = {
   sisrute_age_days: "number",
   dest_is_nearest: "boolean",
 };
+const KUALITAS_NARASI = ["generic", "specific"];
 const TUJUAN: Record<string, Tipe> = { distance_km: "number", competency: "string", equipment_available: "boolean" };
 
 /** Isi POST /simulate yang boleh diteruskan. Field lain dibuang; null bila bentuknya salah. Nilai divalidasi backend. */
@@ -27,6 +28,9 @@ export function bersihkanSimulasi(mentah: string): string | null {
   if (typeof b !== "object" || b === null) return null;
   const inputs = saringObjek(b.inputs ?? {}, MASUKAN);
   if (!inputs) return null;
+  // Narasi bebas tidak diteruskan; hanya dua label kualitas. Nilai lain dibuang, artinya "tidak diubah".
+  const kualitas = (b.inputs as Record<string, unknown>)?.narrative_quality;
+  if (typeof kualitas === "string" && KUALITAS_NARASI.includes(kualitas)) inputs.narrative_quality = kualitas;
   const keluar: Record<string, unknown> = { inputs };
   if (b.base_referral_id !== undefined) {
     if (typeof b.base_referral_id !== "string") return null;

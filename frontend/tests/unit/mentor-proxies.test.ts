@@ -90,4 +90,14 @@ describe("isi yang diteruskan", () => {
     const salah = await simulate(req("/api/v1/simulate", { method: "POST", body: JSON.stringify({ inputs: { n90: "5" } }) }));
     expect(salah.status).toBe(400);
   });
+  it("simulate meneruskan narrative_quality hanya bila generic atau specific", async () => {
+    mockPeran = "verifikator";
+    const kirim = async (narrative_quality: unknown) => {
+      await simulate(req("/api/v1/simulate", { method: "POST", body: JSON.stringify({ inputs: { n90: 5, narrative_quality } }) }));
+      return JSON.parse(ke()[2]?.body ?? "{}").inputs;
+    };
+    expect(await kirim("generic")).toEqual({ n90: 5, narrative_quality: "generic" });
+    expect(await kirim("specific")).toEqual({ n90: 5, narrative_quality: "specific" });
+    for (const lain of ["", "GENERIC", "Teks narasi bebas pasien", 1, null]) expect(await kirim(lain)).toEqual({ n90: 5 });
+  });
 });

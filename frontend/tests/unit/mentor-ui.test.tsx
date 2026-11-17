@@ -155,4 +155,12 @@ describe("SimulationResult", () => {
     expect(screen.getByText(/tidak mengubah skor di atas/)).toBeInTheDocument();
     expect(screen.getByText("32")).toBeInTheDocument();
   });
+  it("menampilkan label narasi acuan hanya bila dikirim backend", () => {
+    const dasar: HasilSimulasi = { simulated: true, notice: "n", applied_inputs: [], model: { score: 40, category: "green", yellow_from: 50, red_from: 80, model_version: "v1" } };
+    const { rerender } = render(<SimulationResult hasil={{ ...dasar, narrative_reference: "spesifik" }} />);
+    expect(screen.getByText("spesifik")).toBeInTheDocument();
+    expect(screen.getByText(/bukan narasi pasien/)).toBeInTheDocument();
+    rerender(<SimulationResult hasil={dasar} />);
+    expect(screen.queryByText(/Narasi acuan/)).not.toBeInTheDocument();
+  });
 });

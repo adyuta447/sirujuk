@@ -6,6 +6,15 @@ from fastapi.testclient import TestClient
 from app.ml import diagnosis
 from app.main import app
 
+# NIK and phone numbers are removed in every common format; clinical numbers, dates and money are left alone.
+from app.utils.preprocessing import normalize_text
+for ident in ("3171234567890001", "3171 2345 6789 0001", "3171-2345-6789-0001", "317123-456789-0001", "3171.2345.6789.0001",
+              "081234567890", "0812-3456-7890", "0812 3456 7890", "+62 812 3456 7890", "+62-812-3456-7890", "6281234567890", "+6281234567890"):
+    assert normalize_text(f"pasien {ident} kontrol") == "pasien kontrol", ident
+for keep in ("tekanan darah 120/80 nadi 88 gula darah 126 hba1c 7,5 usia 45 tahun trombosit 150.000", "kontrol tanggal 17-11-2026 pukul 08.30",
+             "kadar 0,8 mg/dl dan 62 kali per menit", "dirawat 3 hari sejak 12 10 2026 demam 39 derajat", "rp 373.000 per kunjungan"):
+    assert normalize_text(keep) == keep, keep
+
 with TestClient(app) as c:
     # ICD resolution (real table, no hashing)
     assert diagnosis.N_NS == 144, diagnosis.N_NS

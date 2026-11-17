@@ -5,6 +5,7 @@ import { DIAGNOSIS, ID } from "./validate";
 
 const KOMPETENSI = ["sesuai", "sebagian", "tidak"] as const;
 const ALASAN = ["clinical", "equipment", "staff"];
+const NARASI = ["generic", "specific"] as const;
 const YA: Record<string, boolean | undefined> = { "": undefined, ya: true, tidak: false };
 
 /** Menyusun permintaan simulasi dari isian. Backend tetap memvalidasi ulang; ini hanya agar galatnya jelas. */
@@ -31,6 +32,7 @@ export function bangunPermintaanSimulasi(f: FormSimulasi): { input: PermintaanSi
     sisrute_available: YA[f.sisrute],
     sisrute_age_days: nilai.umur,
     dest_is_nearest: YA[f.terdekat],
+    narrative_quality: NARASI.find((n) => n === f.narasi),
   };
   const destination: TujuanSimulasi = {
     distance_km: nilai.jarak,

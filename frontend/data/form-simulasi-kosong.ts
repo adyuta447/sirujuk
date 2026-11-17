@@ -12,6 +12,7 @@ export const FORM_SIMULASI_KOSONG: FormSimulasi = {
   sisrute: "",
   umurSisrute: "",
   terdekat: "",
+  narasi: "",
   jarak: "",
   kompetensi: "",
   alat: "",

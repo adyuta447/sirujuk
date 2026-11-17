@@ -13,6 +13,11 @@ const PESAN_403: Record<string, string> = {
   FORBIDDEN_OWNER: "Anda hanya bisa menjawab rujukan milik Anda sendiri.",
 };
 
+// 422 dari simulasi: narasi spesifik hanya ada untuk 144 diagnosis KNS.
+const PESAN_422: Record<string, string> = {
+  NARRATIVE_UNAVAILABLE: "Narasi spesifik hanya tersedia untuk 144 diagnosis non-spesialistik. Pilih narasi generik, atau ganti kode diagnosis.",
+};
+
 /** Pesan galat yang aman dan berbahasa Indonesia untuk pengguna. Pesan dari server sudah disaring di ApiError. */
 export function pesanGalat(e: unknown): string {
   if (e instanceof TypeError) return "Tidak dapat terhubung ke server. Periksa koneksi, lalu coba lagi.";
@@ -21,4 +26,5 @@ export function pesanGalat(e: unknown): string {
 }
 
 export const pesan403 = (code?: string) => (code ? PESAN_403[code] : undefined);
+export const pesan422 = (code?: string) => (code ? PESAN_422[code] : undefined);
 export const pesan409 = (code?: string) => (code && PESAN_409[code]) || UMUM_409;

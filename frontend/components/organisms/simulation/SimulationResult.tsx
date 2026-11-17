@@ -27,6 +27,7 @@ export function SimulationResult({ hasil }: SimulationResultProps) {
           <RiskBadge level={level} />
         </div>
         <p className="mt-3 text-xs text-[#56657A]">Batas kuning {model.yellow_from}, batas merah {model.red_from}. Versi model {model.model_version}.</p>
+        {hasil.narrative_reference && <p className="mt-1 text-xs text-[#56657A]">Narasi acuan: <span className="font-semibold text-[#0E1B2A]">{hasil.narrative_reference}</span>. Hanya contoh untuk simulasi, bukan narasi pasien.</p>}
         {hasil.baseline && <div className="mt-3"><ScoreCompare baseline={hasil.baseline} selisih={hasil.delta_score} /></div>}
       </TitledCard>
       {rincian && (

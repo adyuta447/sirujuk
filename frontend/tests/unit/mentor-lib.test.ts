@@ -38,6 +38,11 @@ describe("bangunPermintaanSimulasi", () => {
     expect(h).toEqual({ input: { base_referral_id: "r-1", inputs: { sisrute_age_days: 45, dest_is_nearest: false } } });
     expect(bangunPermintaanSimulasi(form({ baseId: "r-1", umurSisrute: "-1" }))).toHaveProperty("galat");
   });
+  it("mengirim kualitas narasi apa adanya, dan tidak mengirim bila tidak diubah", () => {
+    expect(bangunPermintaanSimulasi(form({ baseId: "r-1", narasi: "generic" }))).toMatchObject({ input: { inputs: { narrative_quality: "generic" } } });
+    expect(bangunPermintaanSimulasi(form({ baseId: "r-1", narasi: "specific" }))).toMatchObject({ input: { inputs: { narrative_quality: "specific" } } });
+    expect(bangunPermintaanSimulasi(form({ baseId: "r-1" }))).toEqual({ input: { base_referral_id: "r-1", inputs: {} } });
+  });
   it("menolak angka di luar rentang dan ID tidak valid", () => {
     expect(bangunPermintaanSimulasi(form({ baseId: "r-1", ns90: "140" }))).toHaveProperty("galat");
     expect(bangunPermintaanSimulasi(form({ baseId: "a b" }))).toHaveProperty("galat");

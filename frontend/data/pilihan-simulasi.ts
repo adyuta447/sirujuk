@@ -10,3 +10,9 @@ export const PILIHAN_KOMPETENSI = [
   { value: "sebagian", label: "Sebagian sesuai" },
   { value: "tidak", label: "Tidak sesuai kebutuhan pasien" },
 ];
+
+export const PILIHAN_NARASI = [
+  { value: "", label: "Tidak diubah" },
+  { value: "generic", label: "Generik" },
+  { value: "specific", label: "Spesifik" },
+];

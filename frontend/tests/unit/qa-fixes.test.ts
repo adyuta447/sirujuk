@@ -67,6 +67,15 @@ describe("api() memetakan pesan galat", () => {
     jest.spyOn(global, "fetch").mockResolvedValue(new Response(JSON.stringify(body), { status }));
   afterEach(() => jest.restoreAllMocks());
 
+  it("422 NARRATIVE_UNAVAILABLE jadi Indonesia; kode 422 lain tetap pesan server", async () => {
+    const { api } = await import("../../services/api");
+    galat(422, { code: "NARRATIVE_UNAVAILABLE", message: "No specific reference narrative for this diagnosis" });
+    await expect(api("/x")).rejects.toThrow(/144 diagnosis/);
+    jest.restoreAllMocks();
+    galat(422, { code: "LAIN", message: "Pesan lain" });
+    await expect(api("/x")).rejects.toThrow("Pesan lain");
+  });
+
   it("403 FORBIDDEN_ROLE jadi Indonesia, bukan teks Inggris dari backend", async () => {
     const { api } = await import("../../services/api");
     galat(403, { code: "FORBIDDEN_ROLE", message: "Only TKMKB may make the final decision on a red referral" });

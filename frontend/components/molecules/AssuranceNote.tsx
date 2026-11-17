@@ -8,7 +8,7 @@ interface AssuranceNoteProps {
 /** Jaminan singkat untuk pengguna: ikon di lingkaran hijau, judul tebal, lalu penjelasan. */
 export function AssuranceNote({ title, children }: AssuranceNoteProps) {
   return (
-    <div role="note" className="flex items-start gap-4 rounded-4xl border border-[#DCE3EC] bg-white p-5">
+    <div role="note" className="flex items-center gap-4 rounded-4xl border border-[#DCE3EC] bg-white p-5">
       <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#17803F] text-white">
         <ShieldCheck size={22} />
       </span>

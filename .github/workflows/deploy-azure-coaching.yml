@@ -85,7 +85,8 @@ jobs:
               --image "$REGISTRY/backend:${GITHUB_SHA}" \
               --set-env-vars "ML_API_TOKEN=secretref:ml-api-token" "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
                 "ML_SERVICE_URL=https://$ML_FQDN" "ML_TRANSPORT=http" "REDIS_URL=$REDIS_URL" \
-                "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
+                "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app" \
+                "ASSUMED_COST_PER_PREVENTED_REFERRAL_IDR=373000" "ASSUMED_PREVENTION_PERCENT=50"
           else
             az containerapp create --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \
               --environment sirujuk-azure-env --image "$REGISTRY/backend:${GITHUB_SHA}" \
@@ -95,7 +96,8 @@ jobs:
               --secrets "ml-api-token=$ML_API_TOKEN" \
               --env-vars "ML_API_TOKEN=secretref:ml-api-token" "APP_ENV=development" "API_TOKEN=$API_TOKEN" "STREAM_ENC_KEY=$STREAM_ENC_KEY" \
                 "ML_SERVICE_URL=https://$ML_FQDN" "ML_TRANSPORT=http" "REDIS_URL=$REDIS_URL" \
-                "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app"
+                "DEMO_ACCOUNTS=true" "SEED_COUNT=30" "CORS_ORIGIN=https://sirujuk.vercel.app" \
+                "ASSUMED_COST_PER_PREVENTED_REFERRAL_IDR=373000" "ASSUMED_PREVENTION_PERCENT=50"
           fi
 
           URL=$(az containerapp show --name sirujuk-backend --resource-group "$AZURE_RESOURCE_GROUP" \

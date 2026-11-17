@@ -47,4 +47,6 @@ export interface HasilSimulasi {
   delta_score?: number;
   destination_fit?: KesesuaianTujuan;
   not_in_model?: string;
+  /** Label narasi acuan yang dipakai ("generik" | "spesifik"); tidak ada bila narasi tidak diubah. Teks acuannya tidak dikirim. */
+  narrative_reference?: string;
 }

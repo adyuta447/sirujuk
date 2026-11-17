@@ -118,4 +118,30 @@ Keamanan dan privasi yang diuji: verifikator hanya melihat inisial pasien di sem
 
 ## 6. Bisnis model dan rencana
 
+### 6.1 Bisnis model
+
 <!-- Diisi tim. -->
+
+### 6.2 Rencana
+
+**Posisi sekarang: TKT 4 pada data sintetis.** Seluruh komponen (antarmuka, backend, layanan ML, Redis) berjalan ujung ke ujung di cloud dan teruji otomatis (225 fungsi tes backend, 191 tes antarmuka). Pada data sintetis dengan semua lapis aktif, model memenuhi target proposal: precision merah **77,7%** (target ≥ 60%), recall kuning + merah **90,9%** (≥ 70%), FDR merah **22,3%** (≤ 40%). Validasi di lingkungan nyata (TKT 5 ke atas) baru bisa dimulai dengan data rujukan asli.
+
+| Tahap | Kegiatan | Kriteria keluar | Status |
+|---|---|---|---|
+| 1. Simulasi (bulan 1–2) | Model dan alur kerja diuji pada data sintetis | Precision simulasi ≥ 60% | **Lulus** (77,7%) |
+| 2. Pilot mode bayangan (bulan 3–5) | Skor dihitung pada rujukan nyata tanpa mengubah status klaim; TKMKB mengaudit sampel | Precision merah tervalidasi audit manual ≥ 50% pada ≥ 5.000 episode | Belum mulai; butuh mitra pilot |
+| 3. Evaluasi ulang | Audit acak sampel hijau 0,5–1%; bobot model dilatih ulang dari label audit TKMKB | Ditetapkan bersama BPJS setelah pilot | Alatnya sudah ada: audit acak (`RANDOM_AUDIT_PERMILLE`, kini 3%), ekspor label (`/api/v1/labels`), latih ulang (`retrain.py`) |
+
+**Prasyarat sebelum pilot memakai data nyata**
+
+| Prasyarat | Status | Pelaksana |
+|---|---|---|
+| Enkripsi data pasien di basis data | Kode ada (`DATA_ENC_KEY`), belum aktif di cloud | Tim |
+| Hosting di wilayah Indonesia | Belum; sekarang Azure East Asia | Tim |
+| Akun demo dihapus | Belum; sengaja aktif untuk peragaan | Tim |
+| Mode bayangan (skor tidak memengaruhi keputusan) | Belum ada di kode | Tim |
+| Laporan enam ukuran dampak pilot | Belum ada | Tim |
+| Penghapusan NIK dan nomor telepon di semua format | Diperbaiki dan di-deploy 17 Nov | Tim |
+| Kredensial antar-layanan per layanan, bukan satu token bersama | Belum | Tim |
+| Tinjauan dokter atas daftar 144 diagnosis non-spesialistik dan teks panduan | Belum | Dokter peninjau |
+| Akses SISRUTE (spesialis, alat, tempat tidur), data jarak faskes, PCare/VClaim | Belum | BPJS Kesehatan dan Kemenkes |

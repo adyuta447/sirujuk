@@ -21,7 +21,7 @@ Dicek pada kode `main` dan situs https://sirujuk.vercel.app (backend dan ML di A
 | Jumlah tes | 112 backend, 59 jest | 225 fungsi tes backend, 191 tes jest (27 suite) | ✅ |
 | Enkripsi data di basis data | `data_encryption: down` | tetap `down`; backend Azure berjalan tanpa Firestore (`firestore: down`) | ❌ |
 | Hosting wilayah Indonesia | `us-east4` | East Asia (Azure); project GCP ditangguhkan | ❌ |
-| Penghapusan NIK dan telepon | hanya format polos | tetap hanya format polos: `3171 2345 6789 0001`, `3171-2345-6789-0001`, `0812-3456-7890`, `+62 812 3456 7890`, `6281234567890` lolos tanpa dihapus (diuji 17 Nov) | 🟡 |
+| Penghapusan NIK dan telepon | hanya format polos | dihapus di 12 format umum (spasi, titik, strip, `+62`, `62`), diuji otomatis; angka klinis, tanggal, dan biaya tidak ikut terhapus (PR #58, dideploy 17 Nov, image `a78c676`) | ✅ |
 | `sisrute_available` | backend mengirim `false` | tetap `false`, bukan `null` | 🟡 |
 | `MIN_RED_LAYERS` | default 1 | tetap 1 (keputusan tim) | 🟡 |
 | Mode bayangan; laporan enam ukuran dampak | tidak ada | tetap tidak ada | ❌ |
@@ -145,7 +145,7 @@ Data dasarnya tersimpan (skor, hasil audit, klarifikasi, status klaim, `/stats` 
 |---|---|---|---|
 | P0-1 | Isi Bagian 9 Profil Tim di proposal final | PM | satu-satunya bagian yang masih kosong |
 | P0-2 | Putuskan lingkungan peragaan merah: lokal dengan `SEED_COUNT=500` atau cloud dengan Redis aktif | PM + DevOps | tanpa cache riwayat dokter, cloud tak pernah menghasilkan merah |
-| P0-3 | Samakan klaim "NIK dan telepon dihapus" dengan kode: format `3171 2345 6789 0001`, `3171-2345-6789-0001`, `0812-3456-7890`, `+62 812 3456 7890`, `6281234567890` lolos tanpa dihapus | ML | perbaikan: hapus pemisah lalu cocokkan; tambah tes. Atau ubah kalimat proposal menjadi "format polos" |
+| P0-3 (selesai 17 Nov, PR #58) | Samakan klaim "NIK dan telepon dihapus" dengan kode: format `3171 2345 6789 0001`, `3171-2345-6789-0001`, `0812-3456-7890`, `+62 812 3456 7890`, `6281234567890` lolos tanpa dihapus | ML | perbaikan: hapus pemisah lalu cocokkan; tambah tes. Atau ubah kalimat proposal menjadi "format polos" |
 | P0-4 | Aktifkan `DATA_ENC_KEY` (jalankan `infra/gcp/setup.sh`, buka komentar di `cloudrun-go.yaml`) | DevOps | wajib sebelum satu pun data nyata |
 | P0-5 | Atur kedaluwarsa atau hapus empat akun demo di Firestore produksi | DevOps | `useradd -set-expiry` |
 | P1-6 | Hubungkan Redis (URL Upstash) | DevOps | menyalakan NS dan antrean async; `INSUFFICIENT_HISTORY` palsu hilang |

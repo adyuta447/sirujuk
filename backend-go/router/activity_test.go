@@ -203,13 +203,17 @@ func refuse(h http.Handler, body string, who map[string]string) *httptest.Respon
 func TestProxyRefusalsAreLoggedUnderTheVerifiedActorAndMarkedAsProxy(t *testing.T) {
 	h, mem := activityRouter(t)
 	ver, dok, tk := as("ver@x.id", "verifikator"), as("dok@x.id", "dokter"), as("tkmkb@x.id", "tkmkb")
-	for body, who := range map[string]map[string]string{
-		`{"resource":"audit","action":"create","resource_id":"r-1","status":403,"code":"FORBIDDEN_LEVEL"}`:  ver,
-		`{"resource":"config","action":"update","status":403,"code":"FORBIDDEN_ROLE"}`:                      ver,
-		`{"resource":"referral","action":"read","resource_id":"r-1","status":400,"code":"INVALID_REQUEST"}`: dok,
+	// A slice, not a map: the log is read back newest first, so the report order must be fixed.
+	for _, c := range []struct {
+		body string
+		who  map[string]string
+	}{
+		{`{"resource":"audit","action":"create","resource_id":"r-1","status":403,"code":"FORBIDDEN_LEVEL"}`, ver},
+		{`{"resource":"config","action":"update","status":403,"code":"FORBIDDEN_ROLE"}`, ver},
+		{`{"resource":"referral","action":"read","resource_id":"r-1","status":400,"code":"INVALID_REQUEST"}`, dok},
 	} {
-		if w := refuse(h, body, who); w.Code != http.StatusNoContent || w.Body.Len() != 0 {
-			t.Fatalf("%s: %d %s", body, w.Code, w.Body)
+		if w := refuse(h, c.body, c.who); w.Code != http.StatusNoContent || w.Body.Len() != 0 {
+			t.Fatalf("%s: %d %s", c.body, w.Code, w.Body)
 		}
 	}
 	got, _ := mem.Recent(context.Background(), 10)

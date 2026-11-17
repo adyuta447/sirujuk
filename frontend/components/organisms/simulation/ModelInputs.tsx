@@ -1,5 +1,5 @@
 import { ALASAN } from "../../../data/skor-reasons";
-import { PILIHAN_TRI } from "../../../data/pilihan-simulasi";
+import { PILIHAN_NARASI, PILIHAN_TRI } from "../../../data/pilihan-simulasi";
 import type { FormSimulasi, UbahFormSimulasi } from "../../../types/simulate-form";
 import { FieldGrid } from "../../molecules/FieldGrid";
 import { FieldGroup } from "../../molecules/FieldGroup";
@@ -36,6 +36,11 @@ export function ModelInputs({ form, onChange }: ModelInputsProps) {
             <NumberField label="Keluhan ringan NS (%)" placeholder="Contoh: 40" value={form.ns90} min={0} max={100} onChange={(v) => onChange("ns90", v)} />
             <NumberField label="Rujukan 180 hari (n)" placeholder="Contoh: 45" value={form.n180} min={0} onChange={(v) => onChange("n180", v)} />
             <NumberField label="Konsentrasi HHI" placeholder="Contoh: 2500" value={form.hhi180} min={0} max={10000} onChange={(v) => onChange("hhi180", v)} />
+          </FieldGrid>
+        </FieldGroup>
+        <FieldGroup title="Narasi klinis">
+          <FieldGrid kolom={4}>
+            <SelectField label="Kualitas narasi" value={form.narasi} options={PILIHAN_NARASI} onChange={(v) => onChange("narasi", v)} />
           </FieldGrid>
         </FieldGroup>
         <FieldGroup title="Faskes dan SISRUTE">

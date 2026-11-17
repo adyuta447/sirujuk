@@ -15,6 +15,7 @@ export interface MasukanModel {
   sisrute_available?: boolean;
   sisrute_age_days?: number;
   dest_is_nearest?: boolean;
+  narrative_quality?: "generic" | "specific";
 }
 
 /** Asumsi tentang RS tujuan. Bukan masukan model: hanya memengaruhi penilaian kesesuaian. */

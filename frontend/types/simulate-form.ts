@@ -13,6 +13,7 @@ export interface FormSimulasi {
   sisrute: string; // "" | "ya" | "tidak"
   umurSisrute: string; // hari
   terdekat: string; // "" | "ya" | "tidak": RS tujuan adalah yang terdekat
+  narasi: string; // "" | generic | specific: kualitas narasi acuan
   jarak: string; // km
   kompetensi: string; // "" | sesuai | sebagian | tidak
   alat: string; // "" | "ya" | "tidak"

@@ -2,6 +2,7 @@ package guideline
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -28,5 +29,12 @@ func TestEmbeddedListMatchesTheMLServiceTable(t *testing.T) {
 		if emb.text[c] != txt {
 			t.Fatalf("text of %s differs from the ML table; refresh kns144.tsv", c)
 		}
+	}
+}
+
+func TestNarrativeOfACodeOnTwoRowsIsTheFirstRowLikeTheMLService(t *testing.T) {
+	g, _ := parse(strings.NewReader("B35.0|Tinea Barbae|Integumen|janggut\nB35.0|Tinea Kapitis|Integumen|kulit kepala\n"))
+	if got, _ := g.Narrative("B35.0"); got != "janggut" {
+		t.Fatalf("got %q", got)
 	}
 }

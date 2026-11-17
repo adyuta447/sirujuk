@@ -40,7 +40,7 @@ func parse(r io.Reader) (Guideline, error) {
 		for _, code := range strings.Split(codes, ",") {
 			if code = strings.TrimSpace(code); code != "" {
 				g.codes[normalize(code)] = true
-				if len(fields) >= 3 {
+				if _, dup := g.text[normalize(code)]; !dup && len(fields) >= 3 { // a code on two rows: the first wins, as in the ML's resolve()
 					g.text[normalize(code)] = strings.TrimSpace(fields[2])
 				}
 			}

@@ -4,12 +4,16 @@ package guideline
 
 import (
 	"bufio"
+	"io"
 	"os"
 	"strings"
 )
 
 // Guideline is the loaded KNS list. The zero value knows nothing, and says so.
-type Guideline struct{ codes map[string]bool }
+type Guideline struct {
+	codes map[string]bool
+	text  map[string]string // the clinical text of the diagnosis (4th column), when the source has one
+}
 
 // Load reads one entry per line: ICD-10 codes ("J06.9", or a 3-character block like "J06" to cover its sub-codes),
 // comma-separated, optionally followed by "|name|group|text". The second form is the ML service's kns144.tsv, so
@@ -20,21 +24,40 @@ func Load(path string) (Guideline, error) {
 		return Guideline{}, err
 	}
 	defer f.Close()
-	g := Guideline{codes: map[string]bool{}}
-	sc := bufio.NewScanner(f)
+	return parse(f)
+}
+
+func parse(r io.Reader) (Guideline, error) {
+	g := Guideline{codes: map[string]bool{}, text: map[string]string{}}
+	sc := bufio.NewScanner(r)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		codes, _, _ := strings.Cut(line, "|")
+		codes, rest, _ := strings.Cut(line, "|")
+		fields := strings.Split(rest, "|")
 		for _, code := range strings.Split(codes, ",") {
 			if code = strings.TrimSpace(code); code != "" {
 				g.codes[normalize(code)] = true
+				if len(fields) >= 3 {
+					g.text[normalize(code)] = strings.TrimSpace(fields[2])
+				}
 			}
 		}
 	}
 	return g, sc.Err()
+}
+
+// Narrative is the reference clinical text of a KNS diagnosis, for what-if simulation. Like IsNonSpecialist, a
+// sub-code falls back to its 3-character block; a diagnosis outside the list has none, and none is guessed.
+func (g Guideline) Narrative(icd string) (string, bool) {
+	c := normalize(icd)
+	t, ok := g.text[c]
+	if !ok && len(c) > 3 {
+		t, ok = g.text[c[:3]]
+	}
+	return t, ok && t != ""
 }
 
 // Known reports whether a list was loaded. Without one, NS(d) must stay NULL instead of being guessed.

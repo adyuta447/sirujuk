@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sirujuk/backend-go/domain"
+	"github.com/sirujuk/backend-go/internal/seed"
 )
 
 // simInputs are the inputs the model really uses. Each one that is set replaces the value taken from the base
@@ -22,6 +23,9 @@ type simInputs struct {
 	DestIsNearest     *bool    `json:"dest_is_nearest"`
 	SisruteAvailable  *bool    `json:"sisrute_available"`
 	SisruteAgeDays    *float64 `json:"sisrute_age_days"`
+	// NarrativeQuality swaps the narrative for a fixed reference text, so the NLP indicator can be simulated without
+	// client free text: generic (a vague seed sentence) or specific (the KNS table's clinical text of the diagnosis).
+	NarrativeQuality *string `json:"narrative_quality"`
 }
 
 // simDestination is about the destination hospital. None of it is a model input: it feeds the destination assessment
@@ -80,6 +84,25 @@ func (h ReferralHandler) Simulate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	narrativeRef := ""
+	if q := body.Inputs.NarrativeQuality; q != nil {
+		narrativeRef = "generik"
+		in.Referral.ClinicalNarrative = seed.GenericNarrative
+		if *q == "specific" {
+			narrativeRef = "spesifik"
+			ref, _ := h.Decisions.KNS.(interface{ Narrative(string) (string, bool) })
+			text, ok := "", false
+			if ref != nil {
+				text, ok = ref.Narrative(in.Referral.DiagnosisCode)
+			}
+			if !ok { // outside the 144 table there is no reference text, and none is invented
+				writeJSON(w, http.StatusUnprocessableEntity, apiError{"NARRATIVE_UNAVAILABLE", "No specific reference narrative for this diagnosis; only the 144 KNS diagnoses have one", ""})
+				return
+			}
+			in.Referral.ClinicalNarrative = text
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), editBudget)
 	defer cancel()
 	signals, err := h.Decisions.ML.Predict(ctx, in)
@@ -97,6 +120,9 @@ func (h ReferralHandler) Simulate(w http.ResponseWriter, r *http.Request) {
 			"score": d.Score, "category": d.Decision, "yellow_from": d.YellowFrom, "red_from": d.RedFrom,
 			"model_version": d.ModelVersion, "breakdown": d.Breakdown, "reasons": d.Reasons,
 		},
+	}
+	if narrativeRef != "" {
+		out["narrative_reference"] = narrativeRef // a label; the reference text itself is never returned
 	}
 	if base != nil {
 		b := base.Decision
@@ -155,6 +181,9 @@ func applySimInputs(in *domain.ScoringInput, s simInputs) []string {
 	if s.DestIsNearest != nil {
 		set("dest_is_nearest", func() { in.Doctor.DestIsNearest = s.DestIsNearest })
 	}
+	if s.NarrativeQuality != nil {
+		set("narrative_quality", func() {})
+	}
 	if s.SisruteAvailable != nil {
 		set("sisrute_available", func() { in.SisruteAvailable = *s.SisruteAvailable })
 	}
@@ -169,6 +198,7 @@ func validSimInputs(s simInputs, d *simDestination) error {
 	if (s.DiagnosisCode != nil && !diagnosisRe.MatchString(*s.DiagnosisCode)) ||
 		(s.ReasonCategory != nil && (*s.ReasonCategory == "" || !reasonCategories[*s.ReasonCategory])) ||
 		(s.ClinicalNarrative != nil && text(*s.ClinicalNarrative, maxNarrative, false, true) != nil) ||
+		(s.NarrativeQuality != nil && (s.ClinicalNarrative != nil || *s.NarrativeQuality != "generic" && *s.NarrativeQuality != "specific")) ||
 		(s.N90 != nil && (*s.N90 < 0 || *s.N90 > 1e6)) || (s.N180 != nil && (*s.N180 < 0 || *s.N180 > 1e6)) ||
 		(s.NS90 != nil && !(*s.NS90 >= 0 && *s.NS90 <= 1)) || (s.HHI180 != nil && !(*s.HHI180 >= 0 && *s.HHI180 <= 10000)) ||
 		(s.SisruteAgeDays != nil && !(*s.SisruteAgeDays >= 0 && *s.SisruteAgeDays <= 3650)) {

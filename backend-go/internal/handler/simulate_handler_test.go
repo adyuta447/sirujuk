@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sirujuk/backend-go/domain"
+	"github.com/sirujuk/backend-go/internal/guideline"
 	"github.com/sirujuk/backend-go/internal/repository"
 	"github.com/sirujuk/backend-go/internal/seed"
 )
@@ -32,6 +33,9 @@ func (c *captureML) Predict(_ context.Context, in domain.ScoringInput) (domain.M
 	}
 	if in.SisruteAvailable {
 		s += 20
+	}
+	if len(in.Referral.ClinicalNarrative) > 60 { // a specific narrative reads as a real case: lower risk than a vague one
+		s -= 5
 	}
 	return domain.MLScores{Score: s, ModelVersion: "test", YellowFrom: 50, RedFrom: 80, Reasons: []domain.Reason{{Code: "HHI_HIGH_CONCENTRATION", Contribution: 2}}}, nil
 }
@@ -159,5 +163,70 @@ func TestDestinationAssumptionsAreAssessedButNeverMoveTheScore(t *testing.T) {
 	// without assumptions the base referral's own destination is assessed from the directory: heart attack -> heart hospital
 	if plainFit := plain["destination_fit"].(map[string]any); plainFit["verdict"] != "belum_terverifikasi" {
 		t.Fatalf("the stored destination: %v", plainFit)
+	}
+}
+
+func TestSimulationNarrativeQualityUsesFixedReferenceTexts(t *testing.T) {
+	ml := &captureML{}
+	h, store := simHandler(ml)
+	h.Decisions.KNS = guideline.Embedded()
+	before := store.Count()
+	run := func(body string) (*httptest.ResponseRecorder, map[string]any) {
+		return simulate(h, "verifikator", body)
+	}
+
+	w, specific := run(`{"inputs":{"diagnosis_code":"I10","reason_category":"clinical","narrative_quality":"specific"}}`)
+	want, _ := guideline.Embedded().Narrative("I10")
+	if w.Code != 200 || want == "" || ml.last.Referral.ClinicalNarrative != want {
+		t.Fatalf("specific must send the KNS table text of the diagnosis: %d %s", w.Code, w.Body)
+	}
+	_, generic := run(`{"inputs":{"diagnosis_code":"I10","reason_category":"clinical","narrative_quality":"generic"}}`)
+	if ml.last.Referral.ClinicalNarrative != seed.GenericNarrative {
+		t.Fatalf("generic must send the fixed vague text, got %q", ml.last.Referral.ClinicalNarrative)
+	}
+	sp, ge := specific["model"].(map[string]any)["score"].(float64), generic["model"].(map[string]any)["score"].(float64)
+	if sp == ge || specific["narrative_reference"] != "spesifik" || generic["narrative_reference"] != "generik" {
+		t.Fatalf("the two narratives must score differently and be labelled: %v vs %v, %v %v", sp, ge, specific["narrative_reference"], generic["narrative_reference"])
+	}
+	if got := generic["applied_inputs"].([]any); len(got) != 3 || got[2] != "narrative_quality" {
+		t.Fatalf("applied inputs: %v", got)
+	}
+	if strings.Contains(w.Body.String(), want) || strings.Contains(w.Body.String(), seed.GenericNarrative) {
+		t.Fatal("the reference text must not be returned, only its label")
+	}
+	// on a base referral: the stored narrative is replaced, and the stored referral is untouched
+	if _, out := run(`{"base_referral_id":"base-1","inputs":{"narrative_quality":"generic"}}`); out["narrative_reference"] != "generik" || ml.last.Referral.ClinicalNarrative != seed.GenericNarrative {
+		t.Fatalf("base referral: %v", out)
+	}
+	if item, _ := store.Get("base-1"); item.Request.ClinicalNarrative != "RAHASIA-NARASI" || store.Count() != before {
+		t.Fatal("a simulation must store nothing")
+	}
+	// no field: the narrative is left alone and nothing is reported
+	if _, out := run(`{"base_referral_id":"base-1"}`); out["narrative_reference"] != nil || ml.last.Referral.ClinicalNarrative != "RAHASIA-NARASI" {
+		t.Fatalf("without the field nothing changes: %v", out)
+	}
+}
+
+func TestSimulationNarrativeQualityRefusals(t *testing.T) {
+	h, _ := simHandler(&captureML{})
+	h.Decisions.KNS = guideline.Embedded()
+	for name, c := range map[string]struct {
+		body string
+		want int
+	}{
+		"unknown value":    {`{"base_referral_id":"base-1","inputs":{"narrative_quality":"bagus"}}`, 400},
+		"empty value":      {`{"base_referral_id":"base-1","inputs":{"narrative_quality":""}}`, 400},
+		"wrong case":       {`{"base_referral_id":"base-1","inputs":{"narrative_quality":"Specific"}}`, 400},
+		"with free text":   {`{"base_referral_id":"base-1","inputs":{"narrative_quality":"generic","clinical_narrative":"abc"}}`, 400},
+		"specialist base":  {`{"base_referral_id":"base-1","inputs":{"narrative_quality":"specific"}}`, 422}, // I21.0 is a specialist diagnosis
+		"not in the table": {`{"inputs":{"diagnosis_code":"J06.8","reason_category":"clinical","narrative_quality":"specific"}}`, 422},
+	} {
+		if w, _ := simulate(h, "tkmkb", c.body); w.Code != c.want {
+			t.Errorf("%s: want %d, got %d %s", name, c.want, w.Code, w.Body)
+		}
+	}
+	h.Decisions.KNS = nil // no list loaded: say so, do not guess
+	if w, _ := simulate(h, "tkmkb", `{"inputs":{"diagnosis_code":"I10","reason_category":"clinical","narrative_quality":"specific"}}`); w.Code != 422 {
+		t.Errorf("no KNS list: want 422, got %d", w.Code)
 	}
 }

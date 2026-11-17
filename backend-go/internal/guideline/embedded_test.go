@@ -17,11 +17,16 @@ func TestEmbeddedListMatchesTheMLServiceTable(t *testing.T) {
 	}
 	emb := Embedded()
 	if !emb.Known() || len(emb.codes) != len(ml.codes) {
-		t.Fatalf("embedded list differs from the ML table: %d vs %d codes; refresh kns144.codes", len(emb.codes), len(ml.codes))
+		t.Fatalf("embedded list differs from the ML table: %d vs %d codes; refresh kns144.tsv", len(emb.codes), len(ml.codes))
 	}
 	for c := range ml.codes {
 		if !emb.codes[c] {
-			t.Fatalf("code %s is in the ML table but not embedded; refresh kns144.codes", c)
+			t.Fatalf("code %s is in the ML table but not embedded; refresh kns144.tsv", c)
+		}
+	}
+	for c, txt := range ml.text {
+		if emb.text[c] != txt {
+			t.Fatalf("text of %s differs from the ML table; refresh kns144.tsv", c)
 		}
 	}
 }

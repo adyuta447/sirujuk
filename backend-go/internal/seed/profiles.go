@@ -33,6 +33,8 @@ var (
 		{"N18.3", "penyakit ginjal kronik laboratorium kreatinin meningkat"},
 		{"J44", "sesak napas kronik batuk berdahak riwayat merokok spirometri"},
 	}
+	// GenericNarrative is the fixed vague text the simulator uses for "generic", so a simulation repeats exactly.
+	GenericNarrative  = genericNarratives[0]
 	genericNarratives = []string{
 		"Pasien dirujuk ke rumah sakit.",
 		"Mohon penanganan lebih lanjut di rumah sakit.",

@@ -1,8 +1,8 @@
-import { ShieldCheck } from "lucide-react";
 import type { ClarificationFormState } from "../../../hooks/useClarificationForm";
 import { Card } from "../../atoms/Card";
 import { PrimaryButton } from "../../atoms/PrimaryButton";
 import { SecondaryButton } from "../../atoms/SecondaryButton";
+import { AssuranceNote } from "../../molecules/AssuranceNote";
 
 interface AnswerPanelProps {
   form: ClarificationFormState;
@@ -12,10 +12,7 @@ interface AnswerPanelProps {
 export function AnswerPanel({ form, onProfil }: AnswerPanelProps) {
   return (
     <div className="space-y-4 lg:sticky lg:top-0">
-      <p className="flex items-start gap-2.5 rounded-4xl px-4 py-3 text-sm bg-[#17803F] text-white">
-        <ShieldCheck aria-hidden="true" size={16} className="mt-0.5 shrink-0" />
-        Ini bukan tuduhan. Tidak ada sanksi sebelum penjelasan Anda ditinjau manusia.
-      </p>
+      <AssuranceNote title="Ini bukan tuduhan">Tidak ada sanksi sebelum penjelasan Anda ditinjau manusia.</AssuranceNote>
       <Card className="p-5 space-y-3">
         <label htmlFor="jawaban-dokter" className="text-xl font-extrabold tracking-tight text-[#0E1B2A] block">
           Penjelasan Anda <span className="text-[#C42222]">*</span>
